@@ -1,7 +1,4 @@
 
-#![feature(arbitrary_enum_discriminant, derive_default_enum)]
-
-
 mod event_trace;
 use std::{thread, time};
 
