@@ -18,7 +18,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Perf Counter", op_code: 32},
 			MinorDescribe{name: "Perf Counter Rundown", op_code: 33}
 		],
-		guid: PROCESS_GUID
+		guid: ProcessGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "Thread", flag: Major::Thread as u64},
@@ -33,7 +33,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "ConnectFail", op_code: 0x28},
 			MinorDescribe{name: "ClosePort", op_code: 0x29}
 		],
-		guid: THREAD_GUID
+		guid: ThreadGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "ImageLoad", flag: Major::ImageLoad as u64},
@@ -46,7 +46,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Kernel Base", op_code: 0x21},
 			MinorDescribe{name: "Hypercall Page", op_code: 0x22}
 		],
-		guid: IMAGE_LOAD_GUID
+		guid: ImageLoadGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "Registry", flag: Major::Registry as u64},
@@ -76,7 +76,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Rollback Tx", op_code: EVENT_TRACE_TYPE_REGROLLBACK},
 			MinorDescribe{name: "Load Key", op_code: EVENT_TRACE_TYPE_REGMOUNTHIVE}
 		],
-		guid: REGISTRY_GUID
+		guid: RegistryGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "FileIO", flag: Major::FileIO as u64},
@@ -100,7 +100,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Close", op_code: 66},
 			MinorDescribe{name: "Flush", op_code: 73},
 		],
-		guid: FILE_IO_GUID
+		guid: FileIoGuid
 	},
 
 	EventsDescribe{
@@ -113,7 +113,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Flush Init", op_code: 15},
 			MinorDescribe{name: "Flush Buffers", op_code: 14}
 		],
-		guid: DISK_IO_GUID
+		guid: DiskIoGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "PageFaults", flag: Major::PageFaults as u64},
@@ -127,7 +127,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Access Violation", op_code: 15},
 			MinorDescribe{name: "Image Load Backed", op_code: 105}
 		],
-		guid: PAGE_FAULT_GUID
+		guid: PageFaultGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "Tcp", flag: Major::Network as u64},
@@ -154,7 +154,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Partial Ack", op_code: EVENT_TRACE_TYPE_ACKPART},
 			MinorDescribe{name: "Duplicate Ack", op_code: EVENT_TRACE_TYPE_ACKDUP}
 		],
-		guid: TCP_IP_GUID
+		guid: TcpIpGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "Udp", flag: Major::Network as u64},
@@ -168,7 +168,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "UDP Send IPv6", op_code: 26},
 			MinorDescribe{name: "UDP Receive IPv6", op_code: 27}
 		],
-		guid: UDP_IP_GUID
+		guid: UdpIpGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "DebugPrint", flag: Major::DebugPrint as u64},
@@ -226,7 +226,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Virtual Alloc", op_code: 98},
 			MinorDescribe{name: "Virtual Free", op_code: 99}
 		],
-		guid: PAGE_FAULT_GUID
+		guid: PageFaultGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "PerfHeap", flag: Major::PerfHeap as u64},
@@ -268,7 +268,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Create", op_code: 1},
 			MinorDescribe{name: "Delete", op_code: 2}
 		],
-		guid: THREAD_GUID
+		guid: ThreadGuid
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "PerfFlt", flag: Major::PerfFlt as u64},
@@ -280,7 +280,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "Pre Operation Failure", op_code: 0x64},
 			MinorDescribe{name: "Post Operation Failure", op_code: 0x65}
 		],
-		guid: FILE_IO_GUID
+		guid: FileIoGuid
 	},
 ];
 
@@ -410,62 +410,8 @@ pub enum MinorThread{
     ClosePort = 0x29,
 }
 
-/* 54849625-5478-4994-a5ba-3e3b0328c30d */
-const SECURITY_PROVIDER_GUID: GUID = GUID{ data1: 0x54849625, data2: 0x5478, data3: 0x4994, data4: [0xa5, 0xba, 0x3e, 0x3b, 0x03, 0x28, 0xc3, 0x0d] };
-
-/* 3d6fa8d0-fe05-11d0-9dda-00c04fd7ba7c */
-const PROCESS_GUID: GUID = GUID{ data1: 0x3d6fa8d0, data2: 0xfe05, data3: 0x11d0, data4: [0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c] };
-
-/* 45d8cccd-539f-4b72-a8b7-5c683142609a */
-const ALPC_GUID: GUID = GUID{ data1: 0x45d8cccd, data2: 0x539f, data3: 0x4b72, data4: [0xa8, 0xb7, 0x5c, 0x68, 0x31, 0x42, 0x60, 0x9a] };
-
-/* 3d6fa8d4-fe05-11d0-9dda-00c04fd7ba7c */
-const DISK_IO_GUID: GUID = GUID{ data1: 0x3d6fa8d4, data2: 0xfe05, data3: 0x11d0, data4: [0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c] };
-
-/* 90cbdc39-4a3e-11d1-84f4-0000f80464e3 */
-const FILE_IO_GUID: GUID = GUID{ data1: 0x90cbdc39, data2: 0x4a3e, data3: 0x11d1, data4: [0x84, 0xf4, 0x00, 0x00, 0xf8, 0x04, 0x64, 0xe3] };
-
-/* 2cb15d1d-5fc1-11d2-abe1-00a0c911f518 */
-const IMAGE_LOAD_GUID: GUID = GUID{ data1: 0x2cb15d1d, data2: 0x5fc1, data3: 0x11d2, data4: [0xab, 0xe1, 0x00, 0xa0, 0xc9, 0x11, 0xf5, 0x18] };
-
-/* 3d6fa8d3-fe05-11d0-9dda-00c04fd7ba7c */
-const PAGE_FAULT_GUID: GUID = GUID{ data1: 0x3d6fa8d3, data2: 0xfe05, data3: 0x11d0, data4: [0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c] };
-
-/* ce1dbfb4-137e-4da6-87b0-3f59aa102cbc */
-const PERF_INFO_GUID: GUID = GUID{ data1: 0xce1dbfb4, data2: 0x137e, data3: 0x4da6, data4: [0x87, 0xb0, 0x3f, 0x59, 0xaa, 0x10, 0x2c, 0xbc] };
-
-/* AE53722E-C863-11d2-8659-00C04FA321A1 */
-const REGISTRY_GUID: GUID = GUID{ data1: 0xae53722e, data2: 0xc863, data3: 0x11d2, data4: [0x86, 0x59, 0x0, 0xc0, 0x4f, 0xa3, 0x21, 0xa1] };
-
-/* 9a280ac0-c8e0-11d1-84e2-00c04fb998a2 */
-const TCP_IP_GUID: GUID = GUID{ data1: 0x9a280ac0, data2: 0xc8e0, data3: 0x11d1, data4: [0x84, 0xe2, 0x00, 0xc0, 0x4f, 0xb9, 0x98, 0xa2] };
-
-/* 3d6fa8d1-fe05-11d0-9dda-00c04fd7ba7c */
-const THREAD_GUID: GUID = GUID{ data1: 0x3d6fa8d1, data2: 0xfe05, data3: 0x11d0, data4: [0x9d, 0xda, 0x00, 0xc0, 0x4f, 0xd7, 0xba, 0x7c] };
-
-/* bf3a50c5-a9c9-4988-a005-2df0b7c80f80 */
-const UDP_IP_GUID: GUID = GUID{ data1: 0xbf3a50c5, data2: 0xa9c9, data3: 0x4988, data4: [0xa0, 0x05, 0x2d, 0xf0, 0xb7, 0xc8, 0x0f, 0x80] };
-
-/* DEF2FE46-7BD6-4b80-bd94-F57FE20D0CE3 */
-const STACK_WALK_GUID: GUID = GUID{ data1: 0xdef2fe46, data2: 0x7bd6, data3: 0x4b80, data4: [0xbd, 0x94, 0xf5, 0x7f, 0xe2, 0xd, 0xc, 0xe3] };
-
 /* 89497f50-effe-4440-8cf2-ce6b1cdcaca7 */
 const OBJECT_GUID: GUID = GUID{ data1: 0x89497f50, data2: 0xeffe, data3: 0x4440, data4: [0x8c, 0xf2, 0xce, 0x6b, 0x1c, 0xdc, 0xac, 0xa7] };
-
-/* E43445E0-0903-48c3-B878-FF0FCCEBDD04 */
-const POWER_GUID: GUID = GUID{ data1: 0xe43445e0, data2: 0x903, data3: 0x48c3, data4: [0xb8, 0x78, 0xff, 0xf, 0xcc, 0xeb, 0xdd, 0x4] };
-
-/* F8F10121-B617-4A56-868B-9dF1B27FE32C */
-const MMCSS_GUID: GUID = GUID{ data1: 0xf8f10121, data2: 0xb617, data3: 0x4a56, data4: [0x86, 0x8b, 0x9d, 0xf1, 0xb2, 0x7f, 0xe3, 0x2c] };
-
-/* b2d14872-7c5b-463d-8419-ee9bf7d23e04 */
-const DPC_GUID: GUID = GUID{ data1: 0xb2d14872, data2: 0x7c5b, data3: 0x463d, data4: [0x84, 0x19, 0xee, 0x9b, 0xf7, 0xd2, 0x3e, 0x04] };
-
-/* d837ca92-12b9-44a5-ad6a-3a65b3578aa8 */
-const SPLIT_IO_GUID: GUID = GUID{ data1: 0xd837ca92, data2: 0x12b9, data3: 0x44a5, data4: [0xad, 0x6a, 0x3a, 0x65, 0xb3, 0x57, 0x8a, 0xa8] };
-
-/* c861d0e2-a2c1-4d36-9f9c-970bab943a12 */
-const THREAD_POOL_GUID: GUID = GUID{ data1: 0xc861d0e2, data2: 0xa2c1, data3: 0x4d36, data4: [0xa5, 0xba, 0x3e, 0x3b, 0x03, 0x28, 0xc3, 0x0d] };
 
 /* 0268a8b6-74fd-4302-9dd0-6e8f1795c0cf */
 const POOL_GUID: GUID = GUID{ data1: 0x0268a8b6, data2: 0x74fd, data3: 0x4302, data4: [0x9d, 0xd0, 0x6e, 0x8f, 0x17, 0x95, 0xc0, 0xcf] };
@@ -473,26 +419,8 @@ const POOL_GUID: GUID = GUID{ data1: 0x0268a8b6, data2: 0x74fd, data3: 0x4302, d
 /* 222962ab-6180-4b88-a825-346b75f2a24a */
 const HEAP_GUID: GUID = GUID{ data1: 0x222962ab, data2: 0x6180, data3: 0x4b88, data4: [0xa8, 0x25, 0x34, 0x6b, 0x75, 0xf2, 0xa2, 0x4a] };
 
-/* d781ca11-61c0-4387-b83d-af52d3d2dd6a */
-const HEAP_RANGE_GUID: GUID = GUID{ data1: 0xd781ca11, data2: 0x61c0, data3: 0x4387, data4: [0xb8, 0x3d, 0xaf, 0x52, 0xd3, 0xd2, 0xdd, 0x6a] };
-
-/* 05867806-c246-43ef-a147-e17d2bdb1496 */
-const HEAP_SUMMARY_GUID: GUID = GUID{ data1: 0x05867806, data2: 0xc246, data3: 0x43ef, data4: [0xa1, 0x47, 0xe1, 0x7d, 0x2b, 0xdb, 0x14, 0x96] };
-
-/* 3AC66736-CC59-4cff-8115-8DF50E39816B */
-const CRIT_SEC_GUID: GUID = GUID{ data1: 0x3ac66736, data2: 0xcc59, data3: 0x4cff, data4: [0x81, 0x15, 0x8d, 0xf5, 0xe, 0x39, 0x81, 0x6b] };
-
 /* 13976D09-A327-438c-950B-7F03192815C7  */
 const DBG_PRINT_GUID: GUID = GUID{ data1: 0x13976d09, data2: 0xa327, data3: 0x438c, data4: [0x95, 0xb, 0x7f, 0x3, 0x19, 0x28, 0x15, 0xc7] };
-
-/* D56CA431-61BF-4904-A621-00E0381E4DDE */
-const DRIVER_VERIFIER_GUID: GUID = GUID{ data1: 0xd56ca431, data2: 0x61bf, data3: 0x4904, data4: [0xa6, 0x21, 0x0, 0xe0, 0x38, 0x1e, 0x4d, 0xde] };
-
-/* E21D2142-DF90-4d93-BBD9-30E63D5A4AD6 */
-const NTDLL_TRACE_GUID: GUID = GUID{ data1: 0xe21d2142, data2: 0xdf90, data3: 0x4d93, data4: [0xbb, 0xd9, 0x30, 0xe6, 0x3d, 0x5a, 0x4a, 0xd6] };
-
-/* d3de60b2-a663-45d5-9826-a0a5949d2cb0 */
-const LOAD_MUIDLL_GUID: GUID = GUID{ data1: 0xd3de60b2, data2: 0xa663, data3: 0x45d5, data4: [0x98, 0x26, 0xa0, 0xa5, 0x94, 0x9d, 0x2c, 0xb0] };
 
 /* 3282fc76-feed-498e-8aa7-e70f459d430e */
 const JOB_GUID: GUID = GUID{ data1: 0x3282fc76, data2: 0xfeed, data3: 0x498e, data4: [0x8a, 0xa7, 0xe7, 0x0f, 0x45, 0x9d, 0x43, 0x0e] };

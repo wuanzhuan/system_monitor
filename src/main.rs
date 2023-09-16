@@ -1,23 +1,29 @@
+use std::{thread, time};
+use tracing::{error, info};
+use tracing_subscriber;
 
 mod event_trace;
-use std::{thread, time};
+mod third_extend;
+mod utils;
 
 fn main() {
-    let arc_context = event_trace::CONTEXT.clone();
+    tracing_subscriber::fmt::init();
 
-    let mut etw_context = arc_context.lock().unwrap();
+    let result = event_trace::Context::start(|ret| {
+        print!("{:?}", ret);
+    });
 
-    if let Err(x) = etw_context.start(){
-        println!("{:?}", x);
+    if let Err(e) = result {
+        error!("{}", e);
         return;
     }
 
-    println!("hello");
+    info!("hello");
 
     let ten_millis = time::Duration::from_secs(5);
     thread::sleep(ten_millis);
 
-    let x = etw_context.stop();
+    let x = event_trace::Context::stop();
 
-    println!("end: {:?}", x);
+    info!("end: {:?}", x);
 }
