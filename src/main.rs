@@ -9,7 +9,7 @@ mod utils;
 fn main() {
     tracing_subscriber::fmt::init();
 
-    let result = event_trace::Context::start(|ret| {
+    let result = event_trace::Controller::start(|ret| {
         print!("{:?}", ret);
     });
 
@@ -23,7 +23,7 @@ fn main() {
     let ten_millis = time::Duration::from_secs(5);
     thread::sleep(ten_millis);
 
-    let x = event_trace::Context::stop();
+    let x = event_trace::Controller::stop();
 
     info!("end: {:?}", x);
 }

@@ -37,7 +37,7 @@ struct ConfigKernel{
     event_desc: &'static event_kernel::EventsDescribe
 }
 
-pub struct Context{
+pub struct Controller{
     h_trace_session: CONTROLTRACE_HANDLE,
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
@@ -47,10 +47,10 @@ pub struct Context{
 pub type FnCompletion = fn(Result<()>);
 
 lazy_static!{
-    static ref CONTEXT: Arc::<Mutex<Context>> = Arc::new(Mutex::new(Context::new()));
+    static ref CONTEXT: Arc::<Mutex<Controller>> = Arc::new(Mutex::new(Controller::new()));
 }
 
-impl Context{
+impl Controller{
     fn new() -> Self {
         let mut cxt = Self{h_trace_session: CONTROLTRACE_HANDLE::default(), h_trace_consumer: PROCESSTRACE_HANDLE{Value: INVALID_PROCESSTRACE_HANDLE}, h_consumer_thread: None, config: Vec::<ConfigKernel>::new()};
         for item in event_kernel::EVENTS_DESC.iter() {
@@ -100,7 +100,7 @@ impl Context{
             }
     
             let mut trace_log = EVENT_TRACE_LOGFILEW{
-                Context: &mut *context_mg as *mut Context as *mut ffi::c_void,
+                Context: &mut *context_mg as *mut Controller as *mut ffi::c_void,
                 LoggerName:  mem::transmute(session_name.as_pcwstr()),
                 Anonymous1: EVENT_TRACE_LOGFILEW_0{ ProcessTraceMode:  PROCESS_TRACE_MODE_EVENT_RECORD | PROCESS_TRACE_MODE_REAL_TIME },
                 Anonymous2: EVENT_TRACE_LOGFILEW_1{ EventRecordCallback: Some(callback)},
@@ -155,7 +155,7 @@ impl Context{
                 let error = ControlTraceW(context_mg.h_trace_session, session_name.as_pcwstr(), &mut properties_buf.0, EVENT_TRACE_CONTROL_STOP);
                 context_mg.h_trace_session.Value = 0;
                 if let Err(e) = error {
-                    error!("failed to stop {}", e);
+                    error!("failed to ControlTraceW {}", e);
                 }
             }
 
@@ -163,7 +163,7 @@ impl Context{
                 let error = CloseTrace(context_mg.h_trace_consumer);
                 context_mg.h_trace_consumer.Value = 0;
                 if let Err(e) = error {
-                    error!("failed to stop {}", e);
+                    error!("failed to CloseTrace {}", e);
                 }
             }
         }
