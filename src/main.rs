@@ -7,7 +7,10 @@ mod third_extend;
 mod utils;
 
 fn main() {
-    tracing_subscriber::fmt::init();
+    tracing_subscriber::fmt()
+    .with_file(true)
+    .with_line_number(true)
+    .init();
 
     let result = event_trace::Controller::start(|ret| {
         print!("{:?}", ret);
