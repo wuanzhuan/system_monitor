@@ -163,7 +163,9 @@ impl Controller{
                 let error = CloseTrace(context_mg.h_trace_consumer);
                 context_mg.h_trace_consumer.Value = INVALID_PROCESSTRACE_HANDLE;
                 if let Err(e) = error {
-                    error!("failed to CloseTrace {}", e);
+                    if ERROR_CTX_CLOSE_PENDING.to_hresult() != e.code() {
+                        error!("failed to CloseTrace {}", e);
+                    }
                 }
             }
         }
