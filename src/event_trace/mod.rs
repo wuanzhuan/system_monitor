@@ -135,7 +135,7 @@ impl Controller{
                     return Ok(());
                 }
                 error!("{}", e);
-                return Err(S_FALSE.into());
+                return Err(E_FAIL.into());
             }else {
                 let e = r_recv.unwrap();
                 error!("{}", e);
@@ -159,9 +159,9 @@ impl Controller{
                 }
             }
 
-            if 0 != context_mg.h_trace_consumer.Value {
+            if INVALID_PROCESSTRACE_HANDLE != context_mg.h_trace_consumer.Value {
                 let error = CloseTrace(context_mg.h_trace_consumer);
-                context_mg.h_trace_consumer.Value = 0;
+                context_mg.h_trace_consumer.Value = INVALID_PROCESSTRACE_HANDLE;
                 if let Err(e) = error {
                     error!("failed to CloseTrace {}", e);
                 }
