@@ -94,7 +94,7 @@ impl Controller{
                         if e.code() == ERROR_ALREADY_EXISTS.to_hresult() {
                             let error = ControlTraceW(CONTROLTRACE_HANDLE::default(), session_name.as_pcwstr(), &mut properties_buf.0, EVENT_TRACE_CONTROL_STOP);
                             if error.is_ok() {
-                                warn!("The {session_name:#?} is already exist. and stop");
+                                warn!("The {session_name:#?} is already exist. and stop before restart");
                                 continue;
                             }
                             error!("The {session_name:#?} is already exist. And failed to stop: {:#?}", error);
@@ -268,7 +268,7 @@ impl<'a> fmt::Display for EventRecord<'a> {
         }
         #[inline]
         fn u16cstr_from_slice_with_offset(slice: &[u8] , offset: u32) -> Option<&U16CStr>{
-            if offset != 0 {
+            if offset > 0 {
                 U16CStr::from_slice_truncate(cast_slice_truncate(&slice[(offset as usize)..])).ok()
             } else {
                 None
