@@ -10,7 +10,6 @@ pub trait FromPcwstr {
     fn from_pcwstr<'a>(s: PCWSTR) -> &'a Self;
 }
 
-
 impl AsPcwstr for U16CStr {
     fn as_pcwstr(&self) -> PCWSTR {
         PCWSTR::from_raw(self.as_ptr())
