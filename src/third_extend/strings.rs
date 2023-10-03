@@ -1,4 +1,5 @@
 use widestring::*;
+use crate::third_extend::bytemuck::*;
 pub use windows::core::PCWSTR;
 
 
@@ -21,5 +22,16 @@ impl FromPcwstr for U16CStr {
         unsafe {
             U16CStr::from_ptr_str(s.0)
         }
+    }
+}
+
+/// truncate when null
+/// offset base bytes
+#[inline]
+pub fn u16cstr_from_bytes_truncate_offset(bytes: &[u8] , offset: u32) -> Option<&U16CStr>{
+    if offset > 0 {
+        U16CStr::from_slice_truncate(cast_slice_truncate(&bytes[(offset as usize)..])).ok()
+    } else {
+        None
     }
 }

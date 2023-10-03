@@ -16,14 +16,15 @@ use windows::{
     Win32::System::SystemInformation::*
 };
 use widestring::*;
-use crate::third_extend::bytemuck::*;
 use crate::third_extend::strings::*;
 use tracing::{error, warn, info};
 use lazy_static::lazy_static;
 use chrono::*;
+use event_decoder::*;
 
 
 mod event_kernel;
+mod event_decoder;
 
 
 const SESSION_NAME_SYSMON: &U16CStr  = u16cstr!("sysmonx");
@@ -48,11 +49,6 @@ pub struct Controller{
 }
 
 pub type FnCompletion = fn(Result<()>);
-
-pub struct EventRecordDecoded {
-    task_name: String,
-    opcode_name: String
-}
 
 struct EventRecord<'a>(&'a EVENT_RECORD);
 
@@ -241,6 +237,7 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
     }
 }
 
+
 impl<'a> fmt::Display for EventRecord<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let header = &self.0.EventHeader;
@@ -262,51 +259,34 @@ impl<'a> fmt::Display for EventRecord<'a> {
         if result != ERROR_SUCCESS.0  {
             return write!(f, "Failed to TdhGetEventInformation {result} buffer_size: {buffer_size}");
         }
-        #[inline]
-        fn is_string_event(flag: u16) -> bool {
-            (flag & EVENT_HEADER_FLAG_STRING_ONLY as u16) != 0
-        }
-        #[inline]
-        fn u16cstr_from_slice_with_offset(slice: &[u8] , offset: u32) -> Option<&U16CStr>{
-            if offset > 0 {
-                U16CStr::from_slice_truncate(cast_slice_truncate(&slice[(offset as usize)..])).ok()
-            } else {
-                None
-            }
-        }
+
         let event_info_slice = unsafe { slice::from_raw_parts(event_info as *const TRACE_EVENT_INFO as *const u8, buffer_size as usize) };
 
         let provider_id = &header.ProviderId;
-        let provider_name = u16cstr_from_slice_with_offset(event_info_slice, event_info.ProviderNameOffset).unwrap_or_default();
-        let level_name = u16cstr_from_slice_with_offset(event_info_slice, event_info.LevelNameOffset).unwrap_or_default();
-        let channel_name = u16cstr_from_slice_with_offset(event_info_slice, event_info.ChannelNameOffset).unwrap_or_default();
-        let keywords_name = u16cstr_from_slice_with_offset(event_info_slice, event_info.KeywordsNameOffset).unwrap_or_default();
+        let provider_name = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.ProviderNameOffset).unwrap_or_default();
+        let level_name = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.LevelNameOffset).unwrap_or_default();
+        let channel_name = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.ChannelNameOffset).unwrap_or_default();
+        let keywords_name = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.KeywordsNameOffset).unwrap_or_default();
         let event_name =  {
             let event_name_offset = unsafe { event_info.Anonymous1.EventNameOffset };
             if event_name_offset != 0 {
-                u16cstr_from_slice_with_offset(event_info_slice, event_name_offset).unwrap_or_default()
+                u16cstr_from_bytes_truncate_offset(event_info_slice, event_name_offset).unwrap_or_default()
             } else {
-                u16cstr_from_slice_with_offset(event_info_slice, event_info.TaskNameOffset).unwrap_or_default()
+                u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.TaskNameOffset).unwrap_or_default()
             }
         };
-        let opcode_name = u16cstr_from_slice_with_offset(event_info_slice, event_info.OpcodeNameOffset).unwrap_or_default();
-        let event_message = u16cstr_from_slice_with_offset(event_info_slice, event_info.EventMessageOffset).unwrap_or_default();
-        let provider_message = u16cstr_from_slice_with_offset(event_info_slice, event_info.ProviderMessageOffset).unwrap_or_default();
+        let opcode_name = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.OpcodeNameOffset).unwrap_or_default();
+        let event_message = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.EventMessageOffset).unwrap_or_default();
+        let provider_message = u16cstr_from_bytes_truncate_offset(event_info_slice, event_info.ProviderMessageOffset).unwrap_or_default();
 
-        let mut arr = vec![];
         let mut user_string = U16CString::new();
         if is_string_event(header.Flags) {
             user_string = unsafe { U16CStr::from_ptr_truncate(self.0.UserData as *const u16, (self.0.UserDataLength / 2) as usize).unwrap_or_default().to_owned() };
         } else {
             let event_property_info_array = unsafe { slice::from_raw_parts(event_info.EventPropertyInfoArray.as_ptr(), event_info.PropertyCount as usize) };
-            let mut i = 0usize;
-            while i < event_info.PropertyCount as usize {
-                let event_property_info = &event_property_info_array[i];
-                let offset = event_property_info.NameOffset;
-                let filed_name = u16cstr_from_slice_with_offset(event_info_slice, offset).unwrap_or_default();
-                arr.push(filed_name);
-                i = i + 1;
-            }
+            let mut int_values = vec![0u16; event_info.PropertyCount as usize];
+            let user_data = unsafe{ slice::from_raw_parts(self.0.UserData as *const u8, self.0.UserDataLength as usize) };
+            properties(self.0, event_info, event_info_slice, event_property_info_array, 0, event_info.TopLevelPropertyCount as u16, user_data, 0, int_values.as_mut_slice());
         }
 
         write!(f, "{0}/{1}  {2}
@@ -319,7 +299,6 @@ impl<'a> fmt::Display for EventRecord<'a> {
                    event_message: {event_message:?}
                    provider_message: {provider_message:?}
                    ProcessId: {:?} ThreadId: {} {}
-                   {arr:?}
                    {user_string:?}",
                    header.ProcessId as i32, header.ThreadId as i32, dt_local,)
     }
