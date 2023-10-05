@@ -207,8 +207,7 @@ pub fn properties(
                 };
 
                 let mut prop_buffer = Vec::<u16>::new();
-                let mut status = ERROR_SUCCESS.0;
-
+                
                 if 0 == prop_length && in_type == TDH_INTYPE_NULL.0 as u16 {
                     // TdhFormatProperty doesn't handle INTYPE_NULL.
                     prop_buffer.push(0);
@@ -239,12 +238,13 @@ pub fn properties(
                     } else {
                         out_type
                     };
+
                     let mut buffer_size = 1024u32;
                     prop_buffer.resize((buffer_size / 2) as usize, 0);
                     let mut userdataconsumed = 0u16;
                     loop {
                         let buffer = PWSTR::from_raw(prop_buffer.as_mut_ptr());
-                        status = unsafe {
+                        let status = unsafe {
                             TdhFormatProperty(
                                 event_info,
                                 map_info,
