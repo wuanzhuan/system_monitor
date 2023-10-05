@@ -1,32 +1,178 @@
 use crate::third_extend::strings::*;
-use std::{collections::HashMap, mem};
+use std::{collections::HashMap, mem, slice};
 use tracing::{error, info, warn};
 use widestring::*;
 use windows::{
     core::*, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*,
     Win32::System::SystemInformation::*,
 };
+use chrono::*;
 //use serde::{Serialize, Deserialize};
 
-pub struct EventRecordDecoded {
-    provider_id: GUID,
-    provider_name: String,
-    level_name: String,
-    channel_name: String,
-    keywords_name: String,
-    event_name: String,
-    opcode_name: String,
-    event_message: String,
-    provider_message: String,
-    process_id: String,
-    thread_id: String,
+
+pub struct Decoder<'a>{
+    event_record: &'a EVENT_RECORD,
+    event_info: &'a TRACE_EVENT_INFO,
+    event_info_slice: &'a [u8],
+    property_info_array: &'a [EVENT_PROPERTY_INFO],
+    user_data: &'a [u8],
+    int_values: Vec<u16>,
+}
+
+impl<'a> Decoder<'a> {
+    pub fn new(event_record: &'a EVENT_RECORD) -> Result<Self> {
+        let header = &event_record.EventHeader;
+
+        if (header.Flags & EVENT_HEADER_FLAG_TRACE_MESSAGE as u16) != 0 {
+            return Err(Error::new(E_FAIL, HSTRING::from("this is wpp event, don't handle")));
+        }
+
+        let mut buffer_size = 4096u32;
+        let mut event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
+        let mut event_info: &mut TRACE_EVENT_INFO = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
+        let mut status = unsafe {
+            TdhGetEventInformation(
+                event_record,
+                None,
+                Some(event_info as *mut TRACE_EVENT_INFO),
+                &mut buffer_size,
+            )
+        };
+        if status == ERROR_INSUFFICIENT_BUFFER.0 {
+            event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
+            event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
+            status = unsafe {
+                TdhGetEventInformation(
+                    event_record,
+                    None,
+                    Some(event_info as *mut TRACE_EVENT_INFO),
+                    &mut buffer_size,
+                )
+            };
+        }
+        if status != ERROR_SUCCESS.0 {
+            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
+        };
+
+        let event_info_slice = unsafe {slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize)};
+        let property_info_array = unsafe {
+            slice::from_raw_parts(event_info.EventPropertyInfoArray.as_ptr(), event_info.PropertyCount as usize)
+        };
+        let user_data = unsafe {
+            slice::from_raw_parts(event_record.UserData as *const u8, event_record.UserDataLength as usize)
+        };
+        let int_values = vec![0u16; event_info.PropertyCount as usize];
+        Ok(Self{
+            event_record,
+            event_info,
+            event_info_slice,
+            property_info_array,
+            user_data,
+            int_values
+        })
+    }
+    pub fn decode(&mut self) -> Result<EventRecordDecoded>{
+        let header = &self.event_record.EventHeader;
+        let duration = Utc.ymd(1970, 1, 1) - Utc.ymd(1601, 1, 1);
+        let dt_utc = Utc.timestamp_millis(header.TimeStamp / 10 / 1000 - duration.num_milliseconds());
+        let dt_local = DateTime::<Local>::from(dt_utc);
+
+        let provider_id = header.ProviderId;
+        let provider_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderNameOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+        let level_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.LevelNameOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+        let channel_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ChannelNameOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+        let keywords_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.KeywordsNameOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+        let event_name = {
+            let event_name_offset = unsafe { self.event_info.Anonymous1.EventNameOffset };
+            if event_name_offset != 0 {
+                u16cstr_from_bytes_truncate_offset(self.event_info_slice, event_name_offset)
+                    .unwrap_or_default().to_string().unwrap_or_default()
+            } else {
+                u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.TaskNameOffset)
+                    .unwrap_or_default().to_string().unwrap_or_default()
+            }
+        };
+        let opcode_name =
+            u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.OpcodeNameOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+        let event_message =
+            u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.EventMessageOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+        let provider_message =
+            u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderMessageOffset)
+                .unwrap_or_default().to_string().unwrap_or_default();
+
+        let properties = if is_string_event(header.Flags) {
+            let s = 
+            unsafe {
+                U16CStr::from_ptr_truncate(
+                    self.user_data.as_ptr() as *const u16,
+                    (self.user_data.len() / 2) as usize,
+                )
+                .unwrap_or_default()
+                .to_string().unwrap_or_default()
+            };
+            PropertyDecoded::String(s)
+        } else {
+            let mut user_data_used = 0u16;
+            let r = properties(
+                self.event_record,
+                self.event_info,
+                self.event_info_slice,
+                self.property_info_array,
+                0,
+                self.event_info.TopLevelPropertyCount as u16,
+                self.user_data,
+                0,
+                &mut user_data_used,
+                self.int_values.as_mut_slice(),
+            ).unwrap_or_default();
+            PropertyDecoded::Struct(r)
+        };
+        Ok(EventRecordDecoded{
+            provider_id,
+            provider_name,
+            level_name,
+            channel_name,
+            keywords_name,
+            event_name,
+            opcode_name,
+            event_message,
+            provider_message,
+            process_id: header.ProcessId,
+            thread_id: header.ThreadId,
+            dt_local,
+            properties
+        })
+    }
 }
 
 #[derive(Debug)]
-pub enum PropertiesDecoded {
+pub struct EventRecordDecoded {
+    pub provider_id: GUID,
+    pub provider_name: String,
+    pub level_name: String,
+    pub channel_name: String,
+    pub keywords_name: String,
+    pub event_name: String,
+    pub opcode_name: String,
+    pub event_message: String,
+    pub provider_message: String,
+    pub process_id: u32,
+    pub thread_id: u32,
+    pub dt_local:  DateTime<Local>,
+    pub properties: PropertyDecoded
+}
+
+#[derive(Debug)]
+pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
-    Struct(HashMap<String, PropertiesDecoded>),
+    Struct(HashMap<String, PropertyDecoded>),
 }
 
 #[inline]
@@ -45,8 +191,8 @@ pub fn properties(
     user_data_begin: u16,
     user_data_consumed: &mut u16,
     int_values: &mut [u16],
-) -> Result<HashMap<String, PropertiesDecoded>> {
-    let mut properties_object = HashMap::<String, PropertiesDecoded>::new();
+) -> Result<HashMap<String, PropertyDecoded>> {
+    let mut properties_object = HashMap::<String, PropertyDecoded>::new();
     let mut user_data_index = user_data_begin;
     let mut property_index = properties_array_begin;
     while property_index < properties_array_end {
@@ -159,7 +305,7 @@ pub fn properties(
                 &mut user_data_used,
                 int_values,
             )?;
-            properties_object.insert(property_name, PropertiesDecoded::Struct(r));
+            properties_object.insert(property_name, PropertyDecoded::Struct(r));
             user_data_index = user_data_used;
         } else {
             let mut properties_array = Vec::<String>::new();
@@ -285,11 +431,11 @@ pub fn properties(
                 array_index += 1;
             }
             if is_array {
-                properties_object.insert(property_name, PropertiesDecoded::Array(properties_array));
+                properties_object.insert(property_name, PropertyDecoded::Array(properties_array));
             } else {
                 properties_object.insert(
                     property_name,
-                    PropertiesDecoded::String(properties_array[0].clone()),
+                    PropertyDecoded::String(properties_array[0].clone()),
                 );
             }
         }

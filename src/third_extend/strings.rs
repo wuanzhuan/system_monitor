@@ -25,8 +25,8 @@ impl FromPcwstr for U16CStr {
     }
 }
 
-/// truncate when null
-/// offset base bytes
+/// [`truncate`] when encounter null
+/// [`offset`] in bytes for bytes
 #[inline]
 pub fn u16cstr_from_bytes_truncate_offset(bytes: &[u8] , offset: u32) -> Option<&U16CStr>{
     if offset > 0 {
