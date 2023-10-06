@@ -1,5 +1,5 @@
 use crate::third_extend::strings::*;
-use std::{collections::BTreeMap, mem, slice};
+use std::{mem, slice};
 use tracing::{error, info, warn};
 use widestring::*;
 use windows::{
@@ -162,8 +162,8 @@ impl<'a> Decoder<'a> {
         properties_array_begin: u16,
         properties_array_end: u16,
         user_data_index: &mut u16,
-    ) -> Result<BTreeMap<String, PropertyDecoded>> {
-        let mut properties_object = BTreeMap::<String, PropertyDecoded>::new();
+    ) -> Result<Vec<(String, PropertyDecoded)>> {
+        let mut properties_object = Vec::<(String, PropertyDecoded)>::new();
         let mut property_index = properties_array_begin;
         // top property may contain length/count
         while property_index < properties_array_end {
@@ -178,7 +178,7 @@ impl<'a> Decoder<'a> {
             };
             if (*user_data_index as usize) >= self.user_data.len() {
                 warn!("lack user data for properties: {property_index} < {properties_array_end} user_data_index: {} user_data_len: {}", *user_data_index, self.user_data.len());
-                properties_object.insert(property_name, PropertyDecoded::String(String::from("lack user data")));
+                properties_object.push((property_name, PropertyDecoded::String(String::from("lack user data"))));
                 property_index += 1;
                 continue;
             }
@@ -271,7 +271,7 @@ impl<'a> Decoder<'a> {
                     struct_start_index + num_of_struct_members,
                     user_data_index
                 )?;
-                properties_object.insert(property_name, PropertyDecoded::Struct(r));
+                properties_object.push((property_name, PropertyDecoded::Struct(r)));
             } else {
                 let mut properties_array = Vec::<String>::new();
                 // Treat non-array properties as arrays with one element.
@@ -389,12 +389,9 @@ impl<'a> Decoder<'a> {
                     array_index += 1;
                 }
                 if is_array {
-                    properties_object.insert(property_name, PropertyDecoded::Array(properties_array));
+                    properties_object.push((property_name, PropertyDecoded::Array(properties_array)));
                 } else {
-                    properties_object.insert(
-                        property_name,
-                        PropertyDecoded::String(properties_array[0].clone()),
-                    );
+                    properties_object.push((property_name, PropertyDecoded::String(properties_array[0].clone())));
                 }
             }
             property_index += 1;
@@ -424,7 +421,7 @@ pub struct EventRecordDecoded {
 pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
-    Struct(BTreeMap<String, PropertyDecoded>),
+    Struct(Vec<(String, PropertyDecoded)>),
 }
 
 #[inline]
