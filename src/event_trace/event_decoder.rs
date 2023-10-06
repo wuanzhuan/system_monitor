@@ -1,5 +1,5 @@
 use crate::third_extend::strings::*;
-use std::{collections::HashMap, mem, slice};
+use std::{collections::BTreeMap, mem, slice};
 use tracing::{error, info, warn};
 use widestring::*;
 use windows::{
@@ -162,8 +162,8 @@ impl<'a> Decoder<'a> {
         properties_array_begin: u16,
         properties_array_end: u16,
         user_data_index: &mut u16,
-    ) -> Result<HashMap<String, PropertyDecoded>> {
-        let mut properties_object = HashMap::<String, PropertyDecoded>::new();
+    ) -> Result<BTreeMap<String, PropertyDecoded>> {
+        let mut properties_object = BTreeMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
         // top property may contain length/count
         while property_index < properties_array_end {
@@ -191,7 +191,7 @@ impl<'a> Decoder<'a> {
                 let in_type = unsafe { property_info.Anonymous1.nonStructType.InType } as i32;
                 if in_type == TDH_INTYPE_INT8.0 || in_type == TDH_INTYPE_UINT8.0 {
                     if self.user_data.len() - *user_data_index as usize >= 1 {
-                        self.int_values[property_index as usize] = u8::from_ne_bytes(
+                        self.int_values[property_index as usize] = u8::from_le_bytes(
                             self.user_data[*user_data_index as usize..*user_data_index as usize + 1]
                                 .try_into()
                                 .unwrap(),
@@ -199,7 +199,7 @@ impl<'a> Decoder<'a> {
                     }
                 } else if in_type == TDH_INTYPE_INT16.0 || in_type == TDH_INTYPE_UINT16.0 {
                     if self.user_data.len() - *user_data_index as usize >= 2 {
-                        self.int_values[property_index as usize] = u16::from_ne_bytes(
+                        self.int_values[property_index as usize] = u16::from_le_bytes(
                             self.user_data[*user_data_index as usize..*user_data_index as usize + 2]
                                 .try_into()
                                 .unwrap(),
@@ -210,7 +210,7 @@ impl<'a> Decoder<'a> {
                     || in_type == TDH_INTYPE_HEXINT32.0
                 {
                     if self.user_data.len() - *user_data_index as usize >= 4 {
-                        let v = u32::from_ne_bytes(
+                        let v = u32::from_le_bytes(
                             self.user_data[*user_data_index as usize..*user_data_index as usize + 4]
                                 .try_into()
                                 .unwrap(),
@@ -424,7 +424,7 @@ pub struct EventRecordDecoded {
 pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
-    Struct(HashMap<String, PropertyDecoded>),
+    Struct(BTreeMap<String, PropertyDecoded>),
 }
 
 #[inline]
