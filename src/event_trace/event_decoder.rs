@@ -166,8 +166,7 @@ impl<'a> Decoder<'a> {
         let mut properties_object = HashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
         // top property may contain length/count
-        while property_index < properties_array_end && (*user_data_index as usize) < self.user_data.len() {
-
+        while property_index < properties_array_end {
             let property_info = &self.property_info_array[property_index as usize];
             let property_name =
                 u16cstr_from_bytes_truncate_offset(self.event_info_slice, property_info.NameOffset)
@@ -177,6 +176,12 @@ impl<'a> Decoder<'a> {
             } else {
                 format!("no name:{property_index}")
             };
+            if (*user_data_index as usize) >= self.user_data.len() {
+                warn!("lack user data for properties: {property_index} < {properties_array_end} user_data_index: {} user_data_len: {}", *user_data_index, self.user_data.len());
+                properties_object.insert(property_name, PropertyDecoded::String(String::from("lack user data")));
+                property_index += 1;
+                continue;
+            }
     
             // If this property is a scalar integer, remember the value in case it
             // is needed for a subsequent property's length or count.
@@ -236,10 +241,7 @@ impl<'a> Decoder<'a> {
             let (array_count, is_array) = if (property_info.Flags.0 & PropertyParamCount.0) != 0 {
                 let count_property_index = unsafe { property_info.Anonymous2.countPropertyIndex };
                 if count_property_index >= property_index as u16 {
-                    error!(
-                        "invalid count_property_index: {} index: {}",
-                        count_property_index, property_index
-                    );
+                    error!("invalid count_property_index: {count_property_index} index: {property_index} properties_array_end: {properties_array_end}");
                     return Err(Error::from(E_FAIL));
                 }
                 (self.int_values[count_property_index as usize], true) // Look up the value of a previous property
@@ -274,43 +276,49 @@ impl<'a> Decoder<'a> {
                 let mut properties_array = Vec::<String>::new();
                 // Treat non-array properties as arrays with one element.
                 let mut array_index = 0;
-                while array_index != array_count && (*user_data_index as usize) < self.user_data.len() {
+                while array_index != array_count {
+                    if (*user_data_index as usize) >= self.user_data.len() {
+                        warn!("lack user data for array: {array_index} < {array_count} user_data_index: {} user_data_len: {}", *user_data_index, self.user_data.len());
+                        break;
+                    }
                     // If the property has an associated map (i.e. an enumerated type),
                     // try to look up the map data. (If this is an array, we only need
                     // to do the lookup on the first iteration.)
-                    let map_name_offset =
-                        unsafe { property_info.Anonymous1.nonStructType.MapNameOffset };
+                    let map_name_offset = unsafe { property_info.Anonymous1.nonStructType.MapNameOffset };
+                    let mut _buffer_vec = Vec::<u8>::new();
                     let mut map_info: Option<*const EVENT_MAP_INFO> = None;
                     if map_name_offset != 0 && array_index == 0 {
                         if in_type == TDH_INTYPE_UINT8.0 as u16
-                            || in_type == TDH_INTYPE_UINT16.0 as u16
-                            || in_type == TDH_INTYPE_UINT32.0 as u16
-                            || in_type == TDH_INTYPE_HEXINT32.0 as u16
+                           || in_type == TDH_INTYPE_UINT16.0 as u16
+                           || in_type == TDH_INTYPE_UINT32.0 as u16
+                           || in_type == TDH_INTYPE_HEXINT32.0 as u16
                         {
-                            let map_name =
-                                u16cstr_from_bytes_truncate_offset(self.event_info_slice, map_name_offset)
-                                    .unwrap_or_default();
-                            let mut buffer_size = 1024;
-                            loop {
-                                let _map_info: &mut EVENT_MAP_INFO =
-                                    unsafe { mem::transmute(vec![0u8; buffer_size as usize].as_ptr()) };
-                                map_info = Some(_map_info);
-                                let status = unsafe {
-                                    TdhGetEventMapInformation(
-                                        self.event_record,
-                                        map_name.as_pcwstr(),
-                                        Some(_map_info),
-                                        &mut buffer_size,
-                                    )
-                                };
-                                if status == ERROR_SUCCESS.0 {
-                                    break;
+                            let map_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, map_name_offset);
+                            if let Some(map_name) = map_name {
+                                if !map_name.is_empty() {
+                                    let mut buffer_size = 1024u32;
+                                    loop {
+                                        _buffer_vec = Vec::<u8>::with_capacity(buffer_size as usize);
+                                        let _map_info: &mut EVENT_MAP_INFO = unsafe { mem::transmute(_buffer_vec.as_ptr()) };
+                                        map_info = Some(_map_info);
+                                        let status = unsafe {
+                                            TdhGetEventMapInformation(
+                                                self.event_record,
+                                                map_name.as_pcwstr(),
+                                                Some(_map_info),
+                                                &mut buffer_size,
+                                            )
+                                        };
+                                        if status == ERROR_SUCCESS.0 {
+                                            break;
+                                        }
+                                        if status == ERROR_INSUFFICIENT_BUFFER.0 {
+                                            continue;
+                                        }
+                                        error!("Failed to TdhGetEventMapInformation: {}", status);
+                                        break;
+                                    }
                                 }
-                                if status == ERROR_INSUFFICIENT_BUFFER.0 {
-                                    continue;
-                                }
-                                error!("Failed to TdhGetEventMapInformation: {}", status);
-                                break;
                             }
                         }
                     };
@@ -389,7 +397,6 @@ impl<'a> Decoder<'a> {
                     );
                 }
             }
-    
             property_index += 1;
         }
         Ok(properties_object)
