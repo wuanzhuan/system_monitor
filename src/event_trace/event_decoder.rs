@@ -17,6 +17,7 @@ pub struct Decoder<'a>{
     property_info_array: &'a [EVENT_PROPERTY_INFO],
     user_data: &'a [u8],
     int_values: Vec<u16>,
+    pointer_size: u32
 }
 
 impl<'a> Decoder<'a> {
@@ -62,13 +63,21 @@ impl<'a> Decoder<'a> {
             slice::from_raw_parts(event_record.UserData as *const u8, event_record.UserDataLength as usize)
         };
         let int_values = vec![0u16; event_info.PropertyCount as usize];
+        let pointer_size = if (header.Flags as u32 & EVENT_HEADER_FLAG_32_BIT_HEADER) != 0 {
+            4u32
+        } else if (header.Flags as u32 & EVENT_HEADER_FLAG_64_BIT_HEADER) != 0 {
+            8u32
+        } else {
+            mem::size_of::<*const u8>() as u32
+        };
         Ok(Self{
             event_record,
             event_info,
             event_info_slice,
             property_info_array,
             user_data,
-            int_values
+            int_values,
+            pointer_size
         })
     }
     pub fn decode(&mut self) -> Result<EventRecordDecoded>{
@@ -151,13 +160,10 @@ impl<'a> Decoder<'a> {
     ) -> Result<HashMap<String, PropertyDecoded>> {
         let mut properties_object = HashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
-        while property_index < properties_array_end {
-            if (*user_data_index as usize) >= self.user_data.len() {
-                error!("Lack user_data. the property_index: {property_index} properties_array_end: {properties_array_end} user_data_index: {user_data_index} user_data_len: {} {} properties: {:?}", self.user_data.len(), self.event_record.UserDataLength, properties_object);
-                return Err(Error::from(ERROR_OUTOFMEMORY.to_hresult()));
-            }
+        // top property may contain length/count
+        while property_index < properties_array_end && (*user_data_index as usize) < self.user_data.len() {
+
             let property_info = &self.property_info_array[property_index as usize];
-    
             let property_name =
                 u16cstr_from_bytes_truncate_offset(self.event_info_slice, property_info.NameOffset)
                     .unwrap_or_default();
@@ -318,19 +324,6 @@ impl<'a> Decoder<'a> {
                         // TdhFormatProperty doesn't handle zero-length counted strings.
                         prop_buffer.push(0);
                     } else {
-                        let pointer_size = if (self.event_record.EventHeader.Flags as u32
-                            & EVENT_HEADER_FLAG_32_BIT_HEADER)
-                            != 0
-                        {
-                            4u32
-                        } else if (self.event_record.EventHeader.Flags as u32
-                            & EVENT_HEADER_FLAG_64_BIT_HEADER)
-                            != 0
-                        {
-                            8u32
-                        } else {
-                            mem::size_of::<*const u8>() as u32
-                        };
                         let out_type = if out_type == TDH_OUTTYPE_NOPRINT.0 as u16 {
                             TDH_OUTTYPE_NULL.0 as u16
                         } else {
@@ -346,7 +339,7 @@ impl<'a> Decoder<'a> {
                                 TdhFormatProperty(
                                     self.event_info,
                                     map_info,
-                                    pointer_size,
+                                    self.pointer_size,
                                     in_type,
                                     out_type,
                                     prop_length,
