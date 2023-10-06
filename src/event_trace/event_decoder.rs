@@ -157,7 +157,7 @@ impl<'a> Decoder<'a> {
         while property_index < properties_array_end {
             if (user_data_index as usize) >= self.user_data.len() {
                 error!("Lack user_data. the property_index: {property_index} properties_array_end: {properties_array_end} user_data_index: {user_data_index} user_data_len: {}", self.user_data.len());
-                break;
+                return Err(Error::from(ERROR_OUTOFMEMORY.to_hresult()));
             }
             let property_info = &self.property_info_array[property_index as usize];
     
