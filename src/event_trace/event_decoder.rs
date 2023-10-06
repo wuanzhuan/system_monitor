@@ -39,7 +39,11 @@ impl<'a> Decoder<'a> {
                 &mut buffer_size,
             )
         };
-        if status == ERROR_INSUFFICIENT_BUFFER.0 {
+        if status != ERROR_SUCCESS.0 {
+            if status != ERROR_INSUFFICIENT_BUFFER.0 {
+                warn!("Failded to TdhGetEventInformation: {}", status);
+                return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
+            }
             event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
             event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
             status = unsafe {
@@ -50,9 +54,10 @@ impl<'a> Decoder<'a> {
                     &mut buffer_size,
                 )
             };
-        }
-        if status != ERROR_SUCCESS.0 {
-            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
+            if status != ERROR_SUCCESS.0 {
+                warn!("Failded to TdhGetEventInformation: {}", status);
+                return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
+            };
         };
 
         let event_info_slice = unsafe {slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize)};
