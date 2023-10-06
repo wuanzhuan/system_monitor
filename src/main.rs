@@ -7,9 +7,13 @@ mod third_extend;
 mod utils;
 
 fn main() {
+    let file_appender = tracing_appender::rolling::never("./logs", "prefix.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
     tracing_subscriber::fmt()
     .with_file(true)
     .with_line_number(true)
+    .with_writer(non_blocking)
+    .with_ansi(false)
     .init();
 
     let result = event_trace::Controller::start(|ret| {
