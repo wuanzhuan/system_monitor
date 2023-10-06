@@ -1,6 +1,7 @@
 use widestring::*;
 use crate::third_extend::bytemuck::*;
 pub use windows::core::PCWSTR;
+use tracing::{error};
 
 
 pub trait AsPcwstr {
@@ -30,7 +31,12 @@ impl FromPcwstr for U16CStr {
 #[inline]
 pub fn u16cstr_from_bytes_truncate_offset(bytes: &[u8] , offset: u32) -> Option<&U16CStr>{
     if offset > 0 {
-        U16CStr::from_slice_truncate(cast_slice_truncate(&bytes[(offset as usize)..])).ok()
+        if offset as usize > bytes.len() {
+            error!("Offset: {offset} is out of len: {}", bytes.len());
+            None
+        } else {
+            U16CStr::from_slice_truncate(cast_slice_truncate(&bytes[(offset as usize)..])).ok()
+        }
     } else {
         None
     }
