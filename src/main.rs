@@ -7,7 +7,7 @@ mod third_extend;
 mod utils;
 
 fn main() {
-    let file_appender = tracing_appender::rolling::never("./logs", "prefix.log");
+    let file_appender = tracing_appender::rolling::never("./target/debug/logs", "prefix.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
     tracing_subscriber::fmt()
     .with_file(true)
