@@ -118,12 +118,11 @@ impl<'a> Decoder<'a> {
             };
             PropertyDecoded::String(s)
         } else {
-            let mut user_data_used = 0u16;
+            let mut user_data_index = 0u16;
             let r = self.decode_properties(
                 0,
                 self.event_info.TopLevelPropertyCount as u16,
-                0,
-                &mut user_data_used
+                &mut user_data_index
             ).unwrap_or_default();
             PropertyDecoded::Struct(r)
         };
@@ -148,15 +147,13 @@ impl<'a> Decoder<'a> {
         &mut self,
         properties_array_begin: u16,
         properties_array_end: u16,
-        user_data_begin: u16,
-        user_data_consumed: &mut u16,
+        user_data_index: &mut u16,
     ) -> Result<HashMap<String, PropertyDecoded>> {
         let mut properties_object = HashMap::<String, PropertyDecoded>::new();
-        let mut user_data_index = user_data_begin;
         let mut property_index = properties_array_begin;
         while property_index < properties_array_end {
-            if (user_data_index as usize) >= self.user_data.len() {
-                error!("Lack user_data. the property_index: {property_index} properties_array_end: {properties_array_end} user_data_index: {user_data_index} user_data_len: {}", self.user_data.len());
+            if (*user_data_index as usize) >= self.user_data.len() {
+                error!("Lack user_data. the property_index: {property_index} properties_array_end: {properties_array_end} user_data_index: {user_data_index} user_data_len: {} {} properties: {:?}", self.user_data.len(), self.event_record.UserDataLength, properties_object);
                 return Err(Error::from(ERROR_OUTOFMEMORY.to_hresult()));
             }
             let property_info = &self.property_info_array[property_index as usize];
@@ -177,17 +174,17 @@ impl<'a> Decoder<'a> {
             {
                 let in_type = unsafe { property_info.Anonymous1.nonStructType.InType } as i32;
                 if in_type == TDH_INTYPE_INT8.0 || in_type == TDH_INTYPE_UINT8.0 {
-                    if self.user_data.len() - property_index as usize >= 1 {
+                    if self.user_data.len() - *user_data_index as usize >= 1 {
                         self.int_values[property_index as usize] = u8::from_ne_bytes(
-                            self.user_data[user_data_index as usize..user_data_index as usize + 1]
+                            self.user_data[*user_data_index as usize..*user_data_index as usize + 1]
                                 .try_into()
                                 .unwrap(),
                         ) as u16;
                     }
                 } else if in_type == TDH_INTYPE_INT16.0 || in_type == TDH_INTYPE_UINT16.0 {
-                    if self.user_data.len() - property_index as usize >= 2 {
+                    if self.user_data.len() - *user_data_index as usize >= 2 {
                         self.int_values[property_index as usize] = u16::from_ne_bytes(
-                            self.user_data[user_data_index as usize..user_data_index as usize + 2]
+                            self.user_data[*user_data_index as usize..*user_data_index as usize + 2]
                                 .try_into()
                                 .unwrap(),
                         );
@@ -196,9 +193,9 @@ impl<'a> Decoder<'a> {
                     || in_type == TDH_INTYPE_UINT32.0
                     || in_type == TDH_INTYPE_HEXINT32.0
                 {
-                    if self.user_data.len() - property_index as usize >= 4 {
+                    if self.user_data.len() - *user_data_index as usize >= 4 {
                         let v = u32::from_ne_bytes(
-                            self.user_data[user_data_index as usize..user_data_index as usize + 4]
+                            self.user_data[*user_data_index as usize..*user_data_index as usize + 4]
                                 .try_into()
                                 .unwrap(),
                         );
@@ -256,20 +253,17 @@ impl<'a> Decoder<'a> {
                     unsafe { property_info.Anonymous1.structType.StructStartIndex };
                 let num_of_struct_members =
                     unsafe { property_info.Anonymous1.structType.NumOfStructMembers };
-                let mut user_data_used = user_data_index;
                 let r = self.decode_properties(
                     struct_start_index,
                     struct_start_index + num_of_struct_members,
-                    user_data_index,
-                    &mut user_data_used,
+                    user_data_index
                 )?;
                 properties_object.insert(property_name, PropertyDecoded::Struct(r));
-                user_data_index = user_data_used;
             } else {
                 let mut properties_array = Vec::<String>::new();
                 // Treat non-array properties as arrays with one element.
                 let mut array_index = 0;
-                while array_index != array_count && (user_data_index as usize) < self.user_data.len() {
+                while array_index != array_count && (*user_data_index as usize) < self.user_data.len() {
                     // If the property has an associated map (i.e. an enumerated type),
                     // try to look up the map data. (If this is an array, we only need
                     // to do the lookup on the first iteration.)
@@ -356,7 +350,7 @@ impl<'a> Decoder<'a> {
                                     in_type,
                                     out_type,
                                     prop_length,
-                                    &self.user_data[user_data_index as usize..],
+                                    &self.user_data[*user_data_index as usize..],
                                     &mut buffer_size,
                                     buffer,
                                     &mut userdataconsumed,
@@ -364,7 +358,7 @@ impl<'a> Decoder<'a> {
                             };
                             if status == ERROR_SUCCESS.0 {
                                 unsafe { prop_buffer.set_len((buffer_size / 2) as usize) };
-                                user_data_index += userdataconsumed;
+                                *user_data_index += userdataconsumed;
                                 break;
                             }
                             if status == ERROR_INSUFFICIENT_BUFFER.0 {
@@ -400,7 +394,6 @@ impl<'a> Decoder<'a> {
     
             property_index += 1;
         }
-        *user_data_consumed = user_data_index;
         Ok(properties_object)
     }
 }
