@@ -176,13 +176,7 @@ impl<'a> Decoder<'a> {
             } else {
                 format!("no name:{property_index}")
             };
-            if (*user_data_index as usize) >= self.user_data.len() {
-                warn!("lack user data for properties: {property_index} < {properties_array_end} user_data_index: {} user_data_len: {}", *user_data_index, self.user_data.len());
-                properties_object.push((property_name, PropertyDecoded::String(String::from("lack user data"))));
-                property_index += 1;
-                continue;
-            }
-    
+
             // If this property is a scalar integer, remember the value in case it
             // is needed for a subsequent property's length or count.
             if 0 == (property_info.Flags.0 & (PropertyStruct.0 | PropertyParamCount.0))
@@ -276,10 +270,12 @@ impl<'a> Decoder<'a> {
                 let mut properties_array = Vec::<String>::new();
                 // Treat non-array properties as arrays with one element.
                 let mut array_index = 0;
-                while array_index != array_count {
+                while array_index < array_count {
                     if (*user_data_index as usize) >= self.user_data.len() {
-                        warn!("lack user data for array: {array_index} < {array_count} user_data_index: {} user_data_len: {}", *user_data_index, self.user_data.len());
-                        break;
+                        // it is a empty string when user_data is 
+                        properties_array.append(&mut vec![String::from(""); (array_count - array_index) as usize]);
+                        array_index = array_count;
+                        continue;
                     }
                     // If the property has an associated map (i.e. an enumerated type),
                     // try to look up the map data. (If this is an array, we only need
