@@ -260,9 +260,11 @@ impl Controller {
                 continue;
             }
             for item_minor in item.event_desc.minors.iter() {
-                let mut id = CLASSIC_EVENT_ID::default();
-                id.EventGuid = item.event_desc.guid;
-                id.Type = item_minor.op_code as u8;
+                let id = CLASSIC_EVENT_ID{
+                    EventGuid: item.event_desc.guid,
+                    Type: item_minor.op_code as u8,
+                    Reserved: [0u8; 7]
+                };
                 vec_event_id.push(id);
             }
         }
