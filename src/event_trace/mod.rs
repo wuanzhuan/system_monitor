@@ -280,7 +280,6 @@ impl Controller {
 fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwPropertiesBuf> {
     let properties_buf_len = mem::size_of::<EVENT_TRACE_PROPERTIES>() + session_name.len() * 2 + 2;
     let properties_buf = vec![0u8; properties_buf_len].leak() as *mut [u8] as *mut EtwPropertiesBuf;
-
     let mut properties_buf = unsafe{ Box::from_raw(properties_buf) };
     let properties = &mut (*properties_buf).0;
     properties.EnableFlags = EVENT_TRACE_FLAG_PROCESS;
