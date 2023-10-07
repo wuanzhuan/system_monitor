@@ -47,6 +47,7 @@ pub struct Controller {
     h_trace_session: CONTROLTRACE_HANDLE,
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
+    is_win8_or_greater: bool,
     config: Vec<ConfigKernel>,
 }
 
@@ -66,6 +67,7 @@ impl Controller {
                 Value: INVALID_PROCESSTRACE_HANDLE,
             },
             h_consumer_thread: None,
+            is_win8_or_greater: unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE,
             config: Vec::<ConfigKernel>::new(),
         };
         for item in event_kernel::EVENTS_DESC.iter() {
@@ -83,13 +85,12 @@ impl Controller {
             .try_lock()
             .map_err(|_| ERROR_LOCK_VIOLATION.to_hresult())?;
         let mut h_trace = CONTROLTRACE_HANDLE::default();
-        let is_win8_or_greater = unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE;
-        let session_name: &U16CStr = if is_win8_or_greater {
+        let session_name: &U16CStr = if context_mg.is_win8_or_greater {
             SESSION_NAME_SYSMON
         } else {
             SESSION_NAME_NT
         };
-        let mut properties_buf = make_properties(is_win8_or_greater, session_name);
+        let mut properties_buf = make_properties(context_mg.is_win8_or_greater, session_name);
 
         let mut error: Result<()>;
         loop {
@@ -194,13 +195,12 @@ impl Controller {
             .map_err(|_| ERROR_LOCK_VIOLATION.to_hresult())?;
 
             if 0 != context_mg.h_trace_session.Value {
-                let is_win8_or_greater = unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE;
-                let session_name: &U16CStr = if is_win8_or_greater {
+                let session_name: &U16CStr = if context_mg.is_win8_or_greater {
                     SESSION_NAME_SYSMON
                 } else {
                     SESSION_NAME_NT
                 };
-                let mut properties_buf = make_properties(is_win8_or_greater, session_name);
+                let mut properties_buf = make_properties(context_mg.is_win8_or_greater, session_name);
                 let error = unsafe{
                     ControlTraceW(
                         context_mg.h_trace_session,
