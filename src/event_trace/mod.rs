@@ -19,6 +19,7 @@ use windows::{
 
 mod event_decoder;
 mod event_kernel;
+mod event_config;
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
 const SESSION_NAME_NT: &U16CStr = u16cstr!("NT Kernel Logger");
@@ -323,3 +324,4 @@ impl<'a> fmt::Display for EventRecord<'a> {
         }
     }
 }
+
