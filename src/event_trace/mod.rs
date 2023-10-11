@@ -234,11 +234,12 @@ impl Controller {
     }
 
     fn update_config(&self) -> Result<()> {
+        #[allow(non_camel_case_types)]
         #[derive(Default)]
-        struct PerfInfoGroupMask {
+        struct PERFINFO_GROUPMASK {
             masks: [u32; 8],
         }
-        let mut gm = PerfInfoGroupMask::default();
+        let mut gm = PERFINFO_GROUPMASK::default();
         gm.masks[0] = EVENT_TRACE_FLAG_PROCESS.0;
         for item in self.config.iter() {
             if !item.is_selected {
