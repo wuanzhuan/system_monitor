@@ -8,7 +8,7 @@ struct EventMask {
 }
 
 impl EventMask {
-    pub fn new(index: usize) -> Self{
+    pub fn new(index: usize) -> Self {
         let vec = vec![false; event_kernel::EVENTS_DESC[index].minors.len()];
         Self { major: false, minor: vec, event_desc: &event_kernel::EVENTS_DESC[index] }
     }

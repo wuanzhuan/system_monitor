@@ -234,19 +234,13 @@ impl Controller {
     }
 
     fn update_config(&self) -> Result<()> {
-        #[allow(non_camel_case_types)]
-        #[derive(Default)]
-        struct PERFINFO_GROUPMASK {
-            masks: [u32; 8],
-        }
-        let mut gm = PERFINFO_GROUPMASK::default();
+        let mut gm = event_kernel::PERFINFO_GROUPMASK::default();
         gm.masks[0] = EVENT_TRACE_FLAG_PROCESS.0;
         for item in self.config.iter() {
             if !item.is_selected {
                 continue;
             }
-            gm.masks[(item.event_desc.major.flag >> 32) as usize] |=
-                item.event_desc.major.flag as u32;
+            gm.or_assign_with_groupmask(item.event_desc.major.flag);
         }
         unsafe{
             TraceSetInformation(
