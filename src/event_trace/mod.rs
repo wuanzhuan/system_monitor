@@ -39,17 +39,13 @@ const DUMMY_GUID: GUID = GUID {
 
 #[repr(C)]
 struct EtwPropertiesBuf(EVENT_TRACE_PROPERTIES, [u8]);
-struct ConfigKernel {
-    is_selected: bool,
-    event_desc: &'static event_kernel::EventsDescribe,
-}
 
 pub struct Controller {
     h_trace_session: CONTROLTRACE_HANDLE,
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    config: Vec<ConfigKernel>,
+    config: event_config::Config,
 }
 
 pub type FnCompletion = fn(Result<()>);
@@ -69,14 +65,8 @@ impl Controller {
             },
             h_consumer_thread: None,
             is_win8_or_greater: unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE,
-            config: Vec::<ConfigKernel>::new(),
+            config: event_config::Config::new(event_kernel::EVENTS_DESC),
         };
-        for item in event_kernel::EVENTS_DESC.iter() {
-            cxt.config.push(ConfigKernel {
-                is_selected: false,
-                event_desc: item,
-            });
-        }
         cxt
     }
 
@@ -234,14 +224,7 @@ impl Controller {
     }
 
     fn update_config(&self) -> Result<()> {
-        let mut gm = event_kernel::PERFINFO_GROUPMASK::default();
-        gm.masks[0] = EVENT_TRACE_FLAG_PROCESS.0;
-        for item in self.config.iter() {
-            if !item.is_selected {
-                continue;
-            }
-            gm.or_assign_with_groupmask(item.event_desc.major.flag);
-        }
+        let gm = self.config.get_group_mask(); 
         unsafe{
             TraceSetInformation(
                 self.h_trace_session,
@@ -250,21 +233,7 @@ impl Controller {
                 std::mem::size_of_val(&gm.masks) as u32,
             )
         }?;
-        let mut vec_event_id = Vec::<CLASSIC_EVENT_ID>::with_capacity(32);
-        for item in self.config.iter() {
-            if !item.is_selected {
-                continue;
-            }
-            for item_minor in item.event_desc.minors.iter() {
-                let id = CLASSIC_EVENT_ID{
-                    EventGuid: item.event_desc.guid,
-                    Type: item_minor.op_code as u8,
-                    Reserved: [0u8; 7]
-                };
-                vec_event_id.push(id);
-            }
-        }
-
+        let vec_event_id = self.config.get_classic_event_id_vec();
         unsafe{ TraceSetInformation(
             self.h_trace_session,
             TraceStackTracingInfo,

@@ -964,12 +964,14 @@ pub const PERF_MASK_GROUP: u32 = !PERF_MASK_INDEX;
 pub const PERF_NUM_MASKS: u32 =  8;
 
 #[allow(non_camel_case_types)]
-#[derive(Default)]
 pub struct PERFINFO_GROUPMASK {
 	pub masks: [u32; PERF_NUM_MASKS as usize],
 }
 
 impl PERFINFO_GROUPMASK {
+	pub fn new() -> Self {
+		Self { masks: [0u32; PERF_NUM_MASKS as usize] }
+	}
 	pub fn get_mask_index(gm: u32) -> u32 {
 		return (gm & PERF_MASK_INDEX) >> 29;
 	}
