@@ -17,6 +17,8 @@ use windows::{
     Win32::System::SystemInformation::*,
 };
 
+pub use event_kernel::EVENTS_DESC;
+
 mod event_decoder;
 mod event_kernel;
 mod event_config;
@@ -58,7 +60,7 @@ lazy_static! {
 
 impl Controller {
     fn new() -> Self {
-        let mut cxt = Self {
+        let cxt = Self {
             h_trace_session: CONTROLTRACE_HANDLE::default(),
             h_trace_consumer: PROCESSTRACE_HANDLE {
                 Value: INVALID_PROCESSTRACE_HANDLE,
