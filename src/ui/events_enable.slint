@@ -1,0 +1,47 @@
+// Copyright © SixtyFPS GmbH <info@slint.dev>
+// SPDX-License-Identifier: MIT
+
+import { HorizontalBox, VerticalBox, ListView, StandardListView, GroupBox, CheckBox } from "std-widgets.slint";
+
+export struct EventDesc {
+    name: string,
+    minors: [string]
+}
+
+export struct Enables {
+    major: bool,
+    minors: [bool]
+}
+
+export global EnablesData {
+    in property <[EventDesc]> event_descs;
+    callback toggled_major(int, bool);
+    callback toggled_minor(int, int, bool);
+}
+
+export component EventsEnables inherits GroupBox {
+    title: "events enable";
+    vertical-stretch: 1; 
+    ListView {
+        for major[index_major] in EnablesData.event_descs: HorizontalBox {
+            alignment: start;
+            major_cb := CheckBox {
+                text: major.name;
+                toggled => {EnablesData.toggled_major(index_major, self.checked)}
+            }
+            Rectangle {
+                border-color: gray;
+                border-width: 2px;
+                VerticalBox { 
+                    for minor[index_minor] in major.minors : CheckBox {
+                        text: minor;
+                        toggled => {
+                            if (self.checked) {major_cb.checked = true}
+                            EnablesData.toggled_minor(index_major, index_minor, self.checked)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

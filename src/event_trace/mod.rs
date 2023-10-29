@@ -23,6 +23,10 @@ mod event_decoder;
 mod event_kernel;
 mod event_config;
 
+pub use event_decoder::{ EventRecordDecoded, PropertyDecoded};
+
+use self::event_config::Config;
+
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
 const SESSION_NAME_NT: &U16CStr = u16cstr!("NT Kernel Logger");
 const INVALID_PROCESSTRACE_HANDLE: u64 = if cfg!(target_pointer_width = "64") {
@@ -39,40 +43,69 @@ const DUMMY_GUID: GUID = GUID {
     data4: [0x74, 0x62, 0x11, 0xD6, 0x84, 0x19, 0x04, 0xAA],
 };
 
+lazy_static! {
+    static ref CONTEXT: Arc::<Mutex<Controller>> = Arc::new(Mutex::new(Controller::new()));
+}
+
 #[repr(C)]
 struct EtwPropertiesBuf(EVENT_TRACE_PROPERTIES, [u8]);
 
+pub type FnCompletion = fn(Result<()>);
+pub type FnEventCallback = fn(event_record_decoded: EventRecordDecoded);
+
+struct EventRecord<'a>(&'a EVENT_RECORD);
+
 pub struct Controller {
+    config: event_config::Config,
     h_trace_session: CONTROLTRACE_HANDLE,
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    config: event_config::Config,
-}
-
-pub type FnCompletion = fn(Result<()>);
-
-struct EventRecord<'a>(&'a EVENT_RECORD);
-
-lazy_static! {
-    static ref CONTEXT: Arc::<Mutex<Controller>> = Arc::new(Mutex::new(Controller::new()));
+    event_record_callback: Option<FnEventCallback>,
 }
 
 impl Controller {
     fn new() -> Self {
         let cxt = Self {
+            config: event_config::Config::new(event_kernel::EVENTS_DESC),
             h_trace_session: CONTROLTRACE_HANDLE::default(),
             h_trace_consumer: PROCESSTRACE_HANDLE {
                 Value: INVALID_PROCESSTRACE_HANDLE,
             },
             h_consumer_thread: None,
             is_win8_or_greater: unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE,
-            config: event_config::Config::new(event_kernel::EVENTS_DESC),
+            event_record_callback: None,
         };
         cxt
     }
 
-    pub fn start(fn_completion: FnCompletion) -> Result<()> {
+    unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
+        let r = event_decoder::Decoder::new(mem::transmute(eventrecord));
+        match r {
+            Ok(mut decoder) => {
+                let r = decoder.decode();
+                match r {
+                    Ok(event_record_decoded) => {
+                        let context_arc = CONTEXT.clone();
+                        if let Ok(context_mg) = context_arc.try_lock() {
+                            if let Some(cb) = context_mg.event_record_callback {
+                                mem::drop(context_mg);
+                                cb(event_record_decoded);
+                            }
+                        };
+                    },
+                    Err(e) => {
+                        error!("Faild to decode: {}", e);
+                    }
+                }
+            },
+            Err(e) => {
+                error!("Faild to Decoder::new: {}", e);
+            }
+        }
+    }
+
+    pub fn start(fn_event_callback: FnEventCallback, fn_completion: FnCompletion) -> Result<()> {
         let context_arc = CONTEXT.clone();
         let mut context_mg = context_arc
             .try_lock()
@@ -127,11 +160,7 @@ impl Controller {
 
         context_mg.update_config()?;
 
-        unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
-            let er = mem::transmute(eventrecord);
-            info!("{}", EventRecord(er));
-        }
-
+        context_mg.event_record_callback = Some(fn_event_callback);
         let mut trace_log = EVENT_TRACE_LOGFILEW {
             Context: &mut *context_mg as *mut Controller as *mut ffi::c_void,
             LoggerName: PWSTR::from_raw(session_name.as_ptr() as *mut u16),
@@ -140,12 +169,13 @@ impl Controller {
                     | PROCESS_TRACE_MODE_REAL_TIME,
             },
             Anonymous2: EVENT_TRACE_LOGFILEW_1 {
-                EventRecordCallback: Some(callback),
+                EventRecordCallback: Some(Controller::callback),
             },
             ..Default::default()
         };
         let h_consumer = unsafe{ OpenTraceW(&mut trace_log) };
         if INVALID_PROCESSTRACE_HANDLE == h_consumer.Value {
+            context_mg.event_record_callback = None;
             return Err(Error::from_win32());
         }
         context_mg.h_trace_consumer = h_consumer;
@@ -167,17 +197,21 @@ impl Controller {
             fn_completion(r_pt);
         });
         let r_recv = rx.recv_timeout(Duration::from_millis(200));
-        if let Err(e) = r_recv {
-            if e == RecvTimeoutError::Timeout {
-                context_mg.h_consumer_thread = Some(h_thread);
-                return Ok(());
+        match r_recv {
+            Err(e) => {
+                if e == RecvTimeoutError::Timeout {
+                    context_mg.h_consumer_thread = Some(h_thread);
+                    return Ok(());
+                }
+                error!("{}", e);
+                context_mg.h_consumer_thread = None;
+                return Err(E_FAIL.into());
+            },
+            Ok(e) => {
+                error!("{}", e);
+                context_mg.h_consumer_thread = None;
+                return Err(e);
             }
-            error!("{}", e);
-            return Err(E_FAIL.into());
-        } else {
-            let e = r_recv.unwrap();
-            error!("{}", e);
-            return Err(e);
         }
     }
 
@@ -223,6 +257,18 @@ impl Controller {
             let _ = h.join();
         }
         Ok(())
+    }
+
+    pub fn set_config_enables(index_major: usize, index_minor: Option<usize>, checked: bool) {
+        let context_arc = CONTEXT.clone();
+        if let Ok(mut context_mg) = context_arc.lock() {
+            if let Some(index) = index_minor {
+                context_mg.config.events_enables[index_major].minors[index] = checked;
+                let _ = context_mg.update_config();
+            } else {
+                context_mg.config.events_enables[index_major].major = checked;
+            }
+        };
     }
 
     fn update_config(&self) -> Result<()> {

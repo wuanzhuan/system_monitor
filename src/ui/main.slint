@@ -1,0 +1,39 @@
+import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch } from "std-widgets.slint";
+import { EventsEnables, EnablesData, EventDesc, Enables } from "events_enable.slint";
+import { EventsView } from "events_view.slint";
+
+export { EventsEnables, EnablesData, EventDesc, Enables }
+
+export component App inherits Window {
+    preferred-width: 1000px;
+    preferred-height: 600px;
+    title: @tr("kernel events trace");
+    icon: @image-url("./logo/slint-logo-small-light.png");
+
+    callback start();
+    callback stop();
+    VerticalBox {
+        HorizontalBox {
+            height: 20px;
+            Switch {
+                height: parent.height;
+                text: @tr("On/Off");
+                toggled => {
+                    if (self.checked) {
+                        start()
+                    } else {
+                        stop()
+                    }
+                }
+            }
+            LineEdit {
+                height: parent.height;
+            }
+        }
+        HorizontalBox {
+            EventsEnables{}
+            Rectangle {background: gray; width: 2px;}
+            EventsView{}
+        }
+    }
+}
