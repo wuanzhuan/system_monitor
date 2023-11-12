@@ -1,8 +1,8 @@
 import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch } from "std-widgets.slint";
 import { EventsEnables, EnablesData, EventDesc, Enables } from "events_enable.slint";
-import { EventsView } from "events_view.slint";
+import { EventsView, EventsViewData } from "events_view.slint";
 
-export { EventsEnables, EnablesData, EventDesc, Enables }
+export { EventsEnables, EnablesData, EventDesc, Enables, EventsViewData }
 
 export component App inherits Window {
     preferred-width: 1000px;
@@ -12,12 +12,12 @@ export component App inherits Window {
 
     callback start();
     callback stop();
-    VerticalBox {
+
+    VerticalBox{
         HorizontalBox {
-            height: 20px;
             Switch {
-                height: parent.height;
                 text: @tr("On/Off");
+                checked: false;
                 toggled => {
                     if (self.checked) {
                         start()
@@ -27,7 +27,7 @@ export component App inherits Window {
                 }
             }
             LineEdit {
-                height: parent.height;
+                height: 2rem;
             }
         }
         HorizontalBox {

@@ -21,7 +21,8 @@ export global EnablesData {
 
 export component EventsEnables inherits GroupBox {
     title: "events enable";
-    vertical-stretch: 1; 
+    width: 30%;
+    vertical-stretch: 1;
     ListView {
         for major[index_major] in EnablesData.event_descs: HorizontalBox {
             alignment: start;

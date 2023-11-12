@@ -18,6 +18,8 @@ fn main() {
     .init();
 
     let app = App::new().unwrap();
+
+    //app.global::<EventsViewData>().set_row_data(value);
     let mut event_descs = vec![];
     for major in event_trace::EVENTS_DESC.iter() {
         let mut minors: Vec<slint::SharedString> = vec![];
