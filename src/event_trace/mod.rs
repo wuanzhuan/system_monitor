@@ -1,5 +1,6 @@
 use std::{
     ffi, fmt, mem, ptr,
+    rc::Rc,
     sync::{
         mpsc::{self, RecvTimeoutError},
         Arc, Mutex,
@@ -25,7 +26,6 @@ mod event_config;
 
 pub use event_decoder::{ EventRecordDecoded, PropertyDecoded};
 
-use self::event_config::Config;
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
 const SESSION_NAME_NT: &U16CStr = u16cstr!("NT Kernel Logger");
@@ -50,9 +50,6 @@ lazy_static! {
 #[repr(C)]
 struct EtwPropertiesBuf(EVENT_TRACE_PROPERTIES, [u8]);
 
-pub type FnCompletion = fn(Result<()>);
-pub type FnEventCallback = fn(event_record_decoded: EventRecordDecoded);
-
 struct EventRecord<'a>(&'a EVENT_RECORD);
 
 pub struct Controller {
@@ -61,8 +58,10 @@ pub struct Controller {
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    event_record_callback: Option<FnEventCallback>,
+    event_record_callback: Option<Rc<dyn Fn(EventRecordDecoded)>>,
 }
+
+unsafe impl std::marker::Send for Controller{}
 
 impl Controller {
     fn new() -> Self {
@@ -88,7 +87,8 @@ impl Controller {
                     Ok(event_record_decoded) => {
                         let context_arc = CONTEXT.clone();
                         if let Ok(context_mg) = context_arc.try_lock() {
-                            if let Some(cb) = context_mg.event_record_callback {
+                            if let Some(ref cb) = context_mg.event_record_callback {
+                                let cb = cb.clone();
                                 mem::drop(context_mg);
                                 cb(event_record_decoded);
                             }
@@ -105,7 +105,7 @@ impl Controller {
         }
     }
 
-    pub fn start(fn_event_callback: FnEventCallback, fn_completion: FnCompletion) -> Result<()> {
+    pub fn start(fn_event_callback: impl Fn(EventRecordDecoded) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
         let context_arc = CONTEXT.clone();
         let mut context_mg = context_arc
             .try_lock()
@@ -160,7 +160,7 @@ impl Controller {
 
         context_mg.update_config()?;
 
-        context_mg.event_record_callback = Some(fn_event_callback);
+        context_mg.event_record_callback = Some(Rc::new(fn_event_callback));
         let mut trace_log = EVENT_TRACE_LOGFILEW {
             Context: &mut *context_mg as *mut Controller as *mut ffi::c_void,
             LoggerName: PWSTR::from_raw(session_name.as_ptr() as *mut u16),
