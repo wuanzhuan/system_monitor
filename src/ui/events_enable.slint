@@ -8,11 +8,6 @@ export struct EventDesc {
     minors: [string]
 }
 
-export struct Enables {
-    major: bool,
-    minors: [bool]
-}
-
 export global EnablesData {
     in property <[EventDesc]> event_descs;
     callback toggled_major(int, bool);
