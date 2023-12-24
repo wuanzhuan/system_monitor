@@ -6,6 +6,7 @@ import {StandardTableView, GroupBox} from "std-widgets.slint";
 export global EventsViewData  {
     callback sort_ascending(int);
     callback sort_descending(int);
+    in property <[TableColumn]> columns: [];
     in property <[[StandardListViewItem]]> row_data: [];
 }
 
@@ -22,12 +23,7 @@ export component EventsView inherits GroupBox {
             EventsViewData.sort-descending(index);
         }
 
-        columns: [
-            { title: @tr("Header 1") },
-            { title: @tr("Header 2") },
-            { title: @tr("Header 3") },
-            { title: @tr("Header 4") },
-        ];
+        columns: EventsViewData.columns;
         rows: EventsViewData.row_data;
     }
 }
