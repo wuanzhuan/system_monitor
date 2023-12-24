@@ -396,7 +396,9 @@ impl<'a> Decoder<'a> {
     }
 }
 
-#[derive(Debug)]
+pub use struct_field_names_as_array::FieldNamesAsArray;
+
+#[derive(Debug, FieldNamesAsArray)]
 pub struct EventRecordDecoded {
     pub provider_id: GUID,
     pub provider_name: String,
