@@ -1,4 +1,4 @@
-import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch } from "std-widgets.slint";
+import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch, StandardButton, Button } from "std-widgets.slint";
 import { EventsEnables, EnablesData, EventDesc } from "events_enable.slint";
 import { EventsView, EventsViewData } from "events_view.slint";
 
@@ -10,17 +10,44 @@ export component App inherits Window {
     title: @tr("kernel events trace");
     icon: @image-url("./logo/slint-logo-small-light.png");
 
-    callback start();
+    callback start() -> {ok: bool, message: string};
     callback stop();
 
+    private property <{ok: bool, message: string}> result_start;
+
+    switch_popup := PopupWindow {
+        x: ;
+        width: 200;
+        height: 100;
+
+        Rectangle {
+            background: root.background;
+            border-color: popup_text.color;
+            border-width: 1px;
+        }
+        dialog := Dialog {
+            height:100%; width: 100%;
+
+            popup_text := Text {
+                text: root.result-start.message;
+                wrap: word-wrap;
+            }
+            StandardButton { kind: ok; }
+        }
+    }
+
     VerticalBox{
-        HorizontalBox {
+        tools := HorizontalBox {
             Switch {
                 text: @tr("On/Off");
                 checked: false;
                 toggled => {
                     if (self.checked) {
-                        start()
+                        root.result-start = start();
+                        if (!root.result-start.ok) {
+                            switch_popup.show();
+                            self.checked = false;
+                        }
                     } else {
                         stop()
                     }

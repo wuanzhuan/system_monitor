@@ -52,7 +52,6 @@ fn main() {
         event_trace::Controller::set_config_enables(index_major as usize, Some(index_minor as usize), checked);
     });
     let app_weak = app.as_weak();
-
     app.on_start(move || {
         let app_weak = app_weak.clone();
         let result = event_trace::Controller::start(move |event_record| {
@@ -68,7 +67,9 @@ fn main() {
         });
         if let Err(e) = result {
             error!("{}", e);
-            return;
+            (SharedString::from(e.to_string()), false)
+        } else {
+            (SharedString::from(""), true)
         }
     });
     app.on_stop(|| {
