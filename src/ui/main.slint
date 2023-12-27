@@ -16,9 +16,10 @@ export component App inherits Window {
     private property <{ok: bool, message: string}> result_start;
 
     switch_popup := PopupWindow {
-        x: ;
-        width: 200;
-        height: 100;
+        x: start-stop.x;
+        y: start-stop.y + start-stop.height;
+        width: 200px;
+        height: 100px;
 
         Rectangle {
             background: root.background;
@@ -37,7 +38,7 @@ export component App inherits Window {
     }
 
     VerticalBox{
-        tools := HorizontalBox {
+        start-stop := HorizontalBox {
             Switch {
                 text: @tr("On/Off");
                 checked: false;
