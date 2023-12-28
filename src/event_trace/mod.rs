@@ -301,12 +301,12 @@ impl Controller {
             error!("Failed to TraceSetInformation TraceSystemTraceEnableFlagsInfo: {}", e);
             return Err(e);
         }
-        let vec_event_id = self.config.get_classic_event_id_vec();
+        let (vec_event_id, size) = self.config.get_classic_event_id_vec();
         if let Err(e) = unsafe{ TraceSetInformation(
             self.h_trace_session,
             TraceStackTracingInfo,
             vec_event_id.as_ptr() as *const ffi::c_void,
-            vec_event_id.len() as u32,
+            size as u32,
         )} {
             error!("Failed to TraceSetInformation TraceStackTracingInfo: {}", e);
             return Err(e);

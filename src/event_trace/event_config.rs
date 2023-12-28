@@ -46,7 +46,7 @@ impl Config {
         gm
     }
 
-    pub fn get_classic_event_id_vec(&self) -> Vec::<CLASSIC_EVENT_ID> {
+    pub fn get_classic_event_id_vec(&self) -> (Vec::<CLASSIC_EVENT_ID>, usize) {
         let mut event_id_vec = Vec::<CLASSIC_EVENT_ID>::with_capacity(32);
         for (index, item) in self.events_enables.iter().enumerate() {
             if !item.major {
@@ -65,8 +65,9 @@ impl Config {
                 event_id_vec.push(id);
             }
         }
+        let len = event_id_vec.len();
 
-        event_id_vec
+        (event_id_vec, std::mem::size_of::<CLASSIC_EVENT_ID>() * len)
     }
 }
 pub struct EventEnable {
