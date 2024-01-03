@@ -1,3 +1,6 @@
+#![feature(linked_list_cursors)]
+
+
 use std::rc::Rc;
 use struct_field_names_as_array::FieldNamesAsArray;
 use tracing::{error, info};
@@ -32,7 +35,8 @@ fn main() {
     }));
     app.global::<EventsViewData>().set_columns(column_names);
 
-    let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::default());
+    let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new_uninit());
+    
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
 
