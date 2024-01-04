@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import {StandardTableView, GroupBox} from "std-widgets.slint";
+import {TableView} from "table_view.slint";
 
 export global EventsViewData  {
     callback sort_ascending(int);
@@ -14,11 +15,10 @@ export component EventsView inherits GroupBox {
     title: @tr("events view");
     vertical-stretch: 0;
 
-    StandardTableView {
+    TableView {
         sort-ascending(index) => {
             EventsViewData.sort_ascending(index);
         }
-
         sort-descending(index) => {
             EventsViewData.sort-descending(index);
         }
