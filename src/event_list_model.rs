@@ -6,7 +6,7 @@ use std::{
 
 pub struct ListModel<'a: 'static, T> {
     // the backing data, access by cursor
-    list: LinkedList<T>,
+    list: Box<LinkedList<T>>,
     //reference the list in a `RefCell` as this model can be modified
     cursor: RefCell<CursorMut<'a, T>>,
     // the ModelNotify will allow to notify the UI that the model changes
@@ -53,12 +53,12 @@ impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
 // when modifying the model, we call the corresponding function in
 // the ModelNotify
 impl<'a, T> ListModel<'a, T> {
-    pub fn new_uninit() -> Self {
-        let list_model = Self { list: LinkedList::<T>::default(), notify: Default::default(), cursor: unsafe{ std::mem::zeroed() }};
+    pub fn new() -> Self {
+        let p = Box::leak(Box::new(LinkedList::<T>::default())) as *mut LinkedList<T>;
+        let cursor = RefCell::new(unsafe{ &mut *p }.cursor_front_mut());
+        let list = unsafe{ Box::from_raw(p) };
+        let list_model = Self { list, notify: Default::default(), cursor};
         list_model
-    }
-    pub fn init(&'a mut self) {
-        self.cursor = RefCell::new(self.list.cursor_front_mut());
     }
 
     fn move_to(&self, index: usize) {

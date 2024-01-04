@@ -35,8 +35,8 @@ fn main() {
     }));
     app.global::<EventsViewData>().set_columns(column_names);
 
-    let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new_uninit());
-    
+    let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new());
+
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
 
