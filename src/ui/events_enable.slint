@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { HorizontalBox, VerticalBox, ListView, StandardListView, GroupBox, CheckBox } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, ListView, StandardListView, CheckBox } from "std-widgets.slint";
 
 export struct EventDesc {
     name: string,
@@ -14,10 +14,14 @@ export global EnablesData {
     callback toggled_minor(int, int, bool);
 }
 
-export component EventsEnables inherits GroupBox {
-    title: "events enable";
-    vertical-stretch: 1;
+export component EventsEnables inherits VerticalBox {
+    spacing: 2rem;
 
+    Text {
+        text: @tr("events enables");
+        font-size: 1.5rem;
+        horizontal-alignment: left;
+    }
     ListView {
         for major[index_major] in EnablesData.event_descs: HorizontalBox {
             alignment: start;

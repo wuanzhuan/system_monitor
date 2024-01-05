@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import {StandardTableView, GroupBox} from "std-widgets.slint";
+import {StandardTableView, VerticalBox} from "std-widgets.slint";
 import {TableView} from "table_view.slint";
 
 export global EventsViewData  {
@@ -11,10 +11,14 @@ export global EventsViewData  {
     in property <[[StandardListViewItem]]> row_data: [];
 }
 
-export component EventsView inherits GroupBox {
-    title: @tr("events view");
-    vertical-stretch: 0;
-
+export component EventsView inherits VerticalBox {
+    spacing: 2rem;
+    
+    Text {
+        text: @tr("events view");
+        font-size: 1.5rem;
+        horizontal-alignment: left;
+    }
     TableView {
         sort-ascending(index) => {
             EventsViewData.sort_ascending(index);
