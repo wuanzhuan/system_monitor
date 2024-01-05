@@ -16,15 +16,15 @@ export global EnablesData {
 
 export component EventsEnables inherits GroupBox {
     title: "events enable";
-    width: 30%;
     vertical-stretch: 1;
+
     ListView {
         for major[index_major] in EnablesData.event_descs: HorizontalBox {
             alignment: start;
             major_cb := CheckBox {
                 text: major.name;
                 toggled => {EnablesData.toggled_major(index_major, self.checked)}
-            }
+            }  
             Rectangle {
                 border-color: gray;
                 border-width: 2px;

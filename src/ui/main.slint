@@ -58,10 +58,21 @@ export component App inherits Window {
                 height: 2rem;
             }
         }
-        HorizontalBox {
-            EventsEnables{}
-            Rectangle {background: gray; width: 2px;}
-            EventsView{}
+        main := HorizontalBox {
+            event-enables := EventsEnables{}
+            line := Rectangle {
+                background: gray; width: 2px;
+
+                TouchArea {
+                    mouse-cursor: ew-resize;
+                    moved => {
+                        event-enables.width = event-enables.width + self.mouse-x;
+                        line.x = line.x + self.mouse-x;
+                        events-view.x = events-view.x + self.mouse-x;
+                    }
+                }
+            }
+            events-view := EventsView{}
         }
     }
 }
