@@ -4,7 +4,7 @@
 use std::rc::Rc;
 use struct_field_names_as_array::FieldNamesAsArray;
 use tracing::{error, info};
-use slint::{SharedString, ModelRc, StandardListViewItem, TableColumn, Model};
+use slint::{SharedString, ModelRc, StandardListViewItem, TableColumn, Model, LogicalPosition};
 
 mod event_trace;
 mod event_list_model;
@@ -27,7 +27,8 @@ fn main() {
     .init();
 
     let app = App::new().unwrap();
-
+    let window = app.window();
+    window.set_position(LogicalPosition::new(1000.0, 500.0));
     let column_names = ModelRc::from(event_trace::EventRecordDecoded::FIELD_NAMES_AS_ARRAY.map(|item| {
         let mut tc = TableColumn::default();
         tc.title = SharedString::from(item);
