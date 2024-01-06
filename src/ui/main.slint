@@ -64,6 +64,8 @@ export component App inherits Window {
                 background: gray; width: 2px;
 
                 TouchArea {
+                    x: -(parent.width / 2);
+                    width: parent.width * 2;
                     mouse-cursor: ew-resize;
                     moved => {
                         event-enables.width = event-enables.width + self.mouse-x;
