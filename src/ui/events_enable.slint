@@ -24,27 +24,21 @@ export component EventsEnables inherits VerticalBox {
         horizontal-alignment: left;
     }
     ListView {
-        for major[index_major] in EnablesData.event_descs: VerticalBox {
-            HorizontalBox {
-                major_cb := CheckBox {
-                    text: major.name;
-                    toggled => {EnablesData.toggled_major(index_major, self.checked)}
-                }
-                VerticalBox {
-                    for minor[index_minor] in major.minors : HorizontalBox {
-                        minor_cb := CheckBox {
-                            text: minor;
-                            toggled => {
-                                if (self.checked) {major_cb.checked = true}
-                                EnablesData.toggled_minor(index_major, index_minor, self.checked)
-                            }
+        for major[index_major] in EnablesData.event_descs: HorizontalBox {
+            major_cb := CheckBox {
+                text: major.name;
+                toggled => {EnablesData.toggled_major(index_major, self.checked)}
+            }
+            VerticalBox {
+                for minor[index_minor] in major.minors : HorizontalBox {
+                    minor_cb := CheckBox {
+                        text: minor;
+                        toggled => {
+                            if (self.checked) {major_cb.checked = true}
+                            EnablesData.toggled_minor(index_major, index_minor, self.checked)
                         }
                     }
                 }
-            }
-            Rectangle {
-                height: 1px;
-                background: gray;
             }
         }
     }

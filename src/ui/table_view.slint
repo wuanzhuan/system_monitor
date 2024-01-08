@@ -236,6 +236,8 @@ export component TableView {
         }
 
         i-scroll-view := ListView {
+            viewport-y: self.height -  self.viewport-height;
+            
             for row[idx] in root.rows : TableViewRow {
                 selected: idx == root.current-row;
                 even: mod(idx, 2) == 0;
