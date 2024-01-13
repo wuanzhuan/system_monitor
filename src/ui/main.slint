@@ -13,6 +13,7 @@ export component App inherits Window {
     callback start() -> {ok: bool, message: string};
     callback stop();
 
+    out property <length> rem: self.default-font-size;
     private property <{ok: bool, message: string}> result_start;
 
     switch_popup := PopupWindow {

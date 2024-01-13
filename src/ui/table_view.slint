@@ -204,23 +204,23 @@ export component TableView {
             min-height: i-header-layout.min-height;
 
             i-header-layout := HorizontalLayout {
-                width: max(self.preferred-width, parent.width);
                 x: i-scroll-view.viewport-x;
                 padding-right: 6px;
                 min-height: root.min-header-height;
 
+                private property <length> min_column_width: 2rem;
+
                 for column[index] in root.columns : TableViewColumn {
                     sort-order: column.sort-order;
                     horizontal-stretch: column.horizontal-stretch;
-                    min-width: max(column.min-width, column.width);
-                    max-width: (index < columns.length && column.width >= 1px) ? max(column.min-width, column.width) : 100000px;
+                    width: root.columns[index].width;
 
                     clicked => {
                         root.sort(index);
                     }
 
-                    adjust-size(diff) => {
-                        column.width = max(1px, self.width + diff);
+                    adjust_size(diff) => {
+                        column.width = max(min_column_width, self.width + diff);
                     }
 
                     Text {
@@ -236,8 +236,6 @@ export component TableView {
         }
 
         i-scroll-view := ListView {
-            viewport-y: self.height -  self.viewport-height;
-            
             for row[idx] in root.rows : TableViewRow {
                 selected: idx == root.current-row;
                 even: mod(idx, 2) == 0;
@@ -258,9 +256,7 @@ export component TableView {
                     private property <bool> has_inner_focus;
 
                     horizontal-stretch: root.columns[index].horizontal-stretch;
-                    min-width: max(columns[index].min-width, columns[index].width);
-                    preferred-width: self.min-width;
-                    max-width: (index < columns.length && columns[index].width >= 1px) ? max(columns[index].min-width, columns[index].width) : 100000px;
+                    width: root.columns[index].width;
 
                     Rectangle {
                         Text {
