@@ -8,10 +8,9 @@ pub struct EventRecordModel{
 }
 
 impl EventRecordModel {
-    pub fn new(order: usize, event_record: &EventRecordDecoded) -> Self {
+    pub fn new(event_record: &EventRecordDecoded) -> Self {
         EventRecordModel{
             array: vec![
-                SharedString::from(format!("{:?}", order)),
                 SharedString::from(format!("{:?}", event_record.provider_id)),
                 SharedString::from(event_record.provider_name.clone()),
                 SharedString::from(event_record.level_name.clone()),

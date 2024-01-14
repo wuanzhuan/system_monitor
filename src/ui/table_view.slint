@@ -128,7 +128,7 @@ component TableViewRow inherits Rectangle {
     }
 
     i-layout := HorizontalLayout {
-       @children
+        @children
     }
 
     i-selector := Rectangle {
@@ -148,6 +148,8 @@ export component TableView {
     out property <int> current-sort-column: -1;
     in-out property <[TableColumn]> columns;
     in-out property <int> current-row: -1;
+    in-out property <length> order-column-width: 6rem;
+    in property <bool> has_order_number: true;
 
     callback sort-ascending(/* column-index */ int);
     callback sort-descending(/* column-index */ int);
@@ -210,6 +212,24 @@ export component TableView {
 
                 private property <length> min_column_width: 2rem;
 
+                if has-order-number : TableViewColumn {
+                    width: root.order-column-width;
+
+                    adjust_size(diff) => {
+                        root.order-column-width = max(min_column_width, self.width + diff);
+                    }
+
+                    Text {
+                        width: 100%;
+                        height: 100%;
+                        vertical-alignment: center;
+                        text: @tr("序号");
+                        font-weight: Typography.body.font-weight;
+                        font-size: Typography.body.font-size;
+                        color: Palette.text-secondary;
+                        overflow: elide;
+                    }
+                }
                 for column[index] in root.columns : TableViewColumn {
                     sort-order: column.sort-order;
                     horizontal-stretch: column.horizontal-stretch;
@@ -224,6 +244,8 @@ export component TableView {
                     }
 
                     Text {
+                        width: 100%;
+                        height: 100%;
                         vertical-alignment: center;
                         text: column.title;
                         font-weight: Typography.body.font-weight;
@@ -252,6 +274,23 @@ export component TableView {
                     root.set-current-row(idx);
                 }
 
+                // order number
+                if has-order-number : TableViewCell {
+                    width: root.order-column-width;
+
+                    Rectangle {
+                        Text {
+                            width: 100%;
+                            height: 100%;
+                            overflow: elide;
+                            vertical-alignment: center;
+                            text: idx;
+                            font-weight: Typography.body.font-weight;
+                            font-size: Typography.body.font-size;
+                            color: mod(idx, 2) == 0 ? Palette.text-primary : Palette.text-secondary;
+                        }
+                    }
+                }
                 for cell[index] in row : TableViewCell {
                     private property <bool> has_inner_focus;
 
