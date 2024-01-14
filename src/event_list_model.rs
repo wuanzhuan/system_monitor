@@ -26,7 +26,7 @@ impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
         }
         self.move_to(row);
         let mut cursor = self.cursor.borrow_mut();
-        Some(cursor.current().unwrap().clone())
+        cursor.current().cloned()
     }
 
     fn set_row_data(&self, row: usize, data: Self::Data) {
@@ -35,9 +35,10 @@ impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
         }
         self.move_to(row);
         let mut cursor = self.cursor.borrow_mut();
-        let item = cursor.current().unwrap();
-        *item = data;
-        self.notify.row_changed(row);
+        if let Some(item) = cursor.current() {
+            *item = data;
+            self.notify.row_changed(row);
+        }
     }
 
     fn model_tracker(&self) -> &dyn ModelTracker {
