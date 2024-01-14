@@ -3,8 +3,8 @@
 
 use std::rc::Rc;
 use struct_field_names_as_array::FieldNamesAsArray;
-use tracing::{error, info, instrument::WithSubscriber};
-use slint::{SharedString, ModelRc, StandardListViewItem, TableColumn, Model, LogicalPosition};
+use tracing::{error, info};
+use slint::{SharedString, ModelRc, StandardListViewItem, TableColumn, Model, LogicalPosition, VecModel};
 
 mod event_trace;
 mod event_list_model;
@@ -29,14 +29,20 @@ fn main() {
     let app = App::new().unwrap();
     let window = app.window();
     window.set_position(LogicalPosition::new(1000.0, 500.0));
-    
-    let column_names = ModelRc::from(event_trace::EventRecordDecoded::FIELD_NAMES_AS_ARRAY.map(|item| {
+
+    let columns = Rc::new(VecModel::<TableColumn>::default());
+    let mut tc = TableColumn::default();
+    tc.title = SharedString::from("序号");
+    tc.width = 6.0 * app.get_rem();
+    columns.push(tc);
+    for item in event_trace::EventRecordDecoded::FIELD_NAMES_AS_ARRAY {
         let mut tc = TableColumn::default();
         tc.title = SharedString::from(item);
         tc.width = (item.chars().count() + 2) as f32 * app.get_rem();
-        tc
-    }));
-    app.global::<EventsViewData>().set_columns(column_names);
+        columns.push(tc);
+    }
+
+    app.global::<EventsViewData>().set_columns(ModelRc::from(columns));
 
     let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new());
 
@@ -64,7 +70,7 @@ fn main() {
         let result = event_trace::Controller::start(move |event_record| {
             let r = app_weak.upgrade_in_event_loop(move |app_handle|{
                  if let Some(rows) = app_handle.global::<EventsViewData>().get_row_data().as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>() {
-                    let er = event_record_model::EventRecordModel::new(&event_record);
+                    let er = event_record_model::EventRecordModel::new(rows.row_count(), &event_record);
                     rows.push(ModelRc::new(er));
                  }
             }).unwrap();
