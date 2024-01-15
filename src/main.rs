@@ -30,16 +30,6 @@ fn main() {
     let window = app.window();
     window.set_position(LogicalPosition::new(1000.0, 500.0));
 
-    let columns = Rc::new(VecModel::<TableColumn>::default());
-    for item in event_trace::EventRecordDecoded::FIELD_NAMES_AS_ARRAY {
-        let mut tc = TableColumn::default();
-        tc.title = SharedString::from(item);
-        tc.width = (item.chars().count() + 2) as f32 * app.get_rem();
-        columns.push(tc);
-    }
-
-    app.global::<EventsViewData>().set_columns(ModelRc::from(columns));
-
     let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new());
 
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_rc);

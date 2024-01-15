@@ -7,7 +7,6 @@ import {TableView} from "table_view.slint";
 export global EventsViewData  {
     callback sort_ascending(int);
     callback sort_descending(int);
-    in property <[TableColumn]> columns: [];
     in property <[[StandardListViewItem]]> row_data: [];
 }
 
@@ -27,7 +26,14 @@ export component EventsView inherits VerticalBox {
             EventsViewData.sort-descending(index);
         }
 
-        columns: EventsViewData.columns;
+        columns: [
+            {title: @tr("datetime"), width: 20rem},
+            {title: @tr("process_id"), width: 10rem},
+            {title: @tr("thread_id"), width: 10rem},
+            {title: @tr("event_name"), width: 10rem},
+            {title: @tr("opcode_name"), width: 10rem},
+            {title: @tr("properties"), width: 50rem},
+        ];
         rows: EventsViewData.row_data;
     }
 }

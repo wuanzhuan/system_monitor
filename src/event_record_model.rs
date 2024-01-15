@@ -11,19 +11,12 @@ impl EventRecordModel {
     pub fn new(event_record: &EventRecordDecoded) -> Self {
         EventRecordModel{
             array: vec![
-                SharedString::from(format!("{:?}", event_record.provider_id)),
-                SharedString::from(event_record.provider_name.clone()),
-                SharedString::from(event_record.level_name.clone()),
-                SharedString::from(event_record.channel_name.clone()),
-                SharedString::from(event_record.keywords_name.clone()),
-                SharedString::from(event_record.event_name.clone()),
-                SharedString::from(event_record.opcode_name.clone()),
-                SharedString::from(event_record.event_message.clone()),
-                SharedString::from(event_record.provider_message.clone()),
+                SharedString::from(event_record.dt_local.to_string()),
                 SharedString::from(event_record.process_id.to_string()),
                 SharedString::from(event_record.thread_id.to_string()),
-                SharedString::from(event_record.dt_local.to_string()),
-                SharedString::from(format!("{:?}", event_record.properties)),
+                SharedString::from(event_record.event_name.clone()),
+                SharedString::from(event_record.opcode_name.clone()),
+                SharedString::from(serde_json::to_string(&event_record.properties).unwrap_or_default()),
             ],
             notify: ModelNotify::default()
         }

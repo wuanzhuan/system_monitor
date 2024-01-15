@@ -7,7 +7,7 @@ use windows::{
     Win32::System::SystemInformation::*,
 };
 use chrono::*;
-//use serde::{Serialize, Deserialize};
+use serde::Serialize;
 
 
 pub struct Decoder<'a>{
@@ -415,7 +415,8 @@ pub struct EventRecordDecoded {
     pub properties: PropertyDecoded
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
+#[serde(untagged)]
 pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
