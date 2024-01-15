@@ -56,7 +56,7 @@ fn main() {
         let result = event_trace::Controller::start(move |event_record| {
             let r = app_weak.upgrade_in_event_loop(move |app_handle|{
                  if let Some(rows) = app_handle.global::<EventsViewData>().get_row_data().as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>() {
-                    let er = event_record_model::EventRecordModel::new(&event_record);
+                    let er = event_record_model::EventRecordModel::new(event_record);
                     rows.push(ModelRc::new(er));
                  }
             }).unwrap();

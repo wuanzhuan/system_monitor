@@ -5,9 +5,10 @@ import {StandardTableView, VerticalBox} from "std-widgets.slint";
 import {TableView} from "table_view.slint";
 
 export global EventsViewData  {
+    in property <[string]> column_names;
+    in property <[[StandardListViewItem]]> row_data: [];
     callback sort_ascending(int);
     callback sort_descending(int);
-    in property <[[StandardListViewItem]]> row_data: [];
 }
 
 export component EventsView inherits VerticalBox {

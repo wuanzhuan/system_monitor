@@ -1,23 +1,24 @@
 use slint::{Model, SharedString, ModelNotify, ModelTracker, StandardListViewItem};
 use super::event_trace::EventRecordDecoded;
 
-#[derive(Default)]
 pub struct EventRecordModel{
-    array: Vec<SharedString>,
+    array: Box<EventRecordDecoded>,
     notify: ModelNotify
 }
 
+const COLUMN_NAMES: [&str; 6] = [
+    "datetime",
+    "process_id",
+    "thread_id",
+    "event_name",
+    "opcode_name",
+    "properties",
+];
+
 impl EventRecordModel {
-    pub fn new(event_record: &EventRecordDecoded) -> Self {
+    pub fn new(event_record: EventRecordDecoded) -> Self {
         EventRecordModel{
-            array: vec![
-                SharedString::from(event_record.dt_local.to_string()),
-                SharedString::from(event_record.process_id.to_string()),
-                SharedString::from(event_record.thread_id.to_string()),
-                SharedString::from(event_record.event_name.clone()),
-                SharedString::from(event_record.opcode_name.clone()),
-                SharedString::from(serde_json::to_string(&event_record.properties).unwrap_or_default()),
-            ],
+            array: Box::new(event_record),
             notify: ModelNotify::default()
         }
     }
@@ -27,14 +28,22 @@ impl Model for EventRecordModel {
     type Data = StandardListViewItem;
 
     fn row_count(&self) -> usize {
-        self.array.len()
+        COLUMN_NAMES.len()
     }
 
     fn row_data(&self, row: usize) -> Option<Self::Data> {
-        if row < self.array.len() {
-            Some(StandardListViewItem::from(self.array[row].clone()))
-        } else {
+        if row >= COLUMN_NAMES.len() {
             None
+        } else {
+            match row {
+                0 => Some(StandardListViewItem::from(SharedString::from(self.array.dt_local.to_string()))),
+                1 => Some(StandardListViewItem::from(SharedString::from(self.array.process_id.to_string()))),
+                2 => Some(StandardListViewItem::from(SharedString::from(self.array.thread_id.to_string()))),
+                3 => Some(StandardListViewItem::from(SharedString::from(self.array.event_name.to_string()))),
+                4 => Some(StandardListViewItem::from(SharedString::from(self.array.opcode_name.to_string()))),
+                5 => Some(StandardListViewItem::from(SharedString::from(serde_json::to_string(&self.array.properties).unwrap_or_default()))),
+                _ => None
+            }
         }
     }
 
