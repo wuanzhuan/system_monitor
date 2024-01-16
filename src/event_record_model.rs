@@ -6,7 +6,7 @@ pub struct EventRecordModel{
     notify: ModelNotify
 }
 
-const COLUMN_NAMES: [&str; 6] = [
+const COLUMN_NAMES: &[&str] = &[
     "datetime",
     "process_id",
     "thread_id",
