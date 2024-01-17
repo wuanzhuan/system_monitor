@@ -37,8 +37,8 @@ impl Model for EventRecordModel {
         } else {
             match row {
                 0 => Some(StandardListViewItem::from(SharedString::from(self.array.dt_local.to_string()))),
-                1 => Some(StandardListViewItem::from(SharedString::from(self.array.process_id.to_string()))),
-                2 => Some(StandardListViewItem::from(SharedString::from(self.array.thread_id.to_string()))),
+                1 => Some(StandardListViewItem::from(SharedString::from((self.array.process_id as i32).to_string()))),
+                2 => Some(StandardListViewItem::from(SharedString::from((self.array.thread_id as i32).to_string()))),
                 3 => Some(StandardListViewItem::from(SharedString::from(self.array.event_name.to_string()))),
                 4 => Some(StandardListViewItem::from(SharedString::from(self.array.opcode_name.to_string()))),
                 5 => Some(StandardListViewItem::from(SharedString::from(serde_json::to_string(&self.array.properties).unwrap_or_default()))),
