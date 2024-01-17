@@ -5,12 +5,14 @@ import { Palette, Typography, Icons } from "styling.slint";
 import { ListView } from "std-widgets.slint";
 
 component TableViewColumn inherits Rectangle {
+    background: Palette.background;
+
+    in property <string> text;
+    in property <int> index_column;
     in property <SortOrder> sort-order: SortOrder.unsorted;
 
     callback clicked <=> i-touch-area.clicked;
     callback adjust_size(length);
-
-    background: Palette.background;
 
     states [
         pressed when i-touch-area.pressed : {
@@ -30,8 +32,15 @@ component TableViewColumn inherits Rectangle {
         padding-right: 12px;
         spacing: 2px;
 
-        HorizontalLayout {
-            @children
+        Text {
+            width: 100%;
+            height: 100%;
+            vertical-alignment: center;
+            text: text;
+            font-weight: Typography.body.font-weight;
+            font-size: Typography.body.font-size;
+            color: Palette.text-secondary;
+            overflow: elide;
         }
 
         i-icon := Image {
@@ -229,26 +238,19 @@ export component TableView {
 
                 if has-order-number : TableViewColumn {
                     width: root.order-column-width;
+                    text: @tr("序号");
+                    index-column: 0;
 
                     adjust_size(diff) => {
                         root.order-column-width = max(min_column_width, self.width + diff);
-                    }
-
-                    Text {
-                        width: 100%;
-                        height: 100%;
-                        vertical-alignment: center;
-                        text: @tr("序号");
-                        font-weight: Typography.body.font-weight;
-                        font-size: Typography.body.font-size;
-                        color: Palette.text-secondary;
-                        overflow: elide;
                     }
                 }
                 for column[index] in root.columns : TableViewColumn {
                     sort-order: column.sort-order;
                     horizontal-stretch: column.horizontal-stretch;
                     width: root.columns[index].width;
+                    text: column.title;
+                    index-column: index;
 
                     clicked => {
                         root.sort(index);
@@ -256,17 +258,6 @@ export component TableView {
 
                     adjust_size(diff) => {
                         column.width = max(min_column_width, self.width + diff);
-                    }
-
-                    Text {
-                        width: 100%;
-                        height: 100%;
-                        vertical-alignment: center;
-                        text: column.title;
-                        font-weight: Typography.body.font-weight;
-                        font-size: Typography.body.font-size;
-                        color: Palette.text-secondary;
-                        overflow: elide;
                     }
                 }
             }
