@@ -133,11 +133,13 @@ component TableViewRow inherits Rectangle {
             root.background: selected ? Palette.subtle-secondary : Palette.subtle-tertiary;
         }
         hover when i-touch-area.has-hover : {
-            root.background: selected ? Palette.subtle-tertiary : Palette.subtle-secondary;
+            root.border-color: Palette.accent-default;
+            root.border-width: 1px;
             i-selector.height: root.selected ? 16px : 0;
         }
         selected when root.selected : {
-            root.background: Palette.subtle-secondary;
+            root.border-color: Palette.accent-default;
+            root.border-width: 1px;
             i-selector.height: 16px;
         }
     ]
@@ -158,7 +160,7 @@ component TableViewRow inherits Rectangle {
     i-selector := Rectangle {
         x: 0px;
         y: (parent.height - self.height) / 2;
-        width: 3px;
+        width: 4px;
         height: 0px;
         background: Palette.accent-default;
         border-radius: 2px;
