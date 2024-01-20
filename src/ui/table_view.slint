@@ -95,6 +95,60 @@ component TableViewCell inherits Rectangle {
     in property <int> index_row;
     in property <int> index_column;
     in property <TextHorizontalAlignment> horizontal-alignment;
+    in property <brush> bg;
+    out property <bool> has-hover: i-touch-area.has-hover;
+    out property <bool> pressed: i-touch-area.pressed;
+
+    callback clicked;
+    callback pointer-event(/* event */ PointerEvent, /* absolute mouse position */ Point);
+
+    states [
+        hover when i-touch-area.has-hover: {
+            root.background: bg.brighter(0.5);
+        }
+    ]
+
+    popup := PopupWindow {
+        y: root.height + 1rem;
+        
+        Rectangle {
+            background: Palette.background;
+            border-color: Palette.accent-default;
+            border-width: 1px;  
+
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-right: 12px;
+                padding-top: 9px;
+                padding-bottom: 9px;
+
+                Text {
+                    min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
+                    max-width: self.font-size * 50;
+                    min-height: max(self.font-size * 3, self.preferred-height);
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                    text: text;
+                    font-weight: Typography.body.font-weight;
+                    font-size: Typography.body.font-size;
+                }
+            }
+        }
+    }
+
+    i-touch-area := TouchArea {
+        clicked => {
+            clicked();
+            popup.show();
+        }
+        pointer-event(pe) => {
+            root.pointer-event(pe, {
+                x: self.absolute-position.x + self.mouse-x,
+                y: self.absolute-position.y + self.mouse-y,
+            });
+        }
+    }
 
     HorizontalLayout {
         padding-left: 12px;
@@ -119,9 +173,8 @@ component TableViewCell inherits Rectangle {
 component TableViewRow inherits Rectangle {
     in property <bool> selected;
     in property <bool> even;
-
-    callback clicked <=> i-touch-area.clicked;
-    callback pointer-event(/* event */ PointerEvent, /* absolute mouse position */ Point);
+    in property <bool> has-hover;
+    in property <bool> pressed;
 
     min-width: i-layout.min-width;
     min-height: max(34px, i-layout.min-height);
@@ -129,10 +182,10 @@ component TableViewRow inherits Rectangle {
     background: root.even ? Palette.control-default : transparent;
 
     states [
-        pressed when i-touch-area.pressed : {
+        pressed when root.pressed : {
             root.background: selected ? Palette.subtle-secondary : Palette.subtle-tertiary;
         }
-        hover when i-touch-area.has-hover : {
+        hover when root.has-hover : {
             root.border-color: Palette.accent-default;
             root.border-width: 1px;
             i-selector.height: root.selected ? 16px : 0;
@@ -143,15 +196,6 @@ component TableViewRow inherits Rectangle {
             i-selector.height: 16px;
         }
     ]
-
-    i-touch-area := TouchArea {
-        pointer-event(pe) => {
-            root.pointer-event(pe, {
-                x: self.absolute-position.x + self.mouse-x,
-                y: self.absolute-position.y + self.mouse-y,
-            });
-        }
-    }
 
     i-layout := HorizontalLayout {
         @children
@@ -266,37 +310,52 @@ export component TableView {
         }
 
         i-scroll-view := ListView {
-            for row[idx] in root.rows : TableViewRow {
+            for row[idx] in root.rows : row_element := TableViewRow {
                 selected: idx == root.current-row;
                 even: mod(idx, 2) == 0;
-
-                pointer-event(pe, pos) => {
-                    root.row-pointer-event(idx, pe, {
-                        x: pos.x - root.absolute-position.x,
-                        y: pos.y - root.absolute-position.y,
-                    });
-                }
-
-                clicked => {
-                    root.focus();
-                    root.set-current-row(idx);
-                }
 
                 // order number
                 if has-order-number : TableViewCell {
                     width: root.order-column-width;
+                    bg: parent.background;
                     text: idx;
                     index-row: idx;
                     index-column: 0;
                     horizontal-alignment: center;
+
+                    pointer-event(pe, pos) => {
+                        root.row-pointer-event(idx, pe, {
+                            x: pos.x - root.absolute-position.x,
+                            y: pos.y - root.absolute-position.y,
+                        });
+                    }
+    
+                    clicked => {
+                        root.focus();
+                        root.set-current-row(idx);
+                    }
+
                 }
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
                     width: root.columns[index].width;
+                    bg: parent.background;
                     text: cell.text;
                     index-row: idx;
                     index-column: index + 1;
                     horizontal-alignment: left;
+
+                    pointer-event(pe, pos) => {
+                        root.row-pointer-event(idx, pe, {
+                            x: pos.x - root.absolute-position.x,
+                            y: pos.y - root.absolute-position.y,
+                        });
+                    }
+    
+                    clicked => {
+                        root.focus();
+                        root.set-current-row(idx);
+                    }
                 }
             }
         }
