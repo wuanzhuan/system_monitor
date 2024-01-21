@@ -179,7 +179,7 @@ component TableViewRow inherits Rectangle {
     min-width: i-layout.min-width;
     min-height: max(34px, i-layout.min-height);
     border-radius: 4px;
-    background: root.even ? Palette.control-default : transparent;
+    background: root.even ? Palette.control-default : Palette.control-secondary;
 
     states [
         pressed when root.pressed : {
