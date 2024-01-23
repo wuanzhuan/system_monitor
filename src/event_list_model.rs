@@ -127,4 +127,13 @@ impl<'a, T> ListModel<'a, T> {
         cursor.remove_current();
         self.notify.row_removed(index, 1)
     }
+
+    pub fn row_data_pretty(&self, row: usize) -> Option<&T> {
+        if row >= self.list.len() {
+            return None;
+        }
+        self.move_to(row);
+        let mut cursor = self.cursor.borrow_mut();
+        unsafe{ std::mem::transmute(cursor.current()) }
+    }
 }

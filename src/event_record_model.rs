@@ -22,6 +22,21 @@ impl EventRecordModel {
             notify: ModelNotify::default()
         }
     }
+    pub fn row_data_pretty(&self, row: usize) -> Option<SharedString> {
+        if row >= COLUMN_NAMES.len() {
+            None
+        } else {
+            match row {
+                0 => Some(SharedString::from(self.array.dt_local.to_string())),
+                1 => Some(SharedString::from((self.array.process_id as i32).to_string())),
+                2 => Some(SharedString::from((self.array.thread_id as i32).to_string())),
+                3 => Some(SharedString::from(self.array.event_name.to_string())),
+                4 => Some(SharedString::from(self.array.opcode_name.to_string())),
+                5 => Some(SharedString::from(serde_json::to_string_pretty(&self.array.properties).unwrap_or_default())),
+                _ => None
+            }
+        }
+    }
 }
 
 impl Model for EventRecordModel {

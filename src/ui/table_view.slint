@@ -98,9 +98,11 @@ component TableViewCell inherits Rectangle {
     in property <brush> bg;
     out property <bool> has-hover: i-touch-area.has-hover;
     out property <bool> pressed: i-touch-area.pressed;
+    private property <string> info;
 
     callback clicked;
     callback pointer-event(/* event */ PointerEvent, /* absolute mouse position */ Point);
+    callback text-pretty(/* row-index */int, /* column-index */ int) -> string;
 
     states [
         hover when i-touch-area.has-hover: {
@@ -129,7 +131,7 @@ component TableViewCell inherits Rectangle {
                     horizontal-alignment: center;
                     vertical-alignment: center;
                     wrap: word-wrap;
-                    text: text;
+                    text: info;
                     font-weight: Typography.body.font-weight;
                     font-size: Typography.body.font-size;
                 }
@@ -140,6 +142,7 @@ component TableViewCell inherits Rectangle {
     i-touch-area := TouchArea {
         clicked => {
             clicked();
+            root.info = root.text-pretty(index-row, index-column);
             popup.show();
         }
         pointer-event(pe) => {
@@ -225,6 +228,7 @@ export component TableView {
     callback sort-descending(/* column-index */ int);
     callback row-pointer-event(/* row-index */ int, /* event */ PointerEvent,  /* absolute mouse position */ Point);
     callback current-row-changed(/* current-row */ int);
+    callback row-column-data-pretty(/* row-index */int, /* column-index */ int) -> string;
 
     public function set-current-row(index: int) {
         if (index < 0 || index >= rows.length) {
@@ -342,7 +346,7 @@ export component TableView {
                     bg: parent.background;
                     text: cell.text;
                     index-row: idx;
-                    index-column: index + 1;
+                    index-column: index;
                     horizontal-alignment: left;
 
                     pointer-event(pe, pos) => {
@@ -355,6 +359,9 @@ export component TableView {
                     clicked => {
                         root.focus();
                         root.set-current-row(idx);
+                    }
+                    text-pretty(index_row, index_column) => {
+                        root.row-column-data-pretty(index_row, index_column)
                     }
                 }
             }
