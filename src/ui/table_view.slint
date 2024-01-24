@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-1.1 OR LicenseRef-Slint-commercial
 
 import { Palette, Typography, Icons } from "styling.slint";
-import { ListView } from "std-widgets.slint";
+import { ListView, ScrollView } from "std-widgets.slint";
 
 component TableViewColumn inherits Rectangle {
     background: Palette.background;
@@ -118,22 +118,23 @@ component TableViewCell inherits Rectangle {
             border-color: Palette.accent-default;
             border-width: 1phx;  
 
-            HorizontalLayout {
-                padding-left: 12px;
-                padding-right: 12px;
-                padding-top: 9px;
-                padding-bottom: 9px;
-
-                Text {
-                    min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
-                    max-width: self.font-size * 50;
-                    min-height: max(self.font-size * 3, self.preferred-height);
-                    horizontal-alignment: left;
-                    vertical-alignment: center;
-                    wrap: word-wrap;
-                    text: info;
-                    font-weight: Typography.body.font-weight;
-                    font-size: Typography.body.font-size;
+            ScrollView {
+                preferred-width: text-element.preferred-width;
+                preferred-height: text-element.preferred-height;
+                text-element := HorizontalLayout {
+                    padding: 12px;
+    
+                    Text {
+                        min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
+                        max-width: self.font-size * 50;
+                        min-height: max(self.font-size * 3, self.preferred-height);
+                        horizontal-alignment: left;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                        text: info;
+                        font-weight: Typography.body.font-weight;
+                        font-size: Typography.body.font-size;
+                    }
                 }
             }
         }
