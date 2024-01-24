@@ -298,7 +298,7 @@ export component TableView {
                 for column[index] in root.columns : TableViewColumn {
                     sort-order: column.sort-order;
                     horizontal-stretch: column.horizontal-stretch;
-                    width: root.columns[index].width;
+                    width: index < root.columns.length - 1 ? root.columns[index].width : parent.width;
                     text: column.title;
                     index-column: index;
 
@@ -342,7 +342,7 @@ export component TableView {
                 }
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
-                    width: root.columns[index].width;
+                    width: index < root.columns.length - 1 ? root.columns[index].width : parent.width;
                     bg: parent.background;
                     text: cell.text;
                     index-row: idx;
