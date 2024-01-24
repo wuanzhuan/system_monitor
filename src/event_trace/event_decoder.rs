@@ -1,5 +1,5 @@
 use crate::third_extend::strings::*;
-use std::{mem, slice, collections::BTreeMap};
+use std::{mem, slice};
 use tracing::{error, info, warn};
 use widestring::*;
 use windows::{
@@ -9,6 +9,7 @@ use windows::{
 };
 use chrono::*;
 use serde::Serialize;
+use linked_hash_map::LinkedHashMap;
 
 
 pub struct Decoder<'a>{
@@ -163,8 +164,8 @@ impl<'a> Decoder<'a> {
         properties_array_begin: u16,
         properties_array_end: u16,
         user_data_index: &mut u16,
-    ) -> Result<BTreeMap<String, PropertyDecoded>> {
-        let mut properties_object = BTreeMap::<String, PropertyDecoded>::new();
+    ) -> Result<LinkedHashMap<String, PropertyDecoded>> {
+        let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
         // top property may contain length/count
         while property_index < properties_array_end {
@@ -421,7 +422,7 @@ pub struct EventRecordDecoded {
 pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
-    Struct(BTreeMap<String, PropertyDecoded>),
+    Struct(LinkedHashMap<String, PropertyDecoded>),
 }
 
 #[inline]
