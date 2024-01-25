@@ -62,7 +62,7 @@ impl Model for EventRecordModel {
         }
     }
 
-    fn set_row_data(&self, row: usize, data: Self::Data) { 
+    fn set_row_data(&self, #[allow(unused)] row: usize, #[allow(unused)] data: Self::Data) { 
         // if set don't forget to call row_changed
         //self.notify.row_changed(row);
     }

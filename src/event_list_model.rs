@@ -118,6 +118,7 @@ impl<'a, T> ListModel<'a, T> {
     }
 
     /// Remove the row at the given index from the model
+    #[allow(unused)]
     pub fn remove(&self, index: usize) {
         if index >= self.list.len() {
             return;

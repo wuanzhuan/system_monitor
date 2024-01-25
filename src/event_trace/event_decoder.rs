@@ -1,6 +1,6 @@
 use crate::third_extend::strings::*;
 use std::{mem, slice};
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 use widestring::*;
 use windows::{
     core::*,

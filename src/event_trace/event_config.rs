@@ -17,6 +17,7 @@ impl Config {
         Self{events_enables: event_enable, events_desc}
     }
 
+    #[allow(unused)]
     pub fn set_events_enables(&mut self, events_enables: &[EventEnable]) {
         if events_enables.len() != self.events_enables.len() {
             error!("invalid length of events_enables, expected: {}, found: {}", self.events_enables.len(), events_enables.len());
@@ -73,11 +74,4 @@ impl Config {
 pub struct EventEnable {
     pub major: bool,
     pub minors: Vec<bool>,
-}
-
-impl EventEnable {
-    pub fn new(index: usize) -> Self {
-        let vec = vec![false; event_kernel::EVENTS_DESC[index].minors.len()];
-        Self { major: false, minors: vec }
-    }
 }

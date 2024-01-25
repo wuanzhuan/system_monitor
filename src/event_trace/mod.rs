@@ -11,7 +11,7 @@ use std::{
 
 use crate::third_extend::strings::*;
 use lazy_static::lazy_static;
-use tracing::{error, info, warn};
+use tracing::{error, warn};
 use widestring::*;
 use windows::{
     core::*, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*,
@@ -24,7 +24,7 @@ mod event_decoder;
 mod event_kernel;
 mod event_config;
 
-pub use event_decoder::{ EventRecordDecoded, PropertyDecoded};
+pub use event_decoder::EventRecordDecoded;
 
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
