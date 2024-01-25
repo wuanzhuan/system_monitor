@@ -6,8 +6,9 @@ pub use strum::*;
 
 /*
    reference:
-   EnableFlags in https://learn.microsoft.com/zh-cn/windows/win32/api/evntrace/ns-evntrace-event_trace_properties_v2
-   https://learn.microsoft.com/zh-cn/windows/win32/etw/system-providers
+   nt-kernel-logger-constants: https://learn.microsoft.com/zh-cn/windows/win32/etw/nt-kernel-logger-constants
+   EnableFlags: https://learn.microsoft.com/zh-cn/windows/win32/api/evntrace/ns-evntrace-event_trace_properties_v2
+   system-providers: https://learn.microsoft.com/zh-cn/windows/win32/etw/system-providers
 */
 pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 	// Masks[0]
