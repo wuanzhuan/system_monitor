@@ -2,9 +2,8 @@
 
 
 use std::rc::Rc;
-use struct_field_names_as_array::FieldNamesAsArray;
 use tracing::{error, info};
-use slint::{SharedString, ModelRc, StandardListViewItem, TableColumn, Model, LogicalPosition, VecModel};
+use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition};
 
 mod event_trace;
 mod event_list_model;
