@@ -7,7 +7,6 @@ use windows::{
     Win32::Foundation::*, 
     Win32::System::Diagnostics::Etw::*,
 };
-use chrono::*;
 use serde::Serialize;
 use linked_hash_map::LinkedHashMap;
 
@@ -89,10 +88,6 @@ impl<'a> Decoder<'a> {
     }
     pub fn decode(&mut self) -> Result<EventRecordDecoded>{
         let header = &self.event_record.EventHeader;
-        let duration = Utc.ymd(1970, 1, 1) - Utc.ymd(1601, 1, 1);
-        let dt_utc = Utc.timestamp_millis(header.TimeStamp / 10 / 1000 - duration.num_milliseconds());
-        let dt_local = DateTime::<Local>::from(dt_utc);
-
         let provider_id = header.ProviderId;
         let provider_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderNameOffset)
                 .unwrap_or_default().to_string().unwrap_or_default();
@@ -154,7 +149,7 @@ impl<'a> Decoder<'a> {
             provider_message,
             process_id: header.ProcessId,
             thread_id: header.ThreadId,
-            dt_local,
+            timestamp: header.TimeStamp as u64,
             properties
         })
     }
@@ -411,7 +406,7 @@ pub struct EventRecordDecoded {
     pub provider_message: String,
     pub process_id: u32,
     pub thread_id: u32,
-    pub dt_local:  DateTime<Local>,
+    pub timestamp:  u64,
     pub properties: PropertyDecoded
 }
 

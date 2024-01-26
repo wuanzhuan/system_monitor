@@ -27,7 +27,7 @@ impl EventRecordModel {
             None
         } else {
             match row {
-                0 => Some(SharedString::from(self.array.dt_local.to_string())),
+                0 => Some(SharedString::from(self.array.timestamp.to_string())),
                 1 => Some(SharedString::from((self.array.process_id as i32).to_string())),
                 2 => Some(SharedString::from((self.array.thread_id as i32).to_string())),
                 3 => Some(SharedString::from(self.array.event_name.to_string())),
@@ -51,7 +51,7 @@ impl Model for EventRecordModel {
             None
         } else {
             match row {
-                0 => Some(StandardListViewItem::from(SharedString::from(self.array.dt_local.to_string()))),
+                0 => Some(StandardListViewItem::from(SharedString::from(self.array.timestamp.to_string()))),
                 1 => Some(StandardListViewItem::from(SharedString::from((self.array.process_id as i32).to_string()))),
                 2 => Some(StandardListViewItem::from(SharedString::from((self.array.thread_id as i32).to_string()))),
                 3 => Some(StandardListViewItem::from(SharedString::from(self.array.event_name.to_string()))),
