@@ -988,17 +988,19 @@ impl PERFINFO_GROUPMASK {
 
 
 /* 89497f50-effe-4440-8cf2-ce6b1cdcaca7 */
-const OBJECT_GUID: GUID = GUID{ data1: 0x89497f50, data2: 0xeffe, data3: 0x4440, data4: [0x8c, 0xf2, 0xce, 0x6b, 0x1c, 0xdc, 0xac, 0xa7] };
-
+pub const OBJECT_GUID: GUID = GUID::from_u128(0x89497f50_effe_4440_8cf2_ce6b1cdcaca7);
 /* 0268a8b6-74fd-4302-9dd0-6e8f1795c0cf */
-const POOL_GUID: GUID = GUID{ data1: 0x0268a8b6, data2: 0x74fd, data3: 0x4302, data4: [0x9d, 0xd0, 0x6e, 0x8f, 0x17, 0x95, 0xc0, 0xcf] };
+pub const POOL_GUID: GUID = GUID::from_u128(0x0268a8b6_74fd_4302_9dd0_6e8f1795c0cf);
 
 /* 222962ab-6180-4b88-a825-346b75f2a24a */
-const HEAP_GUID: GUID = GUID{ data1: 0x222962ab, data2: 0x6180, data3: 0x4b88, data4: [0xa8, 0x25, 0x34, 0x6b, 0x75, 0xf2, 0xa2, 0x4a] };
+pub const HEAP_GUID: GUID = GUID::from_u128(0x222962ab_6180_4b88_a825_346b75f2a24a);
 
 /* 13976D09-A327-438c-950B-7F03192815C7  */
-const DBG_PRINT_GUID: GUID = GUID{ data1: 0x13976d09, data2: 0xa327, data3: 0x438c, data4: [0x95, 0xb, 0x7f, 0x3, 0x19, 0x28, 0x15, 0xc7] };
+pub const DBG_PRINT_GUID: GUID = GUID::from_u128(0x13976D09_A327_438c_950B_7F03192815C7);
 
 /* 3282fc76-feed-498e-8aa7-e70f459d430e */
-const JOB_GUID: GUID = GUID{ data1: 0x3282fc76, data2: 0xfeed, data3: 0x498e, data4: [0x8a, 0xa7, 0xe7, 0x0f, 0x45, 0x9d, 0x43, 0x0e] };
+pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430e);
+
+/// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
+pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
 
