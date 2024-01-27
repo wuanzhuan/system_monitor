@@ -58,7 +58,7 @@ pub struct Controller {
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    event_record_callback: Option<Rc<dyn Fn(EventRecordDecoded)>>,
+    event_record_callback: Option<Rc<dyn Fn(EventRecordDecoded, bool)>>,
 }
 
 unsafe impl std::marker::Send for Controller{}
@@ -78,7 +78,7 @@ impl Controller {
         cxt
     }
 
-    pub fn start(fn_event_callback: impl Fn(EventRecordDecoded) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
+    pub fn start(fn_event_callback: impl Fn(EventRecordDecoded, bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
         let context_arc = CONTEXT.clone();
         let mut context_mg = context_arc
             .try_lock()
@@ -273,7 +273,8 @@ impl Controller {
                             if let Some(ref cb) = context_mg.event_record_callback {
                                 let cb = cb.clone();
                                 mem::drop(context_mg);
-                                cb(event_record_decoded);
+                                let is_stack_walk = event_record_decoded.provider_id == event_kernel::STACK_WALK_GUID;
+                                cb(event_record_decoded, is_stack_walk);
                             }
                         };
                     },

@@ -61,7 +61,7 @@ fn main() {
     let app_weak = app.as_weak();
     app.on_start(move || {
         let app_weak = app_weak.clone();
-        let result = event_trace::Controller::start(move |event_record| {
+        let result = event_trace::Controller::start(move |event_record, is_stack_walk| {
             app_weak.upgrade_in_event_loop(move |app_handle|{
                  if let Some(rows) = app_handle.global::<EventsViewData>().get_row_data().as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>() {
                     let er = event_record_model::EventRecordModel::new(event_record);
