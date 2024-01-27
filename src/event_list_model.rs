@@ -1,14 +1,13 @@
 use slint::{Model, ModelNotify, ModelTracker};
 use std::{
-    cell::RefCell,
-    collections::{LinkedList, linked_list::CursorMut}
+    cell::RefCell, collections::{LinkedList, linked_list::CursorMut}, rc::Rc
 };
 
 pub struct ListModel<'a: 'static, T> {
     // the backing data, access by cursor
-    list: Box<LinkedList<T>>,
+    list: Box<LinkedList<Rc<T>>>,
     //reference the list in a `RefCell` as this model can be modified
-    cursor: RefCell<CursorMut<'a, T>>,
+    cursor: RefCell<CursorMut<'a, Rc<T>>>,
     // the ModelNotify will allow to notify the UI that the model changes
     notify: ModelNotify,
 }
@@ -26,7 +25,7 @@ impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
         }
         self.move_to(row);
         let mut cursor = self.cursor.borrow_mut();
-        cursor.current().cloned()
+        cursor.current().map(|item| (**item).clone() )
     }
 
     fn set_row_data(&self, row: usize, data: Self::Data) {
@@ -36,7 +35,7 @@ impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
         self.move_to(row);
         let mut cursor = self.cursor.borrow_mut();
         if let Some(item) = cursor.current() {
-            *item = data;
+            *item = Rc::new(data);
             self.notify.row_changed(row);
         }
     }
@@ -55,7 +54,7 @@ impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
 // the ModelNotify
 impl<'a, T> ListModel<'a, T> {
     pub fn new() -> Self {
-        let p = Box::leak(Box::new(LinkedList::<T>::default())) as *mut LinkedList<T>;
+        let p = Box::leak(Box::new(LinkedList::<Rc<T>>::default())) as *mut LinkedList<Rc<T>>; 
         let cursor = RefCell::new(unsafe{ &mut *p }.cursor_front_mut());
         let list = unsafe{ Box::from_raw(p) };
         let list_model = Self { list, notify: Default::default(), cursor};
@@ -113,7 +112,7 @@ impl<'a, T> ListModel<'a, T> {
     /// Add a row at the end of the model
     pub fn push(&self, value: T) {
         let mut cursor = self.cursor.borrow_mut();
-        cursor.push_back(value);
+        cursor.push_back(Rc::new(value));
         self.notify.row_added(self.list.len() - 1, 1)
     }
 
@@ -129,12 +128,12 @@ impl<'a, T> ListModel<'a, T> {
         self.notify.row_removed(index, 1)
     }
 
-    pub fn row_data_pretty(&self, row: usize) -> Option<&T> {
+    pub fn row_data_pretty(&self, row: usize) -> Option<Rc<T>> {
         if row >= self.list.len() {
             return None;
         }
         self.move_to(row);
         let mut cursor = self.cursor.borrow_mut();
-        unsafe{ std::mem::transmute(cursor.current()) }
+        cursor.current().map(|some| some.clone())
     }
 }
