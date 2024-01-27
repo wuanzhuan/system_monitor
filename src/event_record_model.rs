@@ -1,8 +1,9 @@
 use slint::{Model, SharedString, ModelNotify, ModelTracker, StandardListViewItem};
-use super::event_trace::EventRecordDecoded;
+use super::event_trace::{EventRecordDecoded, StackWalk};
 
 pub struct EventRecordModel{
     array: Box<EventRecordDecoded>,
+    stack_walk: Option<StackWalk>,
     notify: ModelNotify
 }
 
@@ -19,7 +20,8 @@ impl EventRecordModel {
     pub fn new(event_record: EventRecordDecoded) -> Self {
         EventRecordModel{
             array: Box::new(event_record),
-            notify: ModelNotify::default()
+            notify: ModelNotify::default(),
+            stack_walk: None
         }
     }
     pub fn row_data_pretty(&self, row: usize) -> Option<SharedString> {

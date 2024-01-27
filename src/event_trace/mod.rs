@@ -25,6 +25,7 @@ mod event_kernel;
 mod event_config;
 
 pub use event_decoder::EventRecordDecoded;
+pub use event_kernel::event_property::*;
 
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
