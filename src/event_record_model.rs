@@ -3,8 +3,8 @@ use super::event_trace::{EventRecordDecoded, StackWalk};
 
 pub struct EventRecordModel{
     array: Box<EventRecordDecoded>,
-    stack_walk: Option<StackWalk>,
-    notify: ModelNotify
+    notify: ModelNotify,
+    pub stack_walk: Option<StackWalk>,
 }
 
 const COLUMN_NAMES: &[&str] = &[

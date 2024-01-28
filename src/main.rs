@@ -5,11 +5,14 @@ use std::rc::Rc;
 use tracing::{error, info};
 use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition};
 
+
 mod event_trace;
 mod event_list_model;
 mod event_record_model;
 mod third_extend;
 mod utils;
+
+use event_record_model::EventRecordModel;
 
 slint::include_modules!();
 
@@ -64,8 +67,20 @@ fn main() {
         let result = event_trace::Controller::start(move |event_record, is_stack_walk| {
             app_weak.upgrade_in_event_loop(move |app_handle|{
                  if let Some(rows) = app_handle.global::<EventsViewData>().get_row_data().as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>() {
-                    let er = event_record_model::EventRecordModel::new(event_record);
-                    rows.push(ModelRc::new(er));
+                    if !is_stack_walk {
+                        let er = event_record_model::EventRecordModel::new(event_record);
+                        rows.push(ModelRc::new(er));
+                    } else {
+                        rows.find_for_stack_walk(|item| {
+                            if let Some(row_item) = item.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
+                                if row_item.stack_walk.is_none() {
+                                    let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
+                                    let row_item_mut: &mut EventRecordModel = unsafe{ std::mem::transmute(row_item as *const EventRecordModel as *mut EventRecordModel) };
+                                    row_item_mut.stack_walk = Some(sw);
+                                }
+                            }
+                        });
+                    }
                  }
             }).unwrap();
 
