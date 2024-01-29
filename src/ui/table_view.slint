@@ -119,8 +119,8 @@ component TableViewCell inherits Rectangle {
             border-width: 1phx;  
 
             ScrollView {
-                preferred-width: text-element.preferred-width;
-                preferred-height: text-element.preferred-height;
+                preferred-width: text-element.preferred-width + 12px;
+                preferred-height: text-element.preferred-height + 12px;
                 text-element := HorizontalLayout {
                     padding: 12px;
     
