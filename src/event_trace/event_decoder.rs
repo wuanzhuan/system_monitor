@@ -223,7 +223,7 @@ impl<'a> Decoder<'a> {
                 && (property_info.Flags.0 & (PropertyParamLength.0 | PropertyParamFixedLength.0)) != 0
             {
                 16 // special case for incorrectly-defined IPV6 addresses
-            } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
+            } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 && length_property_index < self.int_values.len() {
                 self.int_values[length_property_index as usize]
             // Look up the value of a previous property
             } else {
