@@ -14,6 +14,8 @@ mod utils;
 
 use event_record_model::EventRecordModel;
 
+use crate::event_trace::StackWalk;
+
 slint::include_modules!();
 
 
@@ -73,10 +75,10 @@ fn main() {
                     } else {
                         rows.find_for_stack_walk(|item| {
                             if let Some(row_item) = item.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
-                                if row_item.stack_walk.is_none() {
+                                let stack_walk = unsafe{ row_item.stack_walk.get().as_mut().unwrap() };
+                                if stack_walk.is_none() {
                                     let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                                    let row_item_mut: &mut EventRecordModel = unsafe{ std::mem::transmute(row_item as *const EventRecordModel as *mut EventRecordModel) };
-                                    row_item_mut.stack_walk = Some(sw);
+                                    *stack_walk = Some(sw);
                                 }
                             }
                         });

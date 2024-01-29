@@ -1,10 +1,12 @@
+use std::cell::UnsafeCell;
+
 use slint::{Model, SharedString, ModelNotify, ModelTracker, StandardListViewItem};
 use super::event_trace::{EventRecordDecoded, StackWalk};
 
 pub struct EventRecordModel{
     array: Box<EventRecordDecoded>,
     notify: ModelNotify,
-    pub stack_walk: Option<StackWalk>,
+    pub stack_walk: UnsafeCell<Option<StackWalk>>,
 }
 
 const COLUMN_NAMES: &[&str] = &[
@@ -21,7 +23,7 @@ impl EventRecordModel {
         EventRecordModel{
             array: Box::new(event_record),
             notify: ModelNotify::default(),
-            stack_walk: None
+            stack_walk: UnsafeCell::new(None)
         }
     }
     pub fn row_data_pretty(&self, row: usize) -> Option<SharedString> {
