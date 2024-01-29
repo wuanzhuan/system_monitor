@@ -37,7 +37,7 @@ export component EventsView inherits VerticalBox {
             {title: @tr("properties"), width: 50rem},
         ];
         rows: EventsViewData.row_data;
-        row-column-data-pretty(index_row, index-column) => {
+        cell-data-pretty(index_row, index-column) => {
             EventsViewData.row-column-data-pretty(index_row, index-column)
         }
     }
