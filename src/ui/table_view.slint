@@ -229,7 +229,7 @@ export component TableView {
     callback sort-descending(/* column-index */ int);
     callback row-pointer-event(/* row-index */ int, /* event */ PointerEvent,  /* absolute mouse position */ Point);
     callback current-row-changed(/* current-row */ int);
-    callback row-column-data-pretty(/* row-index */int, /* column-index */ int) -> string;
+    callback cell-data-pretty(/* row-index */int, /* column-index */ int) -> string;
 
     public function set-current-row(index: int) {
         if (index < 0 || index >= rows.length) {
@@ -362,7 +362,7 @@ export component TableView {
                         root.set-current-row(idx);
                     }
                     text-pretty(index_row, index_column) => {
-                        root.row-column-data-pretty(index_row, index_column)
+                        root.cell-data-pretty(index_row, index_column)
                     }
                 }
             }
