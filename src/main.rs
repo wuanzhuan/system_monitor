@@ -12,10 +12,6 @@ mod event_record_model;
 mod third_extend;
 mod utils;
 
-use event_record_model::EventRecordModel;
-
-use crate::event_trace::StackWalk;
-
 slint::include_modules!();
 
 
@@ -73,14 +69,22 @@ fn main() {
                         let er = event_record_model::EventRecordModel::new(event_record);
                         rows.push(ModelRc::new(er));
                     } else {
-                        rows.find_for_stack_walk(|item| {
-                            if let Some(row_item) = item.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
-                                let stack_walk = unsafe{ row_item.stack_walk.get().as_mut().unwrap() };
-                                if stack_walk.is_none() {
-                                    let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                                    *stack_walk = Some(sw);
+                        rows.find_for_stack_walk(|item, is_last| {
+                            if let Some(erm) = item.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
+                                if erm.timestamp() == event_record.timestamp.0 {
+                                    let stack_walk = unsafe{ erm.stack_walk.get().as_mut().unwrap() };
+                                    if stack_walk.is_none() {
+                                        let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
+                                        *stack_walk = Some(sw);
+                                    } else {
+                                        error!("Stalkwalk event conflict! timestamp: {}", event_record.timestamp.0);
+                                    }
+                                    return true;
                                 }
+                            } else if is_last {
+                                error!("Can't find the event for stack walk: {}", event_record.timestamp.0)
                             }
+                            false
                         });
                     }
                  }

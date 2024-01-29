@@ -127,10 +127,12 @@ impl<'a, T> ListModel<'a, T> {
         self.notify.row_added(self.list.len() - 1, 1)
     }
 
-    pub fn find_for_stack_walk(&self, f: impl Fn(&Rc<T>)) {
-        let mut queue = self.queue_for_stackwalk.borrow();
-        for item in queue.iter() {
-            f(item);
+    pub fn find_for_stack_walk(&self, f: impl Fn(&Rc<T>, bool) -> bool) {
+        let queue = self.queue_for_stackwalk.borrow();
+        for (index, item) in queue.iter().enumerate() {
+             if f(item, index == queue.len() - 1) {
+                break;
+             };
         }
     }
 
