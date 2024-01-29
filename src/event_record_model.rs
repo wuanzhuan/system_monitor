@@ -26,6 +26,11 @@ impl EventRecordModel {
             stack_walk: UnsafeCell::new(None)
         }
     }
+
+    pub fn timestamp(&self) -> i64 {
+        self.array.timestamp.0
+    }
+
     pub fn row_data_pretty(&self, row: usize) -> Option<SharedString> {
         if row >= COLUMN_NAMES.len() {
             None

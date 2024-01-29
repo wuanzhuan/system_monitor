@@ -9,6 +9,7 @@ use windows::{
 };
 use serde::Serialize;
 use linked_hash_map::LinkedHashMap;
+use crate::utils::TimeStamp;
 
 
 pub struct Decoder<'a>{
@@ -149,7 +150,7 @@ impl<'a> Decoder<'a> {
             provider_message,
             process_id: header.ProcessId,
             thread_id: header.ThreadId,
-            timestamp: header.TimeStamp as u64,
+            timestamp: TimeStamp(header.TimeStamp),
             properties
         })
     }
@@ -406,7 +407,7 @@ pub struct EventRecordDecoded {
     pub provider_message: String,
     pub process_id: u32,
     pub thread_id: u32,
-    pub timestamp:  u64,
+    pub timestamp: TimeStamp,
     pub properties: PropertyDecoded
 }
 

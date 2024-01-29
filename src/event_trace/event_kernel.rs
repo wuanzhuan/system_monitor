@@ -1009,17 +1009,17 @@ pub mod event_property {
     use crate::event_trace::event_decoder;
 	
     pub struct StackWalk {
-        event_timestamp: u64,
-        stack_process: u32,
-        stack_thread: u32,
-        stacks: Vec<(String, u64)>
+        pub event_timestamp: i64,
+        pub stack_process: u32,
+        pub stack_thread: u32,
+        pub stacks: Vec<(String, u64)>
     }
 
 	impl StackWalk {
 		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
 			if let event_decoder::PropertyDecoded::Struct(map) = &erd.properties {
 				let event_timestamp = map.get("EventTimeStamp").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property { u64::from_str_radix(s.as_str(), 10).unwrap()} else { 0 } 
+					if let event_decoder::PropertyDecoded::String(s) = property { i64::from_str_radix(s.as_str(), 10).unwrap()} else { 0 } 
 				}).unwrap_or_default();
 				let stack_process = map.get("StackProcess").map(|property| {
 					if let event_decoder::PropertyDecoded::String(s) = property { u32::from_str_radix(s.as_str(), 10).unwrap()} else { 0 } 
@@ -1037,7 +1037,7 @@ pub mod event_property {
 				}
 				Self{event_timestamp, stack_process, stack_thread, stacks}
 			} else {
-				Self{event_timestamp: erd.timestamp, stack_process: 0, stack_thread: 0, stacks: vec![]}
+				Self{event_timestamp: erd.timestamp.0, stack_process: 0, stack_thread: 0, stacks: vec![]}
 			}
 		}
 	}
