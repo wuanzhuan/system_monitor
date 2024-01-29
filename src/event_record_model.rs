@@ -36,7 +36,7 @@ impl EventRecordModel {
             None
         } else {
             match row {
-                0 => Some(SharedString::from(self.array.timestamp.to_string())),
+                0 => Some(SharedString::from(format!("{} ({:#x})", self.array.timestamp.to_string(), self.array.timestamp.0))),
                 1 => Some(SharedString::from((self.array.process_id as i32).to_string())),
                 2 => Some(SharedString::from((self.array.thread_id as i32).to_string())),
                 3 => Some(SharedString::from(self.array.event_name.to_string())),
