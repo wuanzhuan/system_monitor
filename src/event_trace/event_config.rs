@@ -1,20 +1,29 @@
 use tracing::error;
 use super::event_kernel;
 use windows::Win32::System::Diagnostics::Etw::CLASSIC_EVENT_ID;
+use std::collections::HashMap;
+
 
 pub struct Config {
     pub events_enables: Vec<EventEnable>,
-    pub events_desc: &'static[event_kernel::EventsDescribe]
+    pub events_desc: &'static[event_kernel::EventsDescribe],
+    pub events_enable_map: HashMap<&'static str, (usize, HashMap<&'static str, usize>)>
 }
 
 impl Config {
     pub fn new(events_desc: &'static[event_kernel::EventsDescribe]) -> Self {
         let mut event_enable = Vec::<EventEnable>::new();
-        for item in events_desc.iter() {
+        let mut events_name_map = HashMap::new();
+        for (index, item) in events_desc.iter().enumerate() {
             let em = EventEnable{major: false, minors: vec![false; item.minors.len()]};
             event_enable.push(em);
+            let mut minor_map = HashMap::new();
+            for (index_minor, item_minor) in item.minors.iter().enumerate() {
+                minor_map.insert(item_minor.name, index_minor);
+            }
+            events_name_map.insert(item.major.name, (index, minor_map));
         }
-        Self{events_enables: event_enable, events_desc}
+        Self{events_enables: event_enable, events_desc, events_enable_map: events_name_map}
     }
 
     #[allow(unused)]

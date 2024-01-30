@@ -271,11 +271,29 @@ impl Controller {
                     Ok(event_record_decoded) => {
                         let context_arc = CONTEXT.clone();
                         if let Ok(context_mg) = context_arc.try_lock() {
-                            if let Some(ref cb) = context_mg.event_record_callback {
-                                let cb = cb.clone();
+                            let is_stack_walk = event_record_decoded.provider_id == event_kernel::STACK_WALK_GUID;
+                            if is_stack_walk {
+                                let cb = context_mg.event_record_callback.clone().unwrap();
                                 mem::drop(context_mg);
-                                let is_stack_walk = event_record_decoded.provider_id == event_kernel::STACK_WALK_GUID;
                                 cb(event_record_decoded, is_stack_walk);
+                            } else {
+                                if let Some(major_map_item) = context_mg.config.events_enable_map.get(event_record_decoded.event_name.as_str()) {
+                                    if context_mg.config.events_enables[major_map_item.0].major {
+                                        if let Some(minor_map_item) = major_map_item.1.get(event_record_decoded.opcode_name.as_str()) {
+                                            if context_mg.config.events_enables[major_map_item.0].minors[*minor_map_item] {
+                                                let cb = context_mg.event_record_callback.clone().unwrap();
+                                                mem::drop(context_mg);
+                                                cb(event_record_decoded, is_stack_walk);
+                                            }
+                                        } else {
+                                            warn!("Can't find minor {} of {} in events_enable_map", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str());
+                                        }
+                                    } else {
+                                        error!("Not major enable event: {}-{}", event_record_decoded.event_name, event_record_decoded.opcode_name);
+                                    }
+                                }else {
+                                    warn!("Can't find major {} in events_enable_map", event_record_decoded.event_name.as_str());
+                                }
                             }
                         };
                     },
@@ -297,7 +315,7 @@ impl Controller {
                 self.h_trace_session,
                 TraceSystemTraceEnableFlagsInfo,
                 ptr::addr_of!(gm.masks) as *const ffi::c_void,
-                std::mem::size_of_val(&gm.masks) as u32,
+                mem::size_of_val(&gm.masks) as u32,
             )
         } {
             error!("Failed to TraceSetInformation TraceSystemTraceEnableFlagsInfo: {}", e);
