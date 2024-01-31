@@ -263,7 +263,8 @@ impl Controller {
     }
 
     unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
-        let r = event_decoder::Decoder::new(mem::transmute(eventrecord));
+        let er: &EVENT_RECORD = mem::transmute(eventrecord);
+        let r = event_decoder::Decoder::new(er);
         match r {
             Ok(mut decoder) => {
                 let r = decoder.decode();
@@ -286,7 +287,7 @@ impl Controller {
                                                 cb(event_record_decoded, is_stack_walk);
                                             }
                                         } else {
-                                            warn!("Can't find minor {} of {} in events_enable_map", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str());
+                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode);
                                         }
                                     } else {
                                         error!("Not major enable event: {}-{}", event_record_decoded.event_name, event_record_decoded.opcode_name);
