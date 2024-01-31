@@ -11,12 +11,6 @@ pub use strum::*;
    system-providers: https://learn.microsoft.com/zh-cn/windows/win32/etw/system-providers
 */
 pub const EVENTS_DESC: &'static[EventsDescribe] = &[
-	EventsDescribe{
-		major: MajorDescribe{name: "EventTrace", flag: Major::None as u32},
-		minors: &[],
-		guid: GUID::zeroed()
-	},
-
 	// Masks[0]
 	EventsDescribe{
 		major: MajorDescribe{name: "Process", flag: Major::Process as u32},
@@ -516,7 +510,11 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "EventTrace", flag: Major::Events as u32},
-		minors: &[],
+		minors: &[
+			MinorDescribe{name: "Extension", op_code: 5},
+			MinorDescribe{name: "RDComplete", op_code: 8},
+			MinorDescribe{name: "EndExtension", op_code: 32},
+		],
 		guid: GUID::zeroed() //?
 	},
 	EventsDescribe{
