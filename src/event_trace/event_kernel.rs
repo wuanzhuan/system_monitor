@@ -30,6 +30,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "End", op_code: 2},
 			MinorDescribe{name: "DCStart", op_code: 3},
 			MinorDescribe{name: "DCEnd", op_code: 4},
+			MinorDescribe{name: "SetName", op_code: 72},
 		],
 		guid: ThreadGuid
 	},
