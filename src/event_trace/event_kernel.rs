@@ -234,11 +234,12 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		],
 		guid: FileIoGuid
 	},
-	EventsDescribe{
-		major: MajorDescribe{name: "NoSysConfig", flag: Major::NoSysConfig as u32},
-		minors: &[],
-		guid: GUID::zeroed() //?
-	},
+	// Don't use, replace by masks[6] of Major
+	// EventsDescribe{
+	// 	major: MajorDescribe{name: "NoSysConfig", flag: Major::NoSysConfig as u32},
+	// 	minors: &[],
+	// 	guid: GUID::zeroed() //?
+	// },
 
 	// Mask[1]
 	EventsDescribe{

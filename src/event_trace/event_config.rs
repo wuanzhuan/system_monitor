@@ -47,6 +47,7 @@ impl Config {
 
     pub fn get_group_mask(&self) -> event_kernel::PERFINFO_GROUPMASK {
         let mut gm = event_kernel::PERFINFO_GROUPMASK::new();
+        gm.or_assign_with_groupmask(super::event_kernel::Major::NoSysConfig as u32);
         for (index, item) in self.events_enables.iter().enumerate() {
             if !item.major {
                 continue;
