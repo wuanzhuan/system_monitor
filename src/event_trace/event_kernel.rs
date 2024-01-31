@@ -515,7 +515,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		guid: OBJECT_GUID
 	},
 	EventsDescribe{
-		major: MajorDescribe{name: "Events", flag: Major::Events as u32},
+		major: MajorDescribe{name: "EventTrace", flag: Major::Events as u32},
 		minors: &[],
 		guid: GUID::zeroed() //?
 	},
