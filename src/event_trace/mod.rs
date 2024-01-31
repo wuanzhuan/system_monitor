@@ -51,8 +51,6 @@ lazy_static! {
 #[repr(C)]
 struct EtwPropertiesBuf(EVENT_TRACE_PROPERTIES, [u8]);
 
-struct EventRecord<'a>(&'a EVENT_RECORD);
-
 pub struct Controller {
     config: event_config::Config,
     h_trace_session: CONTROLTRACE_HANDLE,
@@ -287,13 +285,13 @@ impl Controller {
                                                 cb(event_record_decoded, is_stack_walk);
                                             }
                                         } else {
-                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode);
+                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {} event record:\n{}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, EventRecord(er));
                                         }
                                     } else {
-                                        error!("Not major enable event: {}-{}", event_record_decoded.event_name, event_record_decoded.opcode_name);
+                                        error!("Not major enable event: {}-{} event record:\n{}", event_record_decoded.event_name, event_record_decoded.opcode_name, EventRecord(er));
                                     }
                                 }else {
-                                    warn!("Can't find major {} in events_enable_map", event_record_decoded.event_name.as_str());
+                                    warn!("Can't find major {} in events_enable_map opcode: {} event record:\n{}", event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, EventRecord(er));
                                 }
                             }
                         };
@@ -359,25 +357,46 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
     properties_buf
 }
 
+
+struct EventRecord<'a>(&'a EVENT_RECORD);
+
 impl<'a> fmt::Display for EventRecord<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let r = event_decoder::Decoder::new(self.0);
-        match r {
-            Ok(mut decoder) => {
-                let r = decoder.decode();
-                match r {
-                    Ok(event_record_decoded) => {
-                        write!(f,"{:?}", event_record_decoded)
-                    },
-                    Err(e) => {
-                        write!(f,"{:?}", e)
-                    }
-                }
-            },
-            Err(e) => {
-                write!(f,"{:?}", e)
-            }
-        }
+        let header = self.0.EventHeader;
+        write!(f,"header:
+                  \tSize: {}
+                  \tHeaderType: {}
+                  \tFlags: {}
+                  \tEventProperty: {}
+                  \tThreadId: {}
+                  \tProcessId: {}
+                  \tTimeStamp: {}
+                  \tProviderId: {:?}
+                  \tevent descroptor:
+                  \t\tId: {}
+                  \t\tVersion: {}
+                  \t\tChannel: {}
+                  \t\tLevel: {}
+                  \t\tOpcode: {}
+                  \t\tTask: {}
+                  \t\tKeyword: {}
+                  \tActivityId: {:?}",     
+                  header.Size,
+                  header.HeaderType,
+                  header.Flags,
+                  header.EventProperty,
+                  header.ThreadId,
+                  header.ProcessId,
+                  header.TimeStamp,
+                  header.ProviderId,
+                  header.EventDescriptor.Id,
+                  header.EventDescriptor.Version,
+                  header.EventDescriptor.Channel,
+                  header.EventDescriptor.Level,
+                  header.EventDescriptor.Opcode,
+                  header.EventDescriptor.Task,
+                  header.EventDescriptor.Keyword,
+                  header.ActivityId)
     }
 }
 
