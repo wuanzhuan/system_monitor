@@ -224,7 +224,7 @@ impl<'a> Decoder<'a> {
             {
                 16 // special case for incorrectly-defined IPV6 addresses
             } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
-                if length_property_index < self.int_values.len() as u16 {
+                if length_property_index >= self.int_values.len() as u16 {
                     return Err(Error::new(E_FAIL, HSTRING::from(format!("index overflow: length_property_index: {length_property_index} array len: {}", self.int_values.len()))));
                 }
                 self.int_values[length_property_index as usize]
