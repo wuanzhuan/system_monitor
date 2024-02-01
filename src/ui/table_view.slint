@@ -110,30 +110,31 @@ component TableViewCell inherits Rectangle {
     ]
 
     popup := PopupWindow {
-        y: root.height + 1rem;
-        
-        Rectangle {
-            background: Palette.background;
-            border-color: Palette.border;
-            border-width: 1phx;  
+        x: 12px;
+        y: parent.height + 12px;
 
-            ScrollView {
-                preferred-width: text-element.preferred-width + 12px;
-                preferred-height: text-element.preferred-height + 12px;
-                text-element := HorizontalLayout {
-                    padding: 12px;
-    
-                    Text {
-                        min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
-                        max-width: self.font-size * 50;
-                        min-height: max(self.font-size * 3, self.preferred-height);
-                        horizontal-alignment: left;
-                        vertical-alignment: center;
-                        wrap: word-wrap;
-                        text: info;
-                        font-weight: Typography.body.font-weight;
-                        font-size: Typography.body.font-size;
-                    }
+        ScrollView {
+            x: 0;
+            y: 0;
+            width: rect.preferred-width + 12px;
+            height: rect.preferred-height + 12px;
+
+            rect := Rectangle {
+                background: Palette.background;
+                border-color: Palette.border;
+                border-width: 1phx;
+                padding: 12px;
+
+                Text {
+                    min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
+                    max-width: self.font-size * 50;
+                    min-height: max(self.font-size * 3, self.preferred-height);
+                    horizontal-alignment: left;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                    text: info;
+                    font-weight: Typography.body.font-weight;
+                    font-size: Typography.body.font-size;
                 }
             }
         }
