@@ -188,7 +188,7 @@ component TableViewRow inherits Rectangle {
             root.background: Palette.control-background;
         }
         hover when root.has-hover : {
-            root.border-color: Palette.control-background;
+            root.border-color: Palette.accent-background;
             root.border-width: 1px;
             i-selector.height: root.selected ? 16px : 0;
         }
@@ -232,6 +232,7 @@ export component TableView {
     private property <length> min-header-height: 42px;
     private property <length> item-height: i-scroll-view.viewport-height / rows.length;
     private property <length> current-item-y: i-scroll-view.viewport-y + current-row * item-height;
+    private property <int> has-hover-row: -1;
 
     public function set-current-row(index: int) {
         if (index < 0 || index >= rows.length) {
@@ -314,6 +315,7 @@ export component TableView {
         i-scroll-view := ListView {
             for row[idx] in root.rows : row_element := TableViewRow {
                 selected: idx == root.current-row;
+                has-hover: idx == has-hover-row;
                 even: mod(idx, 2) == 0;
 
                 // order number
@@ -329,6 +331,9 @@ export component TableView {
                             x: pos.x - root.absolute-position.x,
                             y: pos.y - root.absolute-position.y,
                         });
+                        if pe.kind == PointerEventKind.move {
+                            root.has-hover-row = idx;
+                        }
                     }
     
                     clicked => {
@@ -350,6 +355,9 @@ export component TableView {
                             x: pos.x - root.absolute-position.x,
                             y: pos.y - root.absolute-position.y,
                         });
+                        if pe.kind == PointerEventKind.move {
+                            root.has-hover-row = idx;
+                        }
                     }
     
                     clicked => {
