@@ -364,39 +364,39 @@ impl<'a> fmt::Display for EventRecord<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let header = self.0.EventHeader;
         write!(f,"header:
-                  \tSize: {}
-                  \tHeaderType: {}
-                  \tFlags: {}
-                  \tEventProperty: {}
-                  \tThreadId: {}
-                  \tProcessId: {}
-                  \tTimeStamp: {}
-                  \tProviderId: {:?}
-                  \tevent descroptor:
-                  \t\tId: {}
-                  \t\tVersion: {}
-                  \t\tChannel: {}
-                  \t\tLevel: {}
-                  \t\tOpcode: {}
-                  \t\tTask: {}
-                  \t\tKeyword: {}
-                  \tActivityId: {:?}",     
-                  header.Size,
-                  header.HeaderType,
-                  header.Flags,
-                  header.EventProperty,
-                  header.ThreadId as i32,
-                  header.ProcessId as i32,
-                  header.TimeStamp,
-                  header.ProviderId,
-                  header.EventDescriptor.Id,
-                  header.EventDescriptor.Version,
-                  header.EventDescriptor.Channel,
-                  header.EventDescriptor.Level,
-                  header.EventDescriptor.Opcode,
-                  header.EventDescriptor.Task,
-                  header.EventDescriptor.Keyword,
-                  header.ActivityId)
+            Size: {}
+            HeaderType: {}
+            Flags: {}
+            EventProperty: {}
+            ThreadId: {}
+            ProcessId: {}
+            TimeStamp: {}
+            ProviderId: {:?}
+            event descroptor:
+                Id: {}
+                Version: {}
+                Channel: {}
+                Level: {}
+                Opcode: {}
+                Task: {}
+                Keyword: {}
+            ActivityId: {:?}",     
+            header.Size,
+            header.HeaderType,
+            header.Flags,
+            header.EventProperty,
+            header.ThreadId as i32,
+            header.ProcessId as i32,
+            header.TimeStamp,
+            header.ProviderId,
+            header.EventDescriptor.Id,
+            header.EventDescriptor.Version,
+            header.EventDescriptor.Channel,
+            header.EventDescriptor.Level,
+            header.EventDescriptor.Opcode,
+            header.EventDescriptor.Task,
+            header.EventDescriptor.Keyword,
+            header.ActivityId)
     }
 }
 
