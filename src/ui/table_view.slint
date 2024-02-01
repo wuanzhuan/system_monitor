@@ -1,8 +1,8 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: GPL-3.0-only OR LicenseRef-Slint-Royalty-free-1.1 OR LicenseRef-Slint-commercial
 
-import { Palette, Typography, Icons } from "styling.slint";
-import { ListView, ScrollView } from "std-widgets.slint";
+import { Typography, Icons } from "styling.slint";
+import { ListView, ScrollView, Palette } from "std-widgets.slint";
 
 component TableViewColumn inherits Rectangle {
     background: Palette.background;
@@ -16,10 +16,10 @@ component TableViewColumn inherits Rectangle {
 
     states [
         pressed when i-touch-area.pressed : {
-            background: Palette.control-secondary;
+            background: Palette.control-background;
         }
         hover when i-touch-area.has-hover : {
-            background: Palette.sub-title-tertiary;
+            background: Palette.control-background;
         }
     ]
 
@@ -39,13 +39,13 @@ component TableViewColumn inherits Rectangle {
             text: text;
             font-weight: Typography.body.font-weight;
             font-size: Typography.body.font-size;
-            color: Palette.text-secondary;
+            color: Palette.foreground;
             overflow: elide;
         }
 
         i-icon := Image {
             image-fit: contain;
-            colorize: Palette.text-secondary;
+            colorize: Palette.foreground;
             visible: root.sort-order != SortOrder.unsorted;
             width: 12px;
             y: (parent.height - self.height) / 2;
@@ -60,7 +60,7 @@ component TableViewColumn inherits Rectangle {
         y: parent.height - self.height;
         width: 100%;
         height: 1px;
-        background: Palette.divider;
+        background: Palette.foreground.darker(0.5);
     }
 
     Rectangle {
@@ -69,7 +69,7 @@ component TableViewColumn inherits Rectangle {
 
         states [
             hover when i-movable-touch-area.has-hover : {
-                background: Palette.control-secondary;
+                background: Palette.control-background;
             }
         ]
 
@@ -95,7 +95,6 @@ component TableViewCell inherits Rectangle {
     in property <int> index_row;
     in property <int> index_column;
     in property <TextHorizontalAlignment> horizontal-alignment;
-    in property <brush> bg;
     out property <bool> has-hover: i-touch-area.has-hover;
     out property <bool> pressed: i-touch-area.pressed;
     private property <string> info;
@@ -106,7 +105,7 @@ component TableViewCell inherits Rectangle {
 
     states [
         hover when i-touch-area.has-hover: {
-            root.background: bg.brighter(0.5);
+            root.background: Palette.control-background;
         }
     ]
 
@@ -115,7 +114,7 @@ component TableViewCell inherits Rectangle {
         
         Rectangle {
             background: Palette.background;
-            border-color: Palette.control-border;
+            border-color: Palette.border;
             border-width: 1phx;  
 
             ScrollView {
@@ -169,7 +168,7 @@ component TableViewCell inherits Rectangle {
             text: text;
             font-weight: Typography.body.font-weight;
             font-size: Typography.body.font-size;
-            color: mod(index_row, 2) == 0 ? Palette.text-primary : Palette.text-secondary;
+            color: mod(index_row, 2) == 0 ? Palette.foreground : Palette.alternate-foreground;
         }
     }
 }
@@ -183,19 +182,19 @@ component TableViewRow inherits Rectangle {
     min-width: i-layout.min-width;
     min-height: max(34px, i-layout.min-height);
     border-radius: 4px;
-    background: root.even ? Palette.control-default : Palette.control-secondary;
+    background: root.even ? Palette.background : Palette.alternate-background;
 
     states [
         pressed when root.pressed : {
-            root.background: selected ? Palette.subtle-secondary : Palette.subtle-tertiary;
+            root.background: Palette.control-background;
         }
         hover when root.has-hover : {
-            root.border-color: Palette.accent-default;
+            root.border-color: Palette.control-background;
             root.border-width: 1px;
             i-selector.height: root.selected ? 16px : 0;
         }
         selected when root.selected : {
-            root.border-color: Palette.accent-default;
+            root.border-color: Palette.selection-background;
             root.border-width: 1px;
             i-selector.height: 16px;
         }
@@ -210,7 +209,7 @@ component TableViewRow inherits Rectangle {
         y: (parent.height - self.height) / 2;
         width: 4px;
         height: 0px;
-        background: Palette.accent-default;
+        background: Palette.accent-background;
         border-radius: 2px;
 
         animate height { duration: 150ms; easing: ease-out; }
@@ -322,7 +321,6 @@ export component TableView {
                 // order number
                 if has-order-number : TableViewCell {
                     width: root.order-column-width;
-                    bg: parent.background;
                     text: idx;
                     index-row: idx;
                     index-column: 0;
@@ -344,7 +342,6 @@ export component TableView {
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
                     width: index < root.columns.length - 1 ? root.columns[index].width : parent.width;
-                    bg: parent.background;
                     text: cell.text;
                     index-row: idx;
                     index-column: index;
