@@ -98,6 +98,7 @@ component TableViewCell inherits Rectangle {
     private property <string> info;
 
     callback clicked;
+    callback double-clicked;
     callback pointer-event(/* event */ PointerEvent, /* absolute mouse position */ Point);
     callback text-pretty(/* row-index */int, /* column-index */ int) -> string;
 
@@ -144,6 +145,9 @@ component TableViewCell inherits Rectangle {
             root.info = root.text-pretty(index-row, index-column);
             popup.show();
         }
+        double-clicked => {
+            root.double-clicked()
+        }
         pointer-event(pe) => {
             root.pointer-event(pe, {
                 x: self.absolute-position.x + self.mouse-x,
@@ -183,6 +187,11 @@ component TableViewRow inherits Rectangle {
     border-radius: 4px;
     background: root.even ? Palette.background : Palette.alternate-background;
 
+    public function double-clicked() {
+        debug("double-clicked");
+        popup.show();
+    }
+
     states [
         pressed when root.pressed : {
             root.background: Palette.control-background;
@@ -198,6 +207,37 @@ component TableViewRow inherits Rectangle {
             i-selector.height: 16px;
         }
     ]
+
+    popup := PopupWindow {
+        x: 12px;
+        y: parent.height + 12px;
+
+        ScrollView {
+            x: 0;
+            y: 0;
+            width: rect.preferred-width + 12px;
+            height: rect.preferred-height + 12px;
+
+            rect := Rectangle {
+                background: Palette.background;
+                border-color: Palette.border;
+                border-width: 1phx;
+                padding: 12px;
+
+                Text {
+                    min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
+                    max-width: self.font-size * 50;
+                    min-height: max(self.font-size * 3, self.preferred-height);
+                    horizontal-alignment: left;
+                    vertical-alignment: center;
+                    wrap: word-wrap;
+                    text: "hello world!";
+                    font-weight: Typography.body.font-weight;
+                    font-size: Typography.body.font-size;
+                }
+            }
+        }
+    }
 
     i-layout := HorizontalLayout {
         @children
@@ -341,6 +381,9 @@ export component TableView {
                         root.set-current-row(idx);
                     }
 
+                    double-clicked => {
+                        row_element.double-clicked();
+                    }
                 }
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
@@ -364,6 +407,11 @@ export component TableView {
                         root.focus();
                         root.set-current-row(idx);
                     }
+
+                    double-clicked => {
+                        row_element.double-clicked();
+                    }
+
                     text-pretty(index_row, index_column) => {
                         root.cell-data-pretty(index_row, index_column)
                     }
