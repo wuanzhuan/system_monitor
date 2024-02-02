@@ -38,7 +38,7 @@ component TableViewColumn inherits Rectangle {
             vertical-alignment: center;
             text: text;
             font-weight: 600;
-            font-size: 1.5rem;
+            font-size: 1.4rem;
             color: Palette.foreground;
             overflow: elide;
         }
@@ -152,6 +152,7 @@ component TableViewCell inherits Rectangle {
             popup.show();
         }
         double-clicked => {
+            debug("double-clicked");
             root.double-clicked()
         }
         pointer-event(pe) => {
@@ -176,7 +177,7 @@ component TableViewCell inherits Rectangle {
             vertical-alignment: center;
             text: text;
             font-weight: 500;
-            font-size: 1rem;
+            font-size: 1.2rem;
             color: mod(index_row, 2) == 0 ? Palette.foreground : Palette.alternate-foreground;
         }
     }
@@ -244,7 +245,7 @@ component TableViewRow inherits Rectangle {
                         wrap: word-wrap;
                         text: "hello world!";
                         font-weight: 500;
-                        font-size: 1rem;
+                        font-size: 1.2rem;
                     }
                 }
             }
