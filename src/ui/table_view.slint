@@ -154,10 +154,6 @@ component TableViewRow inherits Rectangle {
     border-radius: 4px;
     background: root.even ? Palette.background : Palette.alternate-background;
 
-    public function double-clicked() {
-        popup.show();
-    }
-
     states [
         pressed when root.pressed : {
             root.background: Palette.control-background;
@@ -173,43 +169,6 @@ component TableViewRow inherits Rectangle {
             i-selector.height: 16px;
         }
     ]
-
-    popup := PopupWindow {
-        x: 12px;
-        y: parent.height + 12px;
-
-        ScrollView {
-            x: 0;
-            y: 0;
-            width: rect.preferred-width + 12px;
-            height: rect.preferred-height + 12px;
-
-            rect := Rectangle {
-                background: Palette.background;
-                border-color: Palette.border;
-                border-width: 1phx;
-                
-                HorizontalBox {
-                    padding-left: 12px;
-                    padding-right: 12px;
-                    padding-top: 9px;
-                    padding-bottom: 9px;
-
-                    Text {
-                        min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
-                        max-width: self.font-size * 50;
-                        min-height: max(self.font-size * 3, self.preferred-height);
-                        horizontal-alignment: left;
-                        vertical-alignment: center;
-                        wrap: word-wrap;
-                        text: "hello world!";
-                        font-weight: 500;
-                        font-size: 1.2rem;
-                    }
-                }
-            }
-        }
-    }
 
     i-layout := HorizontalLayout {
         @children
@@ -278,11 +237,52 @@ export component TableView {
         root.current-sort-column = index;
     }
 
+    function row-detail-info(index: int) {
+        popup.show();
+    }
+
     min-width: 400px;
     min-height: 200px;
     horizontal-stretch: 1;
     vertical-stretch: 1;
     forward-focus: i-focus-scope;
+
+    popup := PopupWindow {
+        x: 30px;
+        y: 22px;
+
+        ScrollView {
+            x: 0;
+            y: 0;
+            width: rect.preferred-width + 12px;
+            height: rect.preferred-height + 12px;
+
+            rect := Rectangle {
+                background: Palette.background;
+                border-color: Palette.border;
+                border-width: 1phx;
+                
+                HorizontalBox {
+                    padding-left: 12px;
+                    padding-right: 12px;
+                    padding-top: 9px;
+                    padding-bottom: 9px;
+
+                    Text {
+                        min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
+                        max-width: self.font-size * 50;
+                        min-height: max(self.font-size * 3, self.preferred-height);
+                        horizontal-alignment: left;
+                        vertical-alignment: center;
+                        wrap: word-wrap;
+                        text: "hello world!";
+                        font-weight: 500;
+                        font-size: 1.2rem;
+                    }
+                }
+            }
+        }
+    }
 
     VerticalLayout {
         Rectangle {
@@ -353,7 +353,7 @@ export component TableView {
                     }
 
                     double-clicked => {
-                        row_element.double-clicked();
+                        root.row-detail-info(idx);
                     }
                 }
                 for cell[index] in row : TableViewCell {
@@ -380,7 +380,7 @@ export component TableView {
                     }
 
                     double-clicked => {
-                        row_element.double-clicked();
+                        root.row-detail-info(idx);
                     }
                 }
             }
