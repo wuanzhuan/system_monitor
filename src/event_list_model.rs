@@ -148,12 +148,4 @@ impl<'a, T> ListModel<'a, T> {
         self.notify.row_removed(index, 1)
     }
 
-    pub fn row_data_pretty(&self, row: usize) -> Option<Rc<T>> {
-        if row >= self.list.len() {
-            return None;
-        }
-        self.move_to(row);
-        let mut cursor = self.cursor.borrow_mut();
-        cursor.current().map(|some| some.clone())
-    }
 }
