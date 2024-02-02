@@ -204,6 +204,12 @@ export component TableView {
     private property <length> current-item-y: i-scroll-view.viewport-y + current-row * item-height;
     private property <int> has-hover-row: -1;
 
+    min-width: 400px;
+    min-height: 200px;
+    horizontal-stretch: 1;
+    vertical-stretch: 1;
+    forward-focus: i-focus-scope;
+
     public function set-current-row(index: int) {
         if (index < 0 || index >= rows.length) {
             return;
@@ -240,12 +246,6 @@ export component TableView {
     function row-detail-info(index: int) {
         popup.show();
     }
-
-    min-width: 400px;
-    min-height: 200px;
-    horizontal-stretch: 1;
-    vertical-stretch: 1;
-    forward-focus: i-focus-scope;
 
     popup := PopupWindow {
         x: 30px;
