@@ -7,3 +7,18 @@ pub mod bytemuck {
         unsafe { core::slice::from_raw_parts(a.as_ptr() as *const B, new_len) }
     } 
 }
+
+use windows::core::GUID;
+use serde::{Serialize, Serializer};
+
+#[derive(Debug)]
+pub struct Guid(pub GUID);
+
+impl Serialize for Guid {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer {
+        serializer.serialize_str(format!("{:?}", self.0).as_str())
+    }
+}
+
