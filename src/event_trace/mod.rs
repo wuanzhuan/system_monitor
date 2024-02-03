@@ -270,7 +270,7 @@ impl Controller {
                     Ok(event_record_decoded) => {
                         let context_arc = CONTEXT.clone();
                         if let Ok(context_mg) = context_arc.try_lock() {
-                            let is_stack_walk = event_record_decoded.provider_id == event_kernel::STACK_WALK_GUID;
+                            let is_stack_walk = event_record_decoded.provider_id.0 == event_kernel::STACK_WALK_GUID;
                             if is_stack_walk {
                                 let cb = context_mg.event_record_callback.clone().unwrap();
                                 mem::drop(context_mg);
