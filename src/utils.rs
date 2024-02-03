@@ -1,4 +1,5 @@
 use chrono::*;
+use serde::{Serialize, Serializer};
 
 
 /// https://learn.microsoft.com/zh-CN/windows/win32/api/minwinbase/ns-minwinbase-filetime
@@ -17,5 +18,13 @@ impl std::string::ToString for TimeStamp {
     fn to_string(&self) -> String {
         let dt = self.to_datetime_local();
         dt.to_string()
+    }
+}
+
+impl Serialize for TimeStamp {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer {
+        serializer.serialize_str(self.to_string().as_str())
     }
 }
