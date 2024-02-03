@@ -31,6 +31,10 @@ impl EventRecordModel {
         self.array.timestamp.0
     }
 
+    pub fn data_detail(&self) -> Option<SharedString> {
+        Some(SharedString::from(serde_json::to_string_pretty(&self.array).unwrap_or_default()))
+    }
+
 }
 
 impl Model for EventRecordModel {

@@ -31,8 +31,18 @@ fn main() {
     window.set_position(LogicalPosition::new(1000.0, 500.0));
 
     let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new());
+    let event_list_rc_1 = event_list_rc.clone();
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
+    app.global::<EventsViewData>().on_row_data_detail(move |index_row| {
+        let mut ret = SharedString::from("");
+        if let Some(row) = event_list_rc_1.row_data_detail(index_row as usize) {
+            if let Some(row_item) = row.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
+                ret = row_item.data_detail().unwrap_or_default();
+            }
+        }
+        ret 
+    });
 
     let mut event_descs = vec![];
     for major in event_trace::EVENTS_DESC.iter() {

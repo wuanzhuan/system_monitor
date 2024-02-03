@@ -9,6 +9,7 @@ export global EventsViewData  {
     in property <[[StandardListViewItem]]> row_data: [];
     callback sort_ascending(int);
     callback sort_descending(int);
+    callback row-data-detail(/* row-index */ int) -> string;
 }
 
 export component EventsView inherits VerticalBox {
@@ -36,5 +37,8 @@ export component EventsView inherits VerticalBox {
             {title: @tr("properties"), width: 50rem},
         ];
         rows: EventsViewData.row_data;
+        row-data-detail(index-row) => {
+            EventsViewData.row-data-detail(index-row)
+        }
     }
 }

@@ -198,11 +198,13 @@ export component TableView {
     callback sort-descending(/* column-index */ int);
     callback row-pointer-event(/* row-index */ int, /* event */ PointerEvent,  /* absolute mouse position */ Point);
     callback current-row-changed(/* current-row */ int);
+    callback row-data-detail(/* row-index */ int) -> string;
 
     private property <length> min-header-height: 42px;
     private property <length> item-height: i-scroll-view.viewport-height / rows.length;
     private property <length> current-item-y: i-scroll-view.viewport-y + current-row * item-height;
     private property <int> has-hover-row: -1;
+    private property <string> row-data-detail-info;
 
     min-width: 400px;
     min-height: 200px;
@@ -243,12 +245,8 @@ export component TableView {
         root.current-sort-column = index;
     }
 
-    function row-detail-info(index: int) {
-        popup.show();
-    }
-
     popup := PopupWindow {
-        x: 30px;
+        x: 50px;
         y: 22px;
 
         ScrollView {
@@ -275,7 +273,7 @@ export component TableView {
                         horizontal-alignment: left;
                         vertical-alignment: center;
                         wrap: word-wrap;
-                        text: "hello world!";
+                        text: root.row-data-detail-info;
                         font-weight: 500;
                         font-size: 1.2rem;
                     }
@@ -353,7 +351,8 @@ export component TableView {
                     }
 
                     double-clicked => {
-                        root.row-detail-info(idx);
+                        root.row-data-detail-info = root.row-data-detail(idx);
+                        popup.show();
                     }
                 }
                 for cell[index] in row : TableViewCell {
@@ -380,7 +379,8 @@ export component TableView {
                     }
 
                     double-clicked => {
-                        root.row-detail-info(idx);
+                        root.row-data-detail-info = root.row-data-detail(idx);
+                        popup.show();
                     }
                 }
             }
