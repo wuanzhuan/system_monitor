@@ -7,7 +7,7 @@ use windows::{
     Win32::Foundation::*, 
     Win32::System::Diagnostics::Etw::*,
 };
-use serde::{Serialize, Serializer};
+use serde::Serialize;
 use linked_hash_map::LinkedHashMap;
 use crate::utils::TimeStamp;
 use crate::third_extend::Guid;
