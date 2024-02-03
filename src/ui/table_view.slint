@@ -246,8 +246,8 @@ export component TableView {
     }
 
     popup := PopupWindow {
-        x: 50px;
-        y: 22px;
+        x: order-column-width + 15px;
+        y: i-scroll-view.y + 12px;
 
         ScrollView {
             x: 0;
@@ -267,8 +267,8 @@ export component TableView {
                     padding-bottom: 9px;
 
                     Text {
-                        min-width: max(self.font-size * 8, min(self.preferred-width, self.max-width));
-                        max-width: self.font-size * 50;
+                        min-width: max(self.font-size * 10, min(self.preferred-width, self.max-width));
+                        max-width: self.font-size * 100;
                         min-height: max(self.font-size * 3, self.preferred-height);
                         horizontal-alignment: left;
                         vertical-alignment: center;
