@@ -7,9 +7,10 @@ use windows::{
     Win32::Foundation::*, 
     Win32::System::Diagnostics::Etw::*,
 };
-use serde::Serialize;
+use serde::{Serialize, Serializer};
 use linked_hash_map::LinkedHashMap;
 use crate::utils::TimeStamp;
+use crate::third_extend::Guid;
 
 
 pub struct Decoder<'a>{
@@ -89,7 +90,7 @@ impl<'a> Decoder<'a> {
     }
     pub fn decode(&mut self) -> Result<EventRecordDecoded>{
         let header = &self.event_record.EventHeader;
-        let provider_id = header.ProviderId;
+        let provider_id = Guid(header.ProviderId);
         let provider_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderNameOffset)
                 .unwrap_or_default().to_string().unwrap_or_default();
         let level_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.LevelNameOffset)
@@ -397,9 +398,9 @@ impl<'a> Decoder<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize)]
 pub struct EventRecordDecoded {
-    pub provider_id: GUID,
+    pub provider_id: Guid,
     pub provider_name: String,
     pub level_name: String,
     pub channel_name: String,
