@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import {StandardTableView, VerticalBox, TabWidget, ScrollView, HorizontalBox, ListView, Palette} from "std-widgets.slint";
+import {StandardTableView, VerticalBox, TabWidget, ScrollView, HorizontalBox, ListView, Palette, Button} from "std-widgets.slint";
 import {TableView} from "table_view.slint";
 
 export global EventsViewData  {
@@ -47,70 +47,100 @@ export component EventsView inherits VerticalBox {
     }
 
     popup := PopupWindow {
+        private property <length> font-size: 1.2rem;
         x: table_view.order-column-width + 15px;
         y: table_view.y + table_view.header-height + 12px;
+        width: root.width * 50%;
+        height: root.height * 60%;
+        min-width: font-size * 20;
+        min-height: font-size * 30;
+        close-on-click: false;
 
-        TabWidget {
-            Tab {
-                title: "event detail";
-                ScrollView {
-                    x: 0;
-                    y: 0;
-                    width: rect.preferred-width + 12px;
-                    height: rect.preferred-height + 12px;
+        Rectangle {
+            clip: true;
+            background: Palette.background;
+            border-color: Palette.border;
+            border-width: 1phx;
+
+            VerticalBox {
+                HorizontalBox {
+                    preferred-height: 1.2rem;
+                    alignment: end;
+                    Button {
+                        text: "close";
+                        clicked => {
+                            popup.close();
+                        }
+                    }
+                }
+                tabs := TabWidget {
+                    width: 100%;
+                    height: 100%;
+                    Tab {
+                        title: "event detail";
+
+                        ScrollView {
+                            x: 0;
+                            y: 0;
+                            width: 100%;
+                            height: 100%;
+                            viewport-x: 0;
+                            viewport-y: 0;
+                            viewport-width: rect.preferred-width;
+                            viewport-height: rect.preferred-height;
+
+                            rect := Rectangle {
+                                background: Palette.background;
+
+                                HorizontalBox {
+                                    padding-left: 12px;
+                                    padding-right: 12px;
+                                    padding-top: 9px;
+                                    padding-bottom: 9px;
+
+                                    Text {
+                                        width: 100%;
+                                        height: 100%;
+                                        horizontal-alignment: left;
+                                        vertical-alignment: center;
+                                        wrap: word-wrap;
+                                        text: root.row-data-detail-info;
+                                        font-weight: 500;
+                                        font-size: 1.2rem;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    Tab {
+                        title: "stacks";
+
+                        VerticalBox {
+                            HorizontalBox {
+                                padding-left: 12px;
+                                padding-right: 12px;
+                                padding-top: 9px;
+                                padding-bottom: 9px;
+            
+                                Text {
+                                    min-width: max(self.font-size * 10, min(self.preferred-width, self.max-width));
+                                    max-width: self.font-size * 100;
+                                    min-height: max(self.font-size * 3, self.preferred-height);
+                                    horizontal-alignment: left;
+                                    vertical-alignment: center;
+                                    wrap: word-wrap;
+                                    text: "thread id: ";
+                                    font-weight: 500;
+                                    font-size: 1.2rem;
+                                }
+                            }
+                            ListView {
         
-                    rect := Rectangle {
-                        background: Palette.background;
-                        border-color: Palette.border;
-                        border-width: 1phx;
-                        
-                        HorizontalBox {
-                            padding-left: 12px;
-                            padding-right: 12px;
-                            padding-top: 9px;
-                            padding-bottom: 9px;
-        
-                            Text {
-                                min-width: max(self.font-size * 10, min(self.preferred-width, self.max-width));
-                                max-width: self.font-size * 100;
-                                min-height: max(self.font-size * 3, self.preferred-height);
-                                horizontal-alignment: left;
-                                vertical-alignment: center;
-                                wrap: word-wrap;
-                                text: root.row-data-detail-info;
-                                font-weight: 500;
-                                font-size: 1.2rem;
                             }
                         }
                     }
                 }
-            }
-            Tab {
-                title: "stacks";
-                VerticalBox {
-                    HorizontalBox {
-                        padding-left: 12px;
-                        padding-right: 12px;
-                        padding-top: 9px;
-                        padding-bottom: 9px;
-    
-                        Text {
-                            min-width: max(self.font-size * 10, min(self.preferred-width, self.max-width));
-                            max-width: self.font-size * 100;
-                            min-height: max(self.font-size * 3, self.preferred-height);
-                            horizontal-alignment: left;
-                            vertical-alignment: center;
-                            wrap: word-wrap;
-                            text: "";
-                            font-weight: 500;
-                            font-size: 1.2rem;
-                        }
-                    }
-                    ListView {
-
-                    }
-                }
-            }
+           }
         }
     }
 }
