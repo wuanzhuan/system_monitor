@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import {StandardTableView, VerticalBox} from "std-widgets.slint";
+import {StandardTableView, VerticalBox, TabWidget, ScrollView, HorizontalBox, ListView, Palette} from "std-widgets.slint";
 import {TableView} from "table_view.slint";
 
 export global EventsViewData  {
@@ -13,6 +13,8 @@ export global EventsViewData  {
 }
 
 export component EventsView inherits VerticalBox {
+    private property <string> row-data-detail-info;
+
     spacing: 2rem;
     
     Text {
@@ -20,7 +22,7 @@ export component EventsView inherits VerticalBox {
         font-size: 1.5rem;
         horizontal-alignment: left;
     }
-    TableView {
+    table_view := TableView {
         sort-ascending(index) => {
             EventsViewData.sort_ascending(index);
         }
@@ -37,8 +39,78 @@ export component EventsView inherits VerticalBox {
             {title: @tr("properties"), width: 50rem},
         ];
         rows: EventsViewData.row_data;
-        row-data-detail(index-row) => {
-            EventsViewData.row-data-detail(index-row)
+
+        row-double-clicked(index-row) => {
+            root.row-data-detail-info = EventsViewData.row-data-detail(index-row);
+            popup.show();
+        }
+    }
+
+    popup := PopupWindow {
+        x: 15px;
+        y: 12px;
+
+        TabWidget {
+            Tab {
+                title: "event detail";
+                ScrollView {
+                    x: 0;
+                    y: 0;
+                    width: rect.preferred-width + 12px;
+                    height: rect.preferred-height + 12px;
+        
+                    rect := Rectangle {
+                        background: Palette.background;
+                        border-color: Palette.border;
+                        border-width: 1phx;
+                        
+                        HorizontalBox {
+                            padding-left: 12px;
+                            padding-right: 12px;
+                            padding-top: 9px;
+                            padding-bottom: 9px;
+        
+                            Text {
+                                min-width: max(self.font-size * 10, min(self.preferred-width, self.max-width));
+                                max-width: self.font-size * 100;
+                                min-height: max(self.font-size * 3, self.preferred-height);
+                                horizontal-alignment: left;
+                                vertical-alignment: center;
+                                wrap: word-wrap;
+                                text: root.row-data-detail-info;
+                                font-weight: 500;
+                                font-size: 1.2rem;
+                            }
+                        }
+                    }
+                }
+            }
+            Tab {
+                title: "stacks";
+                VerticalBox {
+                    HorizontalBox {
+                        padding-left: 12px;
+                        padding-right: 12px;
+                        padding-top: 9px;
+                        padding-bottom: 9px;
+    
+                        Text {
+                            min-width: max(self.font-size * 10, min(self.preferred-width, self.max-width));
+                            max-width: self.font-size * 100;
+                            min-height: max(self.font-size * 3, self.preferred-height);
+                            horizontal-alignment: left;
+                            vertical-alignment: center;
+                            wrap: word-wrap;
+                            text: "";
+                            font-weight: 500;
+                            font-size: 1.2rem;
+                        }
+                    }
+                    ListView {
+
+                    }
+                }
+            }
         }
     }
 }
