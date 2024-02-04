@@ -193,6 +193,7 @@ export component TableView {
     in-out property <int> current-row: -1;
     in-out property <length> order-column-width: 6rem;
     in property <bool> has_order_number: true;
+    in-out property <length> header-height: i-header-layout.height;
 
     callback sort-ascending(/* column-index */ int);
     callback sort-descending(/* column-index */ int);

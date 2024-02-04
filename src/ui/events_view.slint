@@ -47,8 +47,8 @@ export component EventsView inherits VerticalBox {
     }
 
     popup := PopupWindow {
-        x: 15px;
-        y: 12px;
+        x: table_view.order-column-width + 15px;
+        y: table_view.y + table_view.header-height + 12px;
 
         TabWidget {
             Tab {
