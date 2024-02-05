@@ -35,7 +35,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		guid: ThreadGuid
 	},
 	EventsDescribe{
-		major: MajorDescribe{name: "ImageLoad", flag: Major::ImageLoad as u32},
+		major: MajorDescribe{name: "Image", flag: Major::ImageLoad as u32},
 		minors: &[
 			MinorDescribe{name: "Load", op_code: 10},
 			MinorDescribe{name: "Unload", op_code: 2},
