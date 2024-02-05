@@ -32,6 +32,7 @@ fn main() {
 
     let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new());
     let event_list_rc_1 = event_list_rc.clone();
+    let event_list_rc_2 = event_list_rc.clone();
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
     app.global::<EventsViewData>().on_row_data_detail(move |index_row| {
@@ -42,6 +43,14 @@ fn main() {
             }
         }
         ret 
+    });
+    app.global::<EventsViewData>().on_stacks(move |index_row| {
+        if let Some(row) = event_list_rc_2.row_data_detail(index_row as usize) {
+            if let Some(row_item) = row.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
+                return row_item.stacks();
+            }
+        }
+        ModelRc::default() 
     });
 
     let mut event_descs = vec![];
@@ -72,12 +81,9 @@ fn main() {
                         rows.find_for_stack_walk(|item, is_last| {
                             if let Some(erm) = item.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
                                 if erm.timestamp() == event_record.timestamp.0 {
-                                    let stack_walk = unsafe{ erm.stack_walk.get().as_mut().unwrap() };
-                                    if stack_walk.is_none() {
-                                        let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                                        *stack_walk = Some(sw);
-                                    } else {
-                                        error!("Stalkwalk event conflict! timestamp: {}", event_record.timestamp.0);
+                                    let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
+                                     if !erm.set_stack_walk(sw) {
+                                        error!("Stalkwalk event had been set! timestamp: {}", event_record.timestamp.0);
                                     }
                                     return true;
                                 }

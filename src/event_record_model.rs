@@ -1,12 +1,12 @@
 use std::cell::UnsafeCell;
 
-use slint::{Model, SharedString, ModelNotify, ModelTracker, StandardListViewItem};
+use slint::{Model, ModelNotify, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
 use super::event_trace::{EventRecordDecoded, StackWalk};
 
 pub struct EventRecordModel{
     array: Box<EventRecordDecoded>,
     notify: ModelNotify,
-    pub stack_walk: UnsafeCell<Option<StackWalk>>,
+    stack_walk: UnsafeCell<Option<StackWalk>>,
 }
 
 const COLUMN_NAMES: &[&str] = &[
@@ -33,6 +33,30 @@ impl EventRecordModel {
 
     pub fn data_detail(&self) -> Option<SharedString> {
         Some(SharedString::from(serde_json::to_string_pretty(&self.array).unwrap_or_default()))
+    }
+
+    /// Returns if the `sw_op` is None
+    pub fn set_stack_walk(&self, sw: StackWalk) -> bool {
+        let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
+        if sw_op.is_none() {
+            *sw_op = Some(sw);
+            true
+        } else {
+            false
+        }
+    }
+
+    pub fn stacks(&self) -> ModelRc<SharedString> {
+        let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
+        if let Some(sw) = sw_op {
+            let vec = VecModel::<SharedString>::default();
+            for item in sw.stacks.iter() {
+                vec.push(SharedString::from(format!("{}:{:#x}", item.0, item.1).as_str()))
+            }
+            ModelRc::<SharedString>::new(vec)
+        } else {
+            ModelRc::default()
+        }
     }
 
 }

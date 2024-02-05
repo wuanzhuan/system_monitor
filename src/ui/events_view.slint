@@ -10,10 +10,12 @@ export global EventsViewData  {
     callback sort_ascending(int);
     callback sort_descending(int);
     callback row-data-detail(/* row-index */ int) -> string;
+    callback stacks(/* row-index */ int) -> [string];
 }
 
 export component EventsView inherits VerticalBox {
     private property <string> row-data-detail-info;
+    private property <[string]> stacks-info;
 
     spacing: 2rem;
     
@@ -42,6 +44,7 @@ export component EventsView inherits VerticalBox {
 
         row-double-clicked(index-row) => {
             root.row-data-detail-info = EventsViewData.row-data-detail(index-row);
+            root.stacks-info = EventsViewData.stacks(index-row);
             popup.show();
         }
     }
@@ -79,36 +82,35 @@ export component EventsView inherits VerticalBox {
                     Tab {
                         title: "event detail";
 
-                        ScrollView {
+                        sv := ScrollView {
                             x: 0;
                             y: 0;
                             width: 100%;
                             height: 100%;
-                            viewport-x: 0;
-                            viewport-y: 0;
                             viewport-width: rect.preferred-width;
                             viewport-height: rect.preferred-height;
 
                             rect := Rectangle {
+                                x: sv.viewport-x;
+                                y: sv.viewport-y;
                                 background: Palette.background;
-
+                                border-color: red;
+                                border-width: 1px;
+                                
                                 HorizontalBox {
-                                    padding-left: 12px;
-                                    padding-right: 12px;
-                                    padding-top: 9px;
-                                    padding-bottom: 9px;
-
+                                    padding: 12px;
                                     Text {
                                         width: 100%;
                                         height: 100%;
+                                        max-width: 100rem;
                                         horizontal-alignment: left;
-                                        vertical-alignment: center;
+                                        vertical-alignment: top;
                                         wrap: word-wrap;
                                         text: root.row-data-detail-info;
                                         font-weight: 500;
                                         font-size: 1.2rem;
                                     }
-                                }
+                                }    
                             }
                         }
                     }
@@ -135,7 +137,25 @@ export component EventsView inherits VerticalBox {
                                 }
                             }
                             ListView {
-        
+                                for item in root.stacks-info: Rectangle {
+                                    HorizontalLayout {
+                                        padding-left: 12px;
+                                        padding-right: 12px;
+                                        padding-top: 9px;
+                                        padding-bottom: 9px;
+                                
+                                        main-text := Text {
+                                            width: 100%;
+                                            height: 100%;
+                                            overflow: elide;
+                                            horizontal-alignment: left;
+                                            vertical-alignment: center;
+                                            text: item;
+                                            font-weight: 500;
+                                            font-size: 1.2rem;
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
