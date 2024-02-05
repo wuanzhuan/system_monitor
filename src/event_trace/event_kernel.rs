@@ -1014,6 +1014,7 @@ pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57f
 pub mod event_property {
     use crate::event_trace::event_decoder;
 	
+	#[derive(Debug)]
     pub struct StackWalk {
         pub event_timestamp: i64,
         pub stack_process: u32,
