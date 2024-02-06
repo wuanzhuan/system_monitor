@@ -1014,7 +1014,7 @@ pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57f
 pub mod event_property {
     use crate::event_trace::event_decoder;
 	
-	#[derive(Debug)]
+	#[derive(Debug, Clone)]
     pub struct StackWalk {
         pub event_timestamp: i64,
         pub stack_process: u32,
@@ -1026,20 +1026,20 @@ pub mod event_property {
 		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
 			if let event_decoder::PropertyDecoded::Struct(map) = &erd.properties {
 				let event_timestamp = map.get("EventTimeStamp").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property { i64::from_str_radix(s.as_str(), 10).unwrap()} else { 0 } 
+					if let event_decoder::PropertyDecoded::String(s) = property { i64::from_str_radix(s.as_str(), 10).unwrap_or_default()} else { 0 } 
 				}).unwrap_or_default();
 				let stack_process = map.get("StackProcess").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property { u32::from_str_radix(s.as_str(), 10).unwrap()} else { 0 } 
+					if let event_decoder::PropertyDecoded::String(s) = property { u32::from_str_radix(s.as_str(), 10).unwrap_or_default()} else { 0 } 
 				}).unwrap_or_default();
 				let stack_thread = map.get("StackThread").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property { u32::from_str_radix(s.as_str(), 10).unwrap()} else { 0 } 
+					if let event_decoder::PropertyDecoded::String(s) = property { u32::from_str_radix(s.as_str(), 10).unwrap_or_default()} else { 0 } 
 				}).unwrap_or_default();
 				let mut stacks = vec![];
 				for entry in map.iter() {
 					if !entry.0.starts_with("Stack") {
 						continue;
 					}
-					let v = if let event_decoder::PropertyDecoded::String(s) = entry.1 { u64::from_str_radix(s.as_str(), 10).unwrap()} else { 0 };
+					let v = if let event_decoder::PropertyDecoded::String(s) = entry.1 { u64::from_str_radix(s.as_str(), 16).unwrap_or_default()} else { 0 };
 					stacks.push((entry.0.clone(), v))
 				}
 				Self{event_timestamp, stack_process, stack_thread, stacks}

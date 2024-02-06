@@ -75,23 +75,23 @@ fn main() {
             app_weak.upgrade_in_event_loop(move |app_handle|{
                  if let Some(rows) = app_handle.global::<EventsViewData>().get_row_data().as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>() {
                     if !is_stack_walk {
+                        info!("{:?}", event_record);
                         let er = event_record_model::EventRecordModel::new(event_record);
                         rows.push(ModelRc::new(er));
                     } else {
-                        rows.find_for_stack_walk(|item, is_last| {
-                            if let Some(erm) = item.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
-                                if erm.timestamp() == event_record.timestamp.0 {
-                                    let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                                     if !erm.set_stack_walk(sw) {
-                                        error!("Stalkwalk event had been set! timestamp: {}", event_record.timestamp.0);
-                                    }
-                                    return true;
+                        let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
+                        if !rows.find_for_stack_walk(|item| {
+                            let erm = item.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
+                            if erm.timestamp() == sw.event_timestamp {
+                                if !erm.set_stack_walk(sw.clone()) {
+                                    error!("Stalkwalk event had been set! timestamp: {}", event_record.timestamp.0);
                                 }
-                            } else if is_last {
-                                error!("Can't find the event for stack walk: {}", event_record.timestamp.0)
-                            }
+                                return true;
+                            }               
                             false
-                        });
+                        }) {
+                            error!("Can't find the stacl walk for: {:?}\n {:?} \n {:?}", event_record.timestamp, event_record, sw);
+                        }
                     }
                  }
             }).unwrap();
