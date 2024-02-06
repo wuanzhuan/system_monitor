@@ -222,7 +222,10 @@ impl<'a> Decoder<'a> {
                 && in_type == TDH_INTYPE_BINARY.0 as u16
                 && length == 0
             {
-                16 // special case for incorrectly-defined IPV6 addresses
+                // special case for incorrectly-defined IPV6 addresses
+                // reference: https://learn.microsoft.com/en-us/windows/win32/api/tdh/nf-tdh-tdhformatproperty#remarks
+                // size of the Win32::Networking::WinSock::IN6_ADDR
+                16
             } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
                 if length_property_index >= self.int_values.len() as u16 {
                     return Err(Error::new(E_FAIL, HSTRING::from(format!("index overflow: length_property_index: {length_property_index} array len: {}", self.int_values.len()))));
@@ -326,8 +329,7 @@ impl<'a> Decoder<'a> {
                         // TdhFormatProperty doesn't handle INTYPE_NULL.
                         prop_buffer.push(0);
                     } else if 0 == prop_length
-                        && 0 != (property_info.Flags.0
-                            & (PropertyParamLength.0 | PropertyParamFixedLength.0))
+                        && 0 != (property_info.Flags.0 & PropertyParamFixedLength.0)
                         && (in_type == TDH_INTYPE_UNICODESTRING.0 as u16
                             || in_type == TDH_INTYPE_ANSISTRING.0 as u16)
                     {
