@@ -1101,6 +1101,9 @@ pub mod event_property {
 					if !entry.0.starts_with("Stack") {
 						continue;
 					}
+					if entry.0.get("Stack".len()..).unwrap_or_default().parse::<u32>().is_err() {
+						continue;
+					}
 					let v = if let event_decoder::PropertyDecoded::String(s) = entry.1 {
 						let has_0x = s.starts_with("0x") || s.starts_with("0X");
 						let r = if has_0x {
