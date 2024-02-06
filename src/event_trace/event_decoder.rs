@@ -221,7 +221,6 @@ impl<'a> Decoder<'a> {
             let prop_length = if out_type == TDH_OUTTYPE_IPV6.0 as u16
                 && in_type == TDH_INTYPE_BINARY.0 as u16
                 && length == 0
-                && (property_info.Flags.0 & (PropertyParamLength.0 | PropertyParamFixedLength.0)) != 0
             {
                 16 // special case for incorrectly-defined IPV6 addresses
             } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
