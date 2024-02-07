@@ -32,13 +32,16 @@ impl EventRecordModel {
         self.array.timestamp.0
     }
 
+    pub fn thread_id(&self) -> u32 {
+        self.array.thread_id
+    }
+
     pub fn data_detail(&self) -> Option<SharedString> {
         Some(SharedString::from(serde_json::to_string_pretty(&self.array).unwrap_or_default()))
     }
 
     /// Returns if the `sw_op` is None
     pub fn set_stack_walk(&self, sw: StackWalk) -> bool {
-        tracing::info!("set_stack_walk start");
         let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
         if sw_op.is_none() {
             *sw_op = Some(sw);
@@ -49,7 +52,6 @@ impl EventRecordModel {
     }
 
     pub fn stacks(&self) -> ModelRc<SharedString> {
-        tracing::info!("stacks start");
         let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
         if let Some(sw) = sw_op {
             let vec = VecModel::<SharedString>::default();

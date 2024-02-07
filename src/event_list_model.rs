@@ -3,6 +3,7 @@ use std::{
     cell::RefCell, collections::{LinkedList, linked_list::CursorMut, VecDeque}, rc::Rc
 };
 
+
 pub struct ListModel<'a: 'static, T> {
     // the backing data, access by cursor
     list: Box<LinkedList<Rc<T>>>,
@@ -10,7 +11,7 @@ pub struct ListModel<'a: 'static, T> {
     cursor: RefCell<CursorMut<'a, Rc<T>>>,
     // the ModelNotify will allow to notify the UI that the model changes
     notify: ModelNotify,
-    queue_for_stackwalk: RefCell<VecDeque<Rc<T>>>
+    queue_for_stackwalk: RefCell<VecDeque<Rc<T>>>,
 }
 
 impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
@@ -58,7 +59,7 @@ impl<'a, T> ListModel<'a, T> {
         let p = Box::leak(Box::new(LinkedList::<Rc<T>>::default())) as *mut LinkedList<Rc<T>>; 
         let cursor = RefCell::new(unsafe{ &mut *p }.cursor_front_mut());
         let list = unsafe{ Box::from_raw(p) };
-        let list_model = Self { list, notify: Default::default(), cursor, queue_for_stackwalk: RefCell::new(VecDeque::with_capacity(5))};
+        let list_model = Self { list, notify: Default::default(), cursor, queue_for_stackwalk: RefCell::new(VecDeque::with_capacity(10))};
         list_model
     }
 

@@ -347,7 +347,7 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
         SystemTraceControlGuid
     };
     properties.Wnode.Flags = WNODE_FLAG_TRACED_GUID;
-    properties.Wnode.ClientContext = 1;
+    properties.Wnode.ClientContext = 2; // if 1 the StackWalk event's timestamp is invalid
     properties.FlushTimer = 1;
     properties.LogFileMode = EVENT_TRACE_SYSTEM_LOGGER_MODE
         | EVENT_TRACE_REAL_TIME_MODE
