@@ -17,7 +17,7 @@ impl TimeStamp {
 impl std::string::ToString for TimeStamp {
     fn to_string(&self) -> String {
         let dt = self.to_datetime_local();
-        dt.to_string()
+        format!("{}({})", self.0, dt.to_string())
     }
 }
 
