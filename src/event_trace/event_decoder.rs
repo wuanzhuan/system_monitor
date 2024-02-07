@@ -63,6 +63,10 @@ impl<'a> Decoder<'a> {
             };
         };
 
+        if event_info.TopLevelPropertyCount > event_info.PropertyCount {
+            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {}", event_info.TopLevelPropertyCount, event_info.PropertyCount))));
+        }
+
         let event_info_slice = unsafe {slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize)};
         let property_info_array = unsafe {
             slice::from_raw_parts(event_info.EventPropertyInfoArray.as_ptr(), event_info.PropertyCount as usize)
