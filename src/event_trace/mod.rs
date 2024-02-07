@@ -290,7 +290,10 @@ impl Controller {
                                         }
                                     } else {
                                         // the major event is filter by flag. so a error happens when a event that is not enable comes
-                                        error!("Not enable major event: {}-{} event record: \n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name, event_record_decoded.opcode_name, EventRecord(er), event_record_decoded);
+                                        // the EventTrace event is always enable.
+                                        if event_record_decoded.event_name != "EventTrace" {
+                                            error!("Not enable major event: {}-{} event record: \n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name, event_record_decoded.opcode_name, EventRecord(er), event_record_decoded);
+                                        }
                                     }
                                 }else {
                                     warn!("Can't find major {}-{} in events_enable_map opcode: {} event record:\n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, er.EventHeader.EventDescriptor.Opcode, EventRecord(er), event_record_decoded);
