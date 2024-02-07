@@ -515,7 +515,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "RDComplete", op_code: 8},
 			MinorDescribe{name: "EndExtension", op_code: 32},
 		],
-		guid: GUID::zeroed() //?
+		guid: EVENT_TRACE_EVENT_GUID
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "FullTrace", flag: Major::FullTrace as u32},
@@ -629,7 +629,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		guid: OBJECT_GUID
 	},
 	EventsDescribe{
-		major: MajorDescribe{name: "ObObject", flag: Major::ObObject as u32},
+		major: MajorDescribe{name: "Object", flag: Major::ObObject as u32},
 		minors: &[
 			MinorDescribe{name: "Create Object", op_code: 48},
 			MinorDescribe{name: "Delete Object", op_code: 49},
@@ -1009,6 +1009,8 @@ pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430
 
 /// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
 pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
+
+pub const EVENT_TRACE_EVENT_GUID: GUID = GUID::from_u128(0x68FDD900_4A3E_11D1_84F4_0000F80464E3);
 
 
 pub mod event_property {
