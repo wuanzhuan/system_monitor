@@ -173,7 +173,7 @@ impl<'a> Decoder<'a> {
             let property_name = if !property_name.is_empty() {
                 property_name.to_string().unwrap_or_default()
             } else {
-                format!("no name:{property_index}")
+                format!("no name: {property_index}")
             };
 
             // If this property is a scalar integer, remember the value in case it
