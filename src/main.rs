@@ -44,13 +44,13 @@ fn main() {
         }
         ret 
     });
-    app.global::<EventsViewData>().on_stacks(move |index_row| {
+    app.global::<EventsViewData>().on_stack_walk(move |index_row| {
         if let Some(row) = event_list_rc_2.row_data_detail(index_row as usize) {
             if let Some(row_item) = row.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
-                return row_item.stacks();
+                return row_item.stack_walk();
             }
         }
-        ModelRc::default() 
+        StackWalkInfo::default()
     });
 
     let mut event_descs = vec![];

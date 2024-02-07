@@ -2,6 +2,7 @@ use std::cell::UnsafeCell;
 
 use slint::{Model, ModelNotify, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
 use super::event_trace::{EventRecordDecoded, StackWalk};
+use crate::StackWalkInfo;
 
 
 pub struct EventRecordModel{
@@ -51,7 +52,7 @@ impl EventRecordModel {
         }
     }
 
-    pub fn stacks(&self) -> ModelRc<SharedString> {
+    pub fn stack_walk(&self) -> StackWalkInfo {
         let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
         if let Some(sw) = sw_op {
             let vec = VecModel::<SharedString>::default();
@@ -59,9 +60,13 @@ impl EventRecordModel {
                 let str = format!("{}: {:#x}", item.0, item.1);
                 vec.push(SharedString::from(str.as_str()))
             }
-            ModelRc::<SharedString>::new(vec)
+            StackWalkInfo{
+                event_timestamp: SharedString::from(sw.event_timestamp.to_string()), 
+                process_id: SharedString::from(format!("{}", sw.stack_process as i32)), 
+                thread_id: SharedString::from(format!("{}", sw.stack_thread as i32)), 
+                stacks: ModelRc::<SharedString>::new(vec)}
         } else {
-            ModelRc::default()
+            StackWalkInfo::default()
         }
     }
 
