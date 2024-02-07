@@ -56,7 +56,7 @@ impl EventRecordModel {
         if let Some(sw) = sw_op {
             let vec = VecModel::<SharedString>::default();
             for item in sw.stacks.iter() {
-                let str = format!("{}:{:#x}", item.0, item.1);
+                let str = format!("{}: {:#x}", item.0, item.1);
                 vec.push(SharedString::from(str.as_str()))
             }
             ModelRc::<SharedString>::new(vec)
