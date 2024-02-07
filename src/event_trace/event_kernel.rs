@@ -499,16 +499,6 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		guid: GUID::zeroed() //?
 	},
 	EventsDescribe{
-		major: MajorDescribe{name: "Objects", flag: Major::Objects as u32},
-		minors: &[
-			MinorDescribe{name: "Create Object", op_code: 48},
-			MinorDescribe{name: "Delete Object", op_code: 49},
-			MinorDescribe{name: "Reference Object", op_code: 50},
-			MinorDescribe{name: "Dereference Object", op_code: 51}
-		],
-		guid: OBJECT_GUID
-	},
-	EventsDescribe{
 		major: MajorDescribe{name: "EventTrace", flag: Major::Events as u32},
 		minors: &[
 			MinorDescribe{name: "Extension", op_code: 5},
@@ -875,8 +865,8 @@ pub enum Major {
 	Ums              =  0x40000080u32,
 	BackTrace        =  0x40000100u32,
 	Vulcan           =  0x40000200u32,
-	Objects          =  0x40000400u32,
-	Events           =  0x40000800u32,
+	Objects          =  0x40000400u32,  // no effect in windows11 22h2
+	Events           =  0x40000800u32,  // no effect in windows11 22h2 EventTrace is always enable
 	FullTrace        =  0x40001000u32,
 	Dfss             =  0x40002000u32,
 	PreFetch         =  0x40004000u32,
