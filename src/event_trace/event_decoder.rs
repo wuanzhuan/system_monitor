@@ -399,6 +399,11 @@ impl<'a> Decoder<'a> {
     }
 }
 
+#[inline]
+pub fn is_string_event(flag: u16) -> bool {
+    (flag & EVENT_HEADER_FLAG_STRING_ONLY as u16) != 0
+}
+
 #[derive(Debug, Serialize)]
 pub struct EventRecordDecoded {
     pub provider_id: Guid,
@@ -422,9 +427,4 @@ pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
     Struct(LinkedHashMap<String, PropertyDecoded>),
-}
-
-#[inline]
-pub fn is_string_event(flag: u16) -> bool {
-    (flag & EVENT_HEADER_FLAG_STRING_ONLY as u16) != 0
 }
