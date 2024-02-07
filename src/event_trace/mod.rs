@@ -284,14 +284,15 @@ impl Controller {
                                                 mem::drop(context_mg);
                                                 cb(event_record_decoded, is_stack_walk);
                                             }
+                                            // when enable a flag, all minors events are actived
                                         } else {
-                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {} event record:\n{}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, EventRecord(er));
+                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {} event record:\n{} \n event_record_decoded: \n{:?}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, EventRecord(er), event_record_decoded);
                                         }
                                     } else {
-                                        error!("Not major enable event: {}-{} event record:\n{}", event_record_decoded.event_name, event_record_decoded.opcode_name, EventRecord(er));
+                                        error!("Not enable major event: {}-{} event record: \n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name, event_record_decoded.opcode_name, EventRecord(er), event_record_decoded);
                                     }
                                 }else {
-                                    warn!("Can't find major {} in events_enable_map opcode: {} event record:\n{}", event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, EventRecord(er));
+                                    warn!("Can't find major {}-{} in events_enable_map opcode: {} event record:\n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, er.EventHeader.EventDescriptor.Opcode, EventRecord(er), event_record_decoded);
                                 }
                             }
                         };
