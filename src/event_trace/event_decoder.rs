@@ -315,6 +315,7 @@ impl<'a> Decoder<'a> {
                                         if status == ERROR_INSUFFICIENT_BUFFER.0 {
                                             continue;
                                         }
+                                        map_info = None;
                                         error!("Failed to TdhGetEventMapInformation: {}", status);
                                         break;
                                     }
