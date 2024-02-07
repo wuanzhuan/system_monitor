@@ -180,6 +180,7 @@ impl<'a> Decoder<'a> {
             // is needed for a subsequent property's length or count.
             if 0 == (property_info.Flags.0 & (PropertyStruct.0 | PropertyParamCount.0))
                 && unsafe { property_info.Anonymous2.count } == 1
+                && 0 == (property_info.Flags.0 & PropertyParamFixedCount.0) // if the event is compile by wdk earlier than wdk10, the PropertyParamFixedCount always is 0.so it is right too. 
             {
                 let in_type = unsafe { property_info.Anonymous1.nonStructType.InType } as i32;
                 if in_type == TDH_INTYPE_INT8.0 || in_type == TDH_INTYPE_UINT8.0 {
