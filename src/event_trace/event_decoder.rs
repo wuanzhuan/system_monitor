@@ -175,7 +175,7 @@ impl<'a> Decoder<'a> {
         properties_array_end: u16,
         user_data_index: &mut u16,
     ) -> Result<LinkedHashMap<String, PropertyDecoded>> {
-        if properties_array_end >= self.property_info_array.len() as u16 {
+        if properties_array_end > self.property_info_array.len() as u16 {
             return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget properties_array_end: {properties_array_end} property_info_array len: {}", self.property_info_array.len()))));
         }
         let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
