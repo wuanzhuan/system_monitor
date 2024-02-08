@@ -146,7 +146,7 @@ impl<'a> Decoder<'a> {
                 0,
                 self.event_info.TopLevelPropertyCount as u16,
                 &mut user_data_index
-            ).unwrap_or_default();
+            )?;
             PropertyDecoded::Struct(r)
         };
         Ok(EventRecordDecoded{
