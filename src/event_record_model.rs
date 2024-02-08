@@ -84,7 +84,7 @@ impl Model for EventRecordModel {
             None
         } else {
             match row {
-                0 => Some(StandardListViewItem::from(SharedString::from(self.array.timestamp.to_string_detail()))),
+                0 => Some(StandardListViewItem::from(SharedString::from(self.array.timestamp.to_datetime_detail()))),
                 1 => Some(StandardListViewItem::from(SharedString::from((self.array.process_id as i32).to_string()))),
                 2 => Some(StandardListViewItem::from(SharedString::from((self.array.thread_id as i32).to_string()))),
                 3 => Some(StandardListViewItem::from(SharedString::from(self.array.event_name.to_string()))),

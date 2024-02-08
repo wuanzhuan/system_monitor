@@ -15,6 +15,11 @@ impl TimeStamp {
 
     pub fn to_string_detail(&self) -> String {
         let dt = self.to_datetime_local();
+        format!("{}({})", self.0, dt.to_string())
+    }
+
+    pub fn to_datetime_detail(&self) -> String {
+        let dt = self.to_datetime_local();
         format!("{}({})", dt.to_string(), self.0)
     }
 }
