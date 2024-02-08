@@ -490,8 +490,8 @@ impl TryFrom<i32> for DecodingSource {
         if v > DecodingSource::DecodingSourceMax as u8 {
             return Err(format!("the value: {v} is invalid for DecodingSource"));
         }
-        let x: DecodingSource = unsafe{ mem::transmute(v) };
-        Ok(x)
+        let ds: DecodingSource = unsafe{ mem::transmute(v) };
+        Ok(ds)
     }
 }
 
