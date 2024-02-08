@@ -12,12 +12,16 @@ impl TimeStamp {
         let dt_utc = Utc.timestamp_millis(self.0 / 10 / 1000 - duration.num_milliseconds());
         DateTime::<Local>::from(dt_utc)
     }
+
+    pub fn to_string_detail(&self) -> String {
+        let dt = self.to_datetime_local();
+        format!("{}({})", self.0, dt.to_string())
+    }
 }
 
 impl std::string::ToString for TimeStamp {
     fn to_string(&self) -> String {
-        let dt = self.to_datetime_local();
-        format!("{}({})", self.0, dt.to_string())
+        self.0.to_string()
     }
 }
 
@@ -25,6 +29,6 @@ impl Serialize for TimeStamp {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
         where
             S: Serializer {
-        serializer.serialize_str(self.to_string().as_str())
+        serializer.serialize_str(self.to_string_detail().as_str())
     }
 }
