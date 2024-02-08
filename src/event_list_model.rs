@@ -1,8 +1,8 @@
 use slint::{Model, ModelNotify, ModelTracker};
 use std::{
-    cell::RefCell, collections::{LinkedList, linked_list::CursorMut, VecDeque}, rc::Rc
+    cell::RefCell, collections::{LinkedList, linked_list::CursorMut}, rc::Rc
 };
-
+use linked_hash_map::LinkedHashMap;
 
 pub struct ListModel<'a: 'static, T> {
     // the backing data, access by cursor
@@ -11,7 +11,7 @@ pub struct ListModel<'a: 'static, T> {
     cursor: RefCell<CursorMut<'a, Rc<T>>>,
     // the ModelNotify will allow to notify the UI that the model changes
     notify: ModelNotify,
-    queue_for_stackwalk: RefCell<VecDeque<Rc<T>>>,
+    pub stack_walk_map: RefCell<LinkedHashMap::<(u32, i64), Rc<T>>>
 }
 
 impl<'a, T: Clone + 'static> Model for ListModel<'a, T> {
@@ -59,7 +59,8 @@ impl<'a, T> ListModel<'a, T> {
         let p = Box::leak(Box::new(LinkedList::<Rc<T>>::default())) as *mut LinkedList<Rc<T>>; 
         let cursor = RefCell::new(unsafe{ &mut *p }.cursor_front_mut());
         let list = unsafe{ Box::from_raw(p) };
-        let list_model = Self { list, notify: Default::default(), cursor, queue_for_stackwalk: RefCell::new(VecDeque::with_capacity(10))};
+        let stack_walk_map = RefCell::new(LinkedHashMap::<(u32, i64), Rc<T>>::with_capacity(50));
+        let list_model = Self { list, notify: Default::default(), cursor, stack_walk_map};
         list_model
     }
 
@@ -112,31 +113,10 @@ impl<'a, T> ListModel<'a, T> {
     }
 
     /// Add a row at the end of the model
-    pub fn push(&self, value: T) {
+    pub fn push(&self, value: Rc<T>) {
         let mut cursor = self.cursor.borrow_mut();
-        let rc1 = Rc::new(value);
-        let rc2 = rc1.clone();
-        let mut queue = self.queue_for_stackwalk.borrow_mut();
-        if queue.len() < queue.capacity() {
-            queue.push_back(rc2);
-        } else {
-            queue.pop_front();
-            queue.push_back(rc2);
-
-        }
-        cursor.push_back(rc1.clone());
+        cursor.push_back(value);
         self.notify.row_added(self.list.len() - 1, 1)
-    }
-
-    /// Retures true if find
-    pub fn find_for_stack_walk(&self, f: impl Fn(&Rc<T>) -> bool) -> bool {
-        let queue = self.queue_for_stackwalk.borrow();
-        for item in queue.iter() {
-            if f(item) {
-                return true;
-            }
-        }
-        false
     }
 
     /// Remove the row at the given index from the model

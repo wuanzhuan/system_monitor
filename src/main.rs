@@ -5,7 +5,6 @@ use std::rc::Rc;
 use tracing::{error, info};
 use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition};
 
-
 mod event_trace;
 mod event_list_model;
 mod event_record_model;
@@ -33,6 +32,7 @@ fn main() {
     let event_list_rc = Rc::new(event_list_model::ListModel::<ModelRc<StandardListViewItem>>::new());
     let event_list_rc_1 = event_list_rc.clone();
     let event_list_rc_2 = event_list_rc.clone();
+    
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
     app.global::<EventsViewData>().on_row_data_detail(move |index_row| {
@@ -73,26 +73,26 @@ fn main() {
         let app_weak = app_weak.clone();
         let result = event_trace::Controller::start(move |event_record, is_stack_walk| {
             app_weak.upgrade_in_event_loop(move |app_handle|{
-                 if let Some(rows) = app_handle.global::<EventsViewData>().get_row_data().as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>() {
-                    if !is_stack_walk {
-                        let er = event_record_model::EventRecordModel::new(event_record);
-                        rows.push(ModelRc::new(er));
-                    } else {
-                        let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                        if !rows.find_for_stack_walk(|item| {
-                            let erm = item.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
-                            if erm.thread_id() == sw.stack_thread && erm.timestamp() == sw.event_timestamp {
-                                if !erm.set_stack_walk(sw.clone()) {
-                                    error!("Stalkwalk event had been set! timestamp: {}", event_record.timestamp.0);
-                                }
-                                return true;
-                            }               
-                            false
-                        }) {
-                            error!("Can't find the stacl walk for: {} \n{} \n{:?}", event_record.timestamp.to_string_detail(), serde_json::to_string_pretty(&event_record).unwrap_or_default(), sw);
+                let row_data = app_handle.global::<EventsViewData>().get_row_data();
+                let rows = row_data.as_any().downcast_ref::<event_list_model::ListModel::<ModelRc<StandardListViewItem>>>().unwrap();
+                if !is_stack_walk {
+                    let thread_id = event_record.thread_id;
+                    let timestamp = event_record.timestamp.0;
+                    let er = event_record_model::EventRecordModel::new(event_record);
+                    let row_rc = Rc::new(ModelRc::new(er));
+                    rows.stack_walk_map.borrow_mut().insert((thread_id, timestamp), row_rc.clone());
+                    rows.push(row_rc);
+                } else {
+                    let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
+                    if let Some(row_rc) = rows.stack_walk_map.borrow_mut().get(&(sw.stack_thread, sw.event_timestamp)) {
+                        let erm = row_rc.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
+                        if !erm.set_stack_walk(sw.clone()) {
+                            error!("Stalkwalk event had been set! {}-{}", sw.stack_thread as i32, sw.event_timestamp);
                         }
+                    } else {
+                        error!("Can't find the stacl walk by: {}-{} \n{} \n{:?}",  sw.stack_thread as i32, sw.event_timestamp, serde_json::to_string_pretty(&event_record).unwrap_or_default(), sw);
                     }
-                 }
+                }
             }).unwrap();
 
         }, |ret| {
