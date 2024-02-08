@@ -436,7 +436,9 @@ pub struct EventRecordDecoded {
     pub opcode_name: String,
     pub event_message: String,
     pub provider_message: String,
+    #[serde(with="serde_custom_u32")]
     pub process_id: u32,
+    #[serde(with="serde_custom_u32")]
     pub thread_id: u32,
     pub timestamp: TimeStamp,
     pub properties: PropertyDecoded
@@ -490,5 +492,14 @@ impl TryFrom<i32> for DecodingSource {
         }
         let x: DecodingSource = unsafe{ mem::transmute(v) };
         Ok(x)
+    }
+}
+
+mod serde_custom_u32 {
+    pub fn serialize<S>(date: &u32, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: super::Serializer,
+    {
+        serializer.serialize_i32(*date as i32)
     }
 }
