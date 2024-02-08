@@ -286,17 +286,17 @@ impl Controller {
                                             }
                                             // when enable a flag, all minors events are enable. the minor events is filtered here
                                         } else {
-                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {} event record:\n{} \n event_record_decoded: \n{:?}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, EventRecord(er), event_record_decoded);
+                                            warn!("Can't find minor {} of {} in events_enable_map opcode: {} event_record_decoded: {}", event_record_decoded.opcode_name, event_record_decoded.event_name.as_str(), er.EventHeader.EventDescriptor.Opcode, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                                         }
                                     } else {
                                         // the major event is filter by flag. so a error happens when a event that is not enable comes
                                         // the EventTrace event is always enable.
                                         if event_record_decoded.event_name != "EventTrace" {
-                                            error!("Not enable major event: {}-{} event record: \n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name, event_record_decoded.opcode_name, EventRecord(er), event_record_decoded);
+                                            error!("Not enable major event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                                         }
                                     }
                                 }else {
-                                    warn!("Can't find major {}-{} in events_enable_map opcode: {} event record:\n{} \n event_record_decoded: \n{:?}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, er.EventHeader.EventDescriptor.Opcode, EventRecord(er), event_record_decoded);
+                                    warn!("Can't find major {}-{} in events_enable_map opcode: {} event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, er.EventHeader.EventDescriptor.Opcode, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                                 }
                             }
                         };

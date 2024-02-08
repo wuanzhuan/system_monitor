@@ -89,7 +89,7 @@ fn main() {
                             }               
                             false
                         }) {
-                            error!("Can't find the stacl walk for: {:?}\n {:?} \n {:?}", event_record.timestamp, event_record, sw);
+                            error!("Can't find the stacl walk for: {:?}\n {:?} \n {:?}", event_record.timestamp, serde_json::to_string_pretty(&event_record).unwrap_or_default(), sw);
                         }
                     }
                  }
