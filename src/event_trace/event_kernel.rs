@@ -610,7 +610,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		guid: GUID::zeroed() //?
 	},
 	EventsDescribe{
-		major: MajorDescribe{name: "Handle", flag: Major::ObHandle as u32},
+		major: MajorDescribe{name: "Object", flag: Major::ObHandle as u32},
 		minors: &[
 			MinorDescribe{name: "CreateHandle", op_code: 32},
 			MinorDescribe{name: "CloseHandle", op_code: 33},
