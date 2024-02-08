@@ -610,21 +610,21 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		guid: GUID::zeroed() //?
 	},
 	EventsDescribe{
-		major: MajorDescribe{name: "ObHandle", flag: Major::ObHandle as u32},
+		major: MajorDescribe{name: "Handle", flag: Major::ObHandle as u32},
 		minors: &[
-			MinorDescribe{name: "Create Handle", op_code: 32},
-			MinorDescribe{name: "Close Handle", op_code: 33},
-			MinorDescribe{name: "Duplicate Handle", op_code: 34}
+			MinorDescribe{name: "CreateHandle", op_code: 32},
+			MinorDescribe{name: "CloseHandle", op_code: 33},
+			MinorDescribe{name: "DuplicateHandle", op_code: 34}
 		],
 		guid: OBJECT_GUID
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "Object", flag: Major::ObObject as u32},
 		minors: &[
-			MinorDescribe{name: "Create Object", op_code: 48},
-			MinorDescribe{name: "Delete Object", op_code: 49},
-			MinorDescribe{name: "Reference Object", op_code: 50},
-			MinorDescribe{name: "Dereference Object", op_code: 51}
+			MinorDescribe{name: "CreateObject", op_code: 48},
+			MinorDescribe{name: "DeleteObject", op_code: 49},
+			MinorDescribe{name: "ReferenceObject", op_code: 50},
+			MinorDescribe{name: "DereferenceObject", op_code: 51}
 		],
 		guid: OBJECT_GUID
 	},
