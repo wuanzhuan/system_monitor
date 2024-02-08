@@ -1,5 +1,5 @@
 use crate::third_extend::strings::*;
-use std::{mem, slice};
+use std::{mem, slice, convert::TryFrom};
 use tracing::{error, warn};
 use widestring::*;
 use windows::{
@@ -7,7 +7,7 @@ use windows::{
     Win32::Foundation::*, 
     Win32::System::Diagnostics::Etw::*,
 };
-use serde::Serialize;
+use serde::{Serialize, Serializer, ser::SerializeStruct};
 use linked_hash_map::LinkedHashMap;
 use crate::utils::TimeStamp;
 use crate::third_extend::Guid;
@@ -95,6 +95,12 @@ impl<'a> Decoder<'a> {
     pub fn decode(&mut self) -> Result<EventRecordDecoded>{
         let header = &self.event_record.EventHeader;
         let provider_id = Guid(header.ProviderId);
+        let event_guid= Guid(self.event_info.EventGuid);
+        let event_descriptor = EventDescriptor(self.event_info.EventDescriptor);
+        let decoding_source = DecodingSource::try_from(self.event_info.DecodingSource.0).unwrap_or_else(|e| {
+            error!("{}", e);
+            DecodingSource::DecodingSourceMax
+        });
         let provider_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderNameOffset)
                 .unwrap_or_default().to_string().unwrap_or_default();
         let level_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.LevelNameOffset)
@@ -145,6 +151,9 @@ impl<'a> Decoder<'a> {
         };
         Ok(EventRecordDecoded{
             provider_id,
+            event_guid,
+            event_descriptor,
+            decoding_source,
             provider_name,
             level_name,
             channel_name,
@@ -416,6 +425,9 @@ pub fn is_string_event(flag: u16) -> bool {
 #[derive(Debug, Serialize)]
 pub struct EventRecordDecoded {
     pub provider_id: Guid,
+    pub event_guid: Guid,
+    pub event_descriptor: EventDescriptor,
+    pub decoding_source: DecodingSource,
     pub provider_name: String,
     pub level_name: String,
     pub channel_name: String,
@@ -436,4 +448,47 @@ pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
     Struct(LinkedHashMap<String, PropertyDecoded>),
+}
+
+#[derive(Debug)]
+pub struct EventDescriptor(pub EVENT_DESCRIPTOR);
+
+impl Serialize for EventDescriptor {
+    fn serialize<S>(&self, serializer: S) -> core::result::Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut serialize_struct = serializer.serialize_struct("EVENT_DESCRIPTOR", 7)?;
+        serialize_struct.serialize_field("Id", &self.0.Id)?;
+        serialize_struct.serialize_field("Version", &self.0.Version)?;
+        serialize_struct.serialize_field("Channel", &self.0.Channel)?;
+        serialize_struct.serialize_field("Level", &self.0.Level)?;
+        serialize_struct.serialize_field("Opcode", &self.0.Opcode)?;
+        serialize_struct.serialize_field("Task", &self.0.Task)?;
+        serialize_struct.serialize_field("Keyword", &self.0.Keyword)?;
+        serialize_struct.end()
+    }
+}
+
+#[derive(Debug, Serialize)]
+#[allow(unused)]
+pub enum DecodingSource {
+    DecodingSourceXMLFile,
+    DecodingSourceWbem,
+    DecodingSourceWPP,
+    DecodingSourceTlg,
+    DecodingSourceMax
+}
+
+impl TryFrom<i32> for DecodingSource {
+    type Error = String;
+
+    fn try_from(v: i32) -> core::result::Result<Self, Self::Error> {
+        let v = v as u8;
+        if v > DecodingSource::DecodingSourceMax as u8 {
+            return Err(format!("the value: {v} is invalid for DecodingSource"));
+        }
+        let x: DecodingSource = unsafe{ mem::transmute(v) };
+        Ok(x)
+    }
 }
