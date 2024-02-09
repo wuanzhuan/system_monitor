@@ -1,12 +1,8 @@
 use std::{
-    ffi, fmt, mem, ptr,
-    rc::Rc,
-    sync::{
+    cell::RefCell, ffi, fmt, mem, ptr, rc::Rc, sync::{
         mpsc::{self, RecvTimeoutError},
         Arc, Mutex, MutexGuard,
-    },
-    thread,
-    time::Duration,
+    }, thread, time::Duration
 };
 
 use crate::third_extend::strings::*;
@@ -17,13 +13,13 @@ use windows::{
     core::*, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*,
     Win32::System::SystemInformation::*,
 };
-
-pub use event_kernel::EVENTS_DESC;
+use linked_hash_map::LinkedHashMap;
 
 mod event_decoder;
 mod event_kernel;
 mod event_config;
 
+pub use event_kernel::EVENTS_DESC;
 pub use event_decoder::EventRecordDecoded;
 pub use event_kernel::event_property::*;
 
@@ -58,6 +54,7 @@ pub struct Controller {
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
     event_record_callback: Option<Rc<dyn Fn(EventRecordDecoded, bool)>>,
+    events_error_map: RefCell<LinkedHashMap<(u32, i64), ()>>
 }
 
 unsafe impl std::marker::Send for Controller{}
@@ -73,6 +70,7 @@ impl Controller {
             h_consumer_thread: None,
             is_win8_or_greater: unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE,
             event_record_callback: None,
+            events_error_map: RefCell::new(LinkedHashMap::new())
         };
         cxt
     }
@@ -262,6 +260,7 @@ impl Controller {
 
     unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
         let er: &EVENT_RECORD = mem::transmute(eventrecord);
+        let is_stack_walk = er.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
         let r = event_decoder::Decoder::new(er);
         match r {
             Ok(mut decoder) => {
@@ -269,40 +268,72 @@ impl Controller {
                 match r {
                     Ok(event_record_decoded) => {
                         let context_arc = CONTEXT.clone();
-                        if let Ok(context_mg) = context_arc.try_lock() {
-                            let is_stack_walk = event_record_decoded.provider_id.0 == event_kernel::STACK_WALK_GUID;
-                            if is_stack_walk {
-                                let cb = context_mg.event_record_callback.clone().unwrap();
-                                mem::drop(context_mg);
-                                cb(event_record_decoded, is_stack_walk);
-                            } else {
-                                if let Some(enable_indexs) = context_mg.config.events_enable_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
-                                    if context_mg.config.events_enables[enable_indexs.0].major {
-                                        if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
-                                            let cb = context_mg.event_record_callback.clone().unwrap();
-                                            mem::drop(context_mg);
-                                            cb(event_record_decoded, is_stack_walk);
-                                        }
-                                    } else {
-                                        // the major event is filter by flag. so a error happens when a event that is not enable comes
-                                        // the EventTrace event is always enable.
-                                        if event_record_decoded.event_name != "EventTrace" {
-                                            error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
-                                        }
+                        let r_lock = context_arc.lock();
+                        match r_lock {
+                            Ok(context_mg) => {
+                                if is_stack_walk {
+                                    if context_mg.events_error_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
+                                        let cb = context_mg.event_record_callback.clone().unwrap();
+                                        mem::drop(context_mg);
+                                        cb(event_record_decoded, is_stack_walk);
                                     }
-                                }else {
-                                    warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                                } else {
+                                    if let Some(enable_indexs) = context_mg.config.events_enable_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
+                                        if context_mg.config.events_enables[enable_indexs.0].major {
+                                            if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
+                                                let cb = context_mg.event_record_callback.clone().unwrap();
+                                                mem::drop(context_mg);
+                                                cb(event_record_decoded, is_stack_walk);
+                                            } else {
+                                                insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                                            }
+                                        } else {
+                                            insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                                            mem::drop(context_mg);
+                                            // the major event is filter by flag. so a error happens when a event that is not enable comes
+                                            // the EventTrace event is always enable.
+                                            if event_record_decoded.event_name != "EventTrace" {
+                                                error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                                            }
+                                        }
+                                    }else {
+                                        insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                                        mem::drop(context_mg);
+                                        warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                                    }
                                 }
+                            },
+                            Err(e) => {
+                                error!("Failed to lock: {e} event_record_decoded: {}", serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default())
                             }
-                        };
+                        }
                     },
                     Err(e) => {
-                        error!("Faild to decode: {}", e);
+                        error!("Faild to decode: {e}");
+                        insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
                     }
                 }
             },
             Err(e) => {
-                error!("Faild to Decoder::new: {}", e);
+                error!("Faild to Decoder::new: {e}");
+                insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
+            }
+        }
+
+        fn insert_error_event(key: (u32, i64), context_mg_op: Option<&MutexGuard<Controller>>) {
+            if let Some(context_mg) = context_mg_op {
+                context_mg.events_error_map.borrow_mut().insert(key, ());
+            } else {
+                let context_arc = CONTEXT.clone();
+                let r_lock = context_arc.lock();
+                match r_lock {
+                    Ok(context_mg) => {
+                        context_mg.events_error_map.borrow_mut().insert(key, ());
+                    }
+                    Err(e) => {
+                        error!("Faild to lock: {}", e);
+                    }
+                }
             }
         }
     }
@@ -363,7 +394,7 @@ struct EventRecord<'a>(&'a EVENT_RECORD);
 impl<'a> fmt::Display for EventRecord<'a> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let header = self.0.EventHeader;
-        write!(f,"header:
+        write!(f,"\n header:
             Size: {}
             HeaderType: {}
             Flags: {}
