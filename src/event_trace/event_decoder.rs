@@ -247,7 +247,7 @@ impl<'a> Decoder<'a> {
             let (array_count, is_array) = if (property_info.Flags.0 & PropertyParamCount.0) != 0 {
                 let count_property_index = unsafe { property_info.Anonymous2.countPropertyIndex };
                 if count_property_index >= property_index as u16 {
-                    return Err(Error::new(E_FAIL, HSTRING::from(format!("invalid count_property_index: {count_property_index} index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!()))));
+                    return Err(Error::new(E_FAIL, HSTRING::from(format!("invalid count_property_index: {count_property_index} property_index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!()))));
                 }
                 (self.int_values[count_property_index as usize], true) // Look up the value of a previous property
             } else {
