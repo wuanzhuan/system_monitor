@@ -1,6 +1,6 @@
 use crate::third_extend::strings::*;
 use std::{mem, slice, convert::TryFrom};
-use tracing::{error, warn};
+use tracing::warn;
 use widestring::*;
 use windows::{
     core::*,
@@ -51,12 +51,11 @@ impl<'a> Decoder<'a> {
                 event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
                 continue;
             }
-            warn!("Failded to TdhGetEventInformation: {} {}", status, super::EventRecord(event_record));
-            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
+            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failded to TdhGetEventInformation: {} {} at: {}:{}", status, super::EventRecord(event_record), file!(), line!()))));
         }
 
         if event_info.TopLevelPropertyCount > event_info.PropertyCount {
-            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {}", event_info.TopLevelPropertyCount, event_info.PropertyCount))));
+            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {} at: {}:{}", event_info.TopLevelPropertyCount, event_info.PropertyCount, file!(), line!()))));
         }
 
         let event_info_slice = unsafe {slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize)};
@@ -90,7 +89,7 @@ impl<'a> Decoder<'a> {
         let event_guid= Guid(self.event_info.EventGuid);
         let event_descriptor = EventDescriptor(self.event_info.EventDescriptor);
         let decoding_source = DecodingSource::try_from(self.event_info.DecodingSource.0).unwrap_or_else(|e| {
-            error!("{}", e);
+            warn!("{}", e);
             DecodingSource::DecodingSourceMax
         });
         let provider_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderNameOffset)
@@ -168,7 +167,7 @@ impl<'a> Decoder<'a> {
         user_data_index: &mut u16,
     ) -> Result<LinkedHashMap<String, PropertyDecoded>> {
         if properties_array_end > self.property_info_array.len() as u16 {
-            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget properties_array_end: {properties_array_end} property_info_array len: {}", self.property_info_array.len()))));
+            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget properties_array_end: {properties_array_end} property_info_array len: {} at: {}:{}", self.property_info_array.len(), file!(), line!()))));
         }
         let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
@@ -237,7 +236,7 @@ impl<'a> Decoder<'a> {
                 16
             } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
                 if length_property_index >= self.int_values.len() as u16 {
-                    return Err(Error::new(E_FAIL, HSTRING::from(format!("index overflow: length_property_index: {length_property_index} array len: {}", self.int_values.len()))));
+                    return Err(Error::new(E_FAIL, HSTRING::from(format!("index overflow: length_property_index: {length_property_index} array len: {} at: {}:{}", self.int_values.len(), file!(), line!()))));
                 }
                 self.int_values[length_property_index as usize]
             // Look up the value of a previous property
@@ -248,8 +247,7 @@ impl<'a> Decoder<'a> {
             let (array_count, is_array) = if (property_info.Flags.0 & PropertyParamCount.0) != 0 {
                 let count_property_index = unsafe { property_info.Anonymous2.countPropertyIndex };
                 if count_property_index >= property_index as u16 {
-                    error!("invalid count_property_index: {count_property_index} index: {property_index} properties_array_end: {properties_array_end}");
-                    return Err(Error::from(E_FAIL));
+                    return Err(Error::new(E_FAIL, HSTRING::from(format!("invalid count_property_index: {count_property_index} index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!()))));
                 }
                 (self.int_values[count_property_index as usize], true) // Look up the value of a previous property
             } else {
@@ -325,7 +323,7 @@ impl<'a> Decoder<'a> {
                                             continue;
                                         }
                                         map_info = None;
-                                        error!("Failed to TdhGetEventMapInformation: {}", status);
+                                        warn!("Failed to TdhGetEventMapInformation: {}", status);
                                         break;
                                     }
                                 }
@@ -384,8 +382,7 @@ impl<'a> Decoder<'a> {
                                 map_info = None;
                                 continue;
                             }
-                            error!("Failed to TdhFormatProperty: {}", status);
-                            return Err(Error::from(E_FAIL));
+                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failed to TdhFormatProperty: {} at: {}:{}", status, file!(), line!()))));
                         }
                     }
     
@@ -480,7 +477,7 @@ impl TryFrom<i32> for DecodingSource {
     fn try_from(v: i32) -> core::result::Result<Self, Self::Error> {
         let v = v as u8;
         if v > DecodingSource::DecodingSourceMax as u8 {
-            return Err(format!("the value: {v} is invalid for DecodingSource"));
+            return Err(format!("the value: {v} is invalid for DecodingSource at: {}:{}", file!(), line!()));
         }
         let ds: DecodingSource = unsafe{ mem::transmute(v) };
         Ok(ds)
