@@ -9,6 +9,7 @@ export component App inherits Window {
     preferred-height: 600px;
     title: @tr("kernel events trace");
     icon: @image-url("./logo/slint-logo-small-light.png");
+    default-font-family: "Noto Sans";
 
     callback start() -> {ok: bool, message: string};
     callback stop();
