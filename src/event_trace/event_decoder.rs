@@ -323,7 +323,7 @@ impl<'a> Decoder<'a> {
                                             continue;
                                         }
                                         map_info = None;
-                                        warn!("Failed to TdhGetEventMapInformation: {}", status);
+                                        warn!("Failed to TdhGetEventMapInformation: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp);
                                         break;
                                     }
                                 }
@@ -379,7 +379,7 @@ impl<'a> Decoder<'a> {
                                 continue;
                             }
                             if status == ERROR_EVT_INVALID_EVENT_DATA.0 {
-                                warn!("Failed to TdhFormatProperty: {}", status);
+                                warn!("Failed to TdhFormatProperty: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp);
                                 break 'while_properties;
                             }
                             return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failed to TdhFormatProperty: {} at: {}:{}", status, file!(), line!()))));
