@@ -309,13 +309,13 @@ impl Controller {
                         }
                     },
                     Err(e) => {
-                        error!("Faild to decode: {e}");
+                        error!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
                         insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
                     }
                 }
             },
             Err(e) => {
-                error!("Faild to Decoder::new: {e}");
+                error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
                 insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
             }
         }

@@ -51,7 +51,7 @@ impl<'a> Decoder<'a> {
                 event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
                 continue;
             }
-            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failded to TdhGetEventInformation: {} {} at: {}:{}", status, super::EventRecord(event_record), file!(), line!()))));
+            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failded to TdhGetEventInformation: {} at: {}:{}", status, file!(), line!()))));
         }
 
         if event_info.TopLevelPropertyCount > event_info.PropertyCount {
