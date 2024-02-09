@@ -29,14 +29,6 @@ impl EventRecordModel {
         }
     }
 
-    pub fn timestamp(&self) -> i64 {
-        self.array.timestamp.0
-    }
-
-    pub fn thread_id(&self) -> u32 {
-        self.array.thread_id
-    }
-
     pub fn data_detail(&self) -> Option<SharedString> {
         Some(SharedString::from(serde_json::to_string_pretty(&self.array).unwrap_or_default()))
     }
