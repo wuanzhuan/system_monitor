@@ -615,6 +615,9 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "CreateHandle", op_code: 32},
 			MinorDescribe{name: "CloseHandle", op_code: 33},
 			MinorDescribe{name: "DuplicateHandle", op_code: 34},
+			MinorDescribe{name: "TypeDCStart", op_code: 36},
+			MinorDescribe{name: "TypeDCEnd", op_code: 37},
+			MinorDescribe{name: "HandleDCStart", op_code: 38},
 			MinorDescribe{name: "HandleDCEnd", op_code: 39}
 		],
 		guid: OBJECT_GUID
