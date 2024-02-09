@@ -172,7 +172,7 @@ impl<'a> Decoder<'a> {
         let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
         // top property may contain length/count
-        'while_properties: while property_index < properties_array_end {
+        while property_index < properties_array_end {
             let property_info = &self.property_info_array[property_index as usize];
             let property_name =
                 u16cstr_from_bytes_truncate_offset(self.event_info_slice, property_info.NameOffset)
@@ -377,11 +377,7 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
-                            if status == ERROR_EVT_INVALID_EVENT_DATA.0 {
-                                warn!("Failed to TdhFormatProperty: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp);
-                                break 'while_properties;
-                            }
-                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failed to TdhFormatProperty: {} at: {}:{}", status, file!(), line!()))));
+                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} thread_id: {} timestamp: {}", self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp))));
                         }
                     }
     
