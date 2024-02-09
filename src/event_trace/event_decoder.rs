@@ -34,22 +34,8 @@ impl<'a> Decoder<'a> {
         let mut buffer_size = 4096u32;
         let mut event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
         let mut event_info: &mut TRACE_EVENT_INFO = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
-        let mut status = unsafe {
-            TdhGetEventInformation(
-                event_record,
-                None,
-                Some(event_info as *mut TRACE_EVENT_INFO),
-                &mut buffer_size,
-            )
-        };
-        if status != ERROR_SUCCESS.0 {
-            if status != ERROR_INSUFFICIENT_BUFFER.0 {
-                warn!("Failded to TdhGetEventInformation: {}", status);
-                return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
-            }
-            event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
-            event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
-            status = unsafe {
+        loop {
+            let status = unsafe {
                 TdhGetEventInformation(
                     event_record,
                     None,
@@ -57,11 +43,17 @@ impl<'a> Decoder<'a> {
                     &mut buffer_size,
                 )
             };
-            if status != ERROR_SUCCESS.0 {
-                warn!("Failded to TdhGetEventInformation: {}", status);
-                return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
-            };
-        };
+            if status == ERROR_SUCCESS.0 {
+                break;
+            }
+            if status == ERROR_INSUFFICIENT_BUFFER.0 {
+                event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
+                event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
+                continue;
+            }
+            warn!("Failded to TdhGetEventInformation: {} {}", status, super::EventRecord(event_record));
+            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from("Failed to TdhGetEventInformation")));
+        }
 
         if event_info.TopLevelPropertyCount > event_info.PropertyCount {
             return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {}", event_info.TopLevelPropertyCount, event_info.PropertyCount))));
