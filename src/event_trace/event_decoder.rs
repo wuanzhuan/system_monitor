@@ -172,7 +172,7 @@ impl<'a> Decoder<'a> {
         let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
         // top property may contain length/count
-        while property_index < properties_array_end {
+        'while_properties: while property_index < properties_array_end {
             let property_info = &self.property_info_array[property_index as usize];
             let property_name =
                 u16cstr_from_bytes_truncate_offset(self.event_info_slice, property_info.NameOffset)
@@ -329,7 +329,7 @@ impl<'a> Decoder<'a> {
                                 }
                             }
                         }
-                    };
+                    }
     
                     let mut prop_buffer = Vec::<u16>::new();
                     
@@ -378,9 +378,9 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
-                            if status == ERROR_EVT_INVALID_EVENT_DATA.0 && map_info.is_some() {
-                                map_info = None;
-                                continue;
+                            if status == ERROR_EVT_INVALID_EVENT_DATA.0 {
+                                warn!("Failed to TdhFormatProperty: {}", status);
+                                break 'while_properties;
                             }
                             return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failed to TdhFormatProperty: {} at: {}:{}", status, file!(), line!()))));
                         }
