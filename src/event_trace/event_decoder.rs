@@ -263,17 +263,16 @@ impl<'a> Decoder<'a> {
                 }
             };
             let is_struct = (property_info.Flags.0 & PropertyStruct.0) != 0;
-    
+
             if is_struct {
                 // If this property is a struct, recurse and print the child
                 // properties.
-                let struct_start_index =
-                    unsafe { property_info.Anonymous1.structType.StructStartIndex };
-                let num_of_struct_members =
-                    unsafe { property_info.Anonymous1.structType.NumOfStructMembers };
+                let struct_start_index = unsafe { property_info.Anonymous1.structType.StructStartIndex };
+                let num_of_struct_members = unsafe { property_info.Anonymous1.structType.NumOfStructMembers };
+                let struct_index_end = struct_start_index as u32 + num_of_struct_members as u32;
                 let r = self.decode_properties(
                     struct_start_index,
-                    struct_start_index + num_of_struct_members,
+                    struct_index_end as u16,
                     user_data_index
                 )?;
                 properties_object.insert(property_name, PropertyDecoded::Struct(r));
