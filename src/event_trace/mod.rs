@@ -285,10 +285,10 @@ impl Controller {
                                                 mem::drop(context_mg);
                                                 cb(event_record_decoded, is_stack_walk);
                                             } else {
-                                                insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                                                insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
                                             }
                                         } else {
-                                            insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                                            insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
                                             mem::drop(context_mg);
                                             // the major event is filter by flag. so a error happens when a event that is not enable comes
                                             // the EventTrace event is always enable.
@@ -297,7 +297,7 @@ impl Controller {
                                             }
                                         }
                                     }else {
-                                        insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                                        insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
                                         mem::drop(context_mg);
                                         warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                                     }
@@ -310,17 +310,20 @@ impl Controller {
                     },
                     Err(e) => {
                         error!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
-                        insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
+                        insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
                     }
                 }
             },
             Err(e) => {
                 error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
-                insert_error_event((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
+                insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
             }
         }
 
-        fn insert_error_event(key: (u32, i64), context_mg_op: Option<&MutexGuard<Controller>>) {
+        fn insert_error_event(is_stack_walk: bool, key: (u32, i64), context_mg_op: Option<&MutexGuard<Controller>>) {
+            if is_stack_walk {
+                return;
+            }
             if let Some(context_mg) = context_mg_op {
                 context_mg.events_error_map.borrow_mut().insert(key, ());
             } else {
