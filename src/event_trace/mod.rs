@@ -33,12 +33,7 @@ const INVALID_PROCESSTRACE_HANDLE: u64 = if cfg!(target_pointer_width = "64") {
 };
 
 // {ADA6BC38-93C9-00D1-7462-11D6841904AA}
-const DUMMY_GUID: GUID = GUID {
-    data1: 0xADA6BC38,
-    data2: 0x93C9,
-    data3: 0x00D1,
-    data4: [0x74, 0x62, 0x11, 0xD6, 0x84, 0x19, 0x04, 0xAA],
-};
+const DUMMY_GUID: GUID = GUID::from_u128(0xADA6BC38_93C9_00D1_7462_11D6841904AA);
 
 lazy_static! {
     static ref CONTEXT: Arc::<Mutex<Controller>> = Arc::new(Mutex::new(Controller::new()));
