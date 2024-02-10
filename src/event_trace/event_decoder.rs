@@ -15,6 +15,7 @@ use crate::third_extend::Guid;
 
 pub struct Decoder<'a>{
     event_record: &'a EVENT_RECORD,
+    _event_info_vec: Vec<u8>,
     event_info: &'a TRACE_EVENT_INFO,
     event_info_slice: &'a [u8],
     property_info_array: &'a [EVENT_PROPERTY_INFO],
@@ -75,6 +76,7 @@ impl<'a> Decoder<'a> {
         };
         Ok(Self{
             event_record,
+            _event_info_vec: event_info_vec,
             event_info,
             event_info_slice,
             property_info_array,
