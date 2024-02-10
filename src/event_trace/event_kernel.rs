@@ -505,7 +505,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "RDComplete", op_code: 8},
 			MinorDescribe{name: "EndExtension", op_code: 32},
 		],
-		guid: EventTraceGuid
+		guid: EventTraceGuid  // https://learn.microsoft.com/zh-cn/windows/win32/api/evntrace/nc-evntrace-pevent_record_callback#remarks
 	},
 	EventsDescribe{
 		major: MajorDescribe{name: "FullTrace", flag: Major::FullTrace as u32},
