@@ -106,8 +106,8 @@ fn main() {
         }
     });
     app.on_stop(|| {
-        let x = event_trace::Controller::stop(None);
-        info!("end: {:?}", x);
+        let r = event_trace::Controller::stop(None);
+        info!("end: {:?}", r);
     });
 
     app.run().unwrap();
