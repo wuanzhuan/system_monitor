@@ -84,7 +84,7 @@ fn main() {
                     rows.push(row_rc);
                 } else {
                     let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                    if let Some(row_rc) = rows.stack_walk_map.borrow_mut().get(&(sw.stack_thread, sw.event_timestamp)) {
+                    if let Some(row_rc) = rows.stack_walk_map.borrow_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
                         let erm = row_rc.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                         if !erm.set_stack_walk(sw.clone()) {
                             error!("Stalkwalk event had been set! {}-{}", sw.stack_thread as i32, sw.event_timestamp);
