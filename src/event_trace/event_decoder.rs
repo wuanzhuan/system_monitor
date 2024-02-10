@@ -147,6 +147,7 @@ impl<'a> Decoder<'a> {
                     if is_stack_walk {
                         return Err(e);
                     }
+                    warn!("Failed to decode_properties: {e}");
                     PropertyDecoded::Struct(Default::default())
                 }
             }
