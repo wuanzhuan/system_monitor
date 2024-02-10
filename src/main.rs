@@ -90,7 +90,7 @@ fn main() {
                             error!("Stalkwalk event had been set! {}-{}", sw.stack_thread as i32, sw.event_timestamp);
                         }
                     } else {
-                        error!("Can't find the stack walk by: {}-{} \n{} \n{:?}",  sw.stack_thread as i32, sw.event_timestamp, serde_json::to_string_pretty(&event_record).unwrap_or_default(), sw);
+                        error!("Can't find the stack walk by: {}-{}",  sw.stack_thread as i32, sw.event_timestamp);
                     }
                 }
             }).unwrap();
