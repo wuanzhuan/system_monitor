@@ -137,8 +137,17 @@ impl<'a> Decoder<'a> {
                 0,
                 self.event_info.TopLevelPropertyCount as u16,
                 &mut user_data_index
-            )?;
-            PropertyDecoded::Struct(r)
+            );
+            match r {
+                Ok(map) => PropertyDecoded::Struct(map),
+                Err(e) => {
+                    let is_stack_walk = self.event_record.EventHeader.ProviderId == super::event_kernel::STACK_WALK_GUID;
+                    if is_stack_walk {
+                        return Err(e);
+                    }
+                    PropertyDecoded::Struct(Default::default())
+                }
+            }
         };
         Ok(EventRecordDecoded{
             provider_id,
