@@ -270,25 +270,9 @@ impl Controller {
                 }
             },
             Err(e) => {
-                let context_arc = CONTEXT.clone();
-                let r_lock = context_arc.lock();
-                match r_lock {
-                    Ok(context_mg) => {
-                        if let Some(indexs) = context_mg.config.events_opcode_map.get(&(er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode as u32)) {
-                            event_decoder::decode_kernel_event(er, event_kernel::EVENTS_DESC[indexs.0].major.name, event_kernel::EVENTS_DESC[indexs.0].minors[indexs.1].name)
-                        } else {
-                            insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                            mem::drop(context_mg);
-                            error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
-                            warn!("Can't find events: {:?}-{}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode);
-                            return;
-                        }
-                    }
-                    Err(e) => {
-                        error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
-                        error!("Faild to lock: {}", e);
-                        return;
-                    }
+                match decode_kernel_event_when_error(er, is_stack_walk, e) {
+                    Some(erd) => erd,
+                    None => return
                 }
             }
         };
@@ -351,6 +335,29 @@ impl Controller {
                     Err(e) => {
                         error!("Faild to lock: {}", e);
                     }
+                }
+            }
+        }
+
+        fn decode_kernel_event_when_error(er: &EVENT_RECORD, is_stack_walk: bool, e: Error) -> Option<EventRecordDecoded> {
+            let context_arc = CONTEXT.clone();
+            let r_lock = context_arc.lock();
+            match r_lock {
+                Ok(context_mg) => {
+                    if let Some(indexs) = context_mg.config.events_opcode_map.get(&(er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode as u32)) {
+                        Some(event_decoder::decode_kernel_event(er, event_kernel::EVENTS_DESC[indexs.0].major.name, event_kernel::EVENTS_DESC[indexs.0].minors[indexs.1].name))
+                    } else {
+                        insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                        mem::drop(context_mg);
+                        error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                        warn!("Can't find events: {:?}-{}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode);
+                        return None;
+                    }
+                }
+                Err(e) => {
+                    error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                    error!("Faild to lock: {}", e);
+                    return None;
                 }
             }
         }
