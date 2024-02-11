@@ -287,7 +287,7 @@ impl Controller {
                         cb(event_record_decoded, is_stack_walk);
                     }
                 } else {
-                    if let Some(enable_indexs) = context_mg.config.events_enable_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
+                    if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
                         if context_mg.config.events_enables[enable_indexs.0].major {
                             if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
                                 let cb = context_mg.event_record_callback.clone().unwrap();

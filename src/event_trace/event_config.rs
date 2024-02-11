@@ -7,7 +7,7 @@ use std::collections::HashMap;
 pub struct Config {
     pub events_enables: Vec<EventEnable>,
     pub events_desc: &'static[event_kernel::EventsDescribe],
-    pub events_enable_map: HashMap<(&'static str, &'static str), (usize, usize)>
+    pub events_name_map: HashMap<(&'static str, &'static str), (usize, usize)>
 }
 
 impl Config {
@@ -22,7 +22,7 @@ impl Config {
                 events_name_map.insert((item.major.name, item_minor.name), (index_major, index_minor));
             }
         }
-        Self{events_enables: event_enable, events_desc, events_enable_map: events_name_map}
+        Self{events_enables: event_enable, events_desc, events_name_map}
     }
 
     #[allow(unused)]
