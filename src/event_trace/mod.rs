@@ -256,64 +256,68 @@ impl Controller {
     unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
         let er: &EVENT_RECORD = mem::transmute(eventrecord);
         let is_stack_walk = er.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
-        let r = event_decoder::Decoder::new(er);
-        match r {
+        let event_record_decoded = match event_decoder::Decoder::new(er) {
             Ok(mut decoder) => {
-                let r = decoder.decode();
-                match r {
+                match decoder.decode() {
                     Ok(event_record_decoded) => {
-                        let context_arc = CONTEXT.clone();
-                        let r_lock = context_arc.lock();
-                        match r_lock {
-                            Ok(context_mg) => {
-                                if is_stack_walk {
-                                    if context_mg.events_error_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
-                                        let cb = context_mg.event_record_callback.clone().unwrap();
-                                        mem::drop(context_mg);
-                                        cb(event_record_decoded, is_stack_walk);
-                                    }
-                                } else {
-                                    if let Some(enable_indexs) = context_mg.config.events_enable_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
-                                        if context_mg.config.events_enables[enable_indexs.0].major {
-                                            if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
-                                                let cb = context_mg.event_record_callback.clone().unwrap();
-                                                mem::drop(context_mg);
-                                                cb(event_record_decoded, is_stack_walk);
-                                            } else {
-                                                insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                                            }
-                                        } else {
-                                            insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                                            mem::drop(context_mg);
-                                            // the major event is filter by flag. so a error happens when a event that is not enable comes
-                                            // the EventTrace event is always enable.
-                                            if event_record_decoded.event_name != "EventTrace" {
-                                                error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
-                                            }
-                                        }
-                                    }else {
-                                        insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                                        mem::drop(context_mg);
-                                        warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
-                                    }
-                                }
-                            },
-                            Err(e) => {
-                                error!("Failed to lock: {e} event_record_decoded: {}", serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default())
-                            }
-                        }
+                        event_record_decoded
                     },
                     Err(e) => {
                         error!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
                         insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
+                        return;
                     }
                 }
             },
             Err(e) => {
                 error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
                 insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
+                return;
+            }
+        };
+
+        let context_arc = CONTEXT.clone();
+        let r_lock = context_arc.lock();
+        match r_lock {
+            Ok(context_mg) => {
+                if is_stack_walk {
+                    if context_mg.events_error_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
+                        let cb = context_mg.event_record_callback.clone().unwrap();
+                        mem::drop(context_mg);
+                        cb(event_record_decoded, is_stack_walk);
+                    }
+                } else {
+                    if let Some(enable_indexs) = context_mg.config.events_enable_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
+                        if context_mg.config.events_enables[enable_indexs.0].major {
+                            if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
+                                let cb = context_mg.event_record_callback.clone().unwrap();
+                                mem::drop(context_mg);
+                                cb(event_record_decoded, is_stack_walk);
+                            } else {
+                                insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                            }
+                        } else {
+                            insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                            mem::drop(context_mg);
+                            // the major event is filter by flag. so a error happens when a event that is not enable comes
+                            // the EventTrace event is always enable.
+                            if event_record_decoded.event_name != "EventTrace" {
+                                error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                            }
+                        }
+                    }else {
+                        insert_error_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                        mem::drop(context_mg);
+                        warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                    }
+                }
+            },
+            Err(e) => {
+                error!("Failed to lock: {e} event_record_decoded: {}", serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default())
             }
         }
+
+    
 
         fn insert_error_event(is_stack_walk: bool, key: (u32, i64), context_mg_op: Option<&MutexGuard<Controller>>) {
             if is_stack_walk {
