@@ -90,7 +90,7 @@ fn main() {
                             error!("Stalkwalk event had been set! {}-{}", sw.stack_thread as i32, sw.event_timestamp);
                         }
                     } else {
-                        error!("Can't find the stack walk by: {}-{}",  sw.stack_thread as i32, sw.event_timestamp);
+                        error!("Can't find event for the stack walk: {}-{}",  sw.stack_thread as i32, sw.event_timestamp);
                     }
                 }
             }).unwrap();
