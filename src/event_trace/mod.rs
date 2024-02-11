@@ -333,7 +333,6 @@ impl Controller {
                 error!("Failed to lock: {e} event_record_decoded: {}", serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default())
             }
         }
-
     
         // contains error and inactivated event
         fn insert_unstored_event(is_stack_walk: bool, key: (u32, i64), context_mg_op: Option<&MutexGuard<Controller>>) {
