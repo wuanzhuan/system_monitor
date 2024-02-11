@@ -11,6 +11,7 @@ use serde::{Serialize, Serializer, ser::SerializeStruct};
 use linked_hash_map::LinkedHashMap;
 use crate::utils::TimeStamp;
 use crate::third_extend::Guid;
+use crate::third_extend::strings::slice_to_string_uncheck;
 
 
 pub struct Decoder<'a>{
@@ -418,6 +419,35 @@ pub fn is_string_event(flag: u16) -> bool {
     (flag & EVENT_HEADER_FLAG_STRING_ONLY as u16) != 0
 }
 
+pub fn decode_kernel_event(event_record: &EVENT_RECORD, event_name: &str, opcode_name: &str) -> EventRecordDecoded {
+    let provider_id = Guid(event_record.EventHeader.ProviderId);
+    let event_guid= Guid(event_record.EventHeader.ProviderId);
+    let event_descriptor = EventDescriptor(event_record.EventHeader.EventDescriptor);
+    let decoding_source = DecodingSource::from_event_header(event_record.EventHeader.Flags, event_record.EventHeader.EventProperty);
+    let user_data = unsafe {
+        slice::from_raw_parts(event_record.UserData as *const u8, event_record.UserDataLength as usize)
+    };
+    let properties = PropertyDecoded::String(slice_to_string_uncheck(user_data));
+    EventRecordDecoded{
+        provider_id,
+        event_guid,
+        event_descriptor,
+        decoding_source,
+        provider_name: "".to_string(),
+        level_name: "".to_string(),
+        channel_name: "".to_string(),
+        keywords_name: "".to_string(),
+        event_name: event_name.to_string(),
+        opcode_name: opcode_name.to_string(),
+        event_message: "".to_string(),
+        provider_message: "".to_string(),
+        process_id: event_record.EventHeader.ProcessId,
+        thread_id: event_record.EventHeader.ThreadId,
+        timestamp: TimeStamp(event_record.EventHeader.TimeStamp),
+        properties
+    }
+}
+
 #[derive(Debug, Serialize)]
 pub struct EventRecordDecoded {
     pub provider_id: Guid,
@@ -470,12 +500,27 @@ impl Serialize for EventDescriptor {
 
 #[derive(Debug, Serialize)]
 #[allow(unused)]
+#[repr(u8)]
 pub enum DecodingSource {
-    DecodingSourceXMLFile,
-    DecodingSourceWbem,
-    DecodingSourceWPP,
-    DecodingSourceTlg,
-    DecodingSourceMax
+    DecodingSourceXMLFile = DecodingSourceXMLFile.0 as u8,
+    DecodingSourceWbem = DecodingSourceWbem.0 as u8,
+    DecodingSourceWPP = DecodingSourceWPP.0 as u8,
+    DecodingSourceTlg = DecodingSourceTlg.0 as u8,
+    DecodingSourceMax = DecodingSourceMax.0 as u8
+}
+
+impl DecodingSource {
+    fn from_event_header(flags: u16, event_property: u16) -> Self {
+        if (flags & EVENT_HEADER_FLAG_TRACE_MESSAGE as u16) != 0 {
+            return Self::DecodingSourceWPP;
+        }
+        match event_property as u32 {
+            EVENT_HEADER_PROPERTY_XML => Self::DecodingSourceXMLFile,
+            EVENT_HEADER_PROPERTY_FORWARDED_XML => Self::DecodingSourceTlg,
+            EVENT_HEADER_PROPERTY_LEGACY_EVENTLOG => Self::DecodingSourceWbem,
+            _ => Self::DecodingSourceMax
+        }
+    }
 }
 
 impl TryFrom<i32> for DecodingSource {

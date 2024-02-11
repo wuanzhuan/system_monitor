@@ -12,7 +12,7 @@ use windows::core::GUID;
 use serde::{Serialize, Serializer};
 
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Guid(pub GUID);
 
 impl Serialize for Guid {
