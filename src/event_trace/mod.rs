@@ -49,7 +49,7 @@ pub struct Controller {
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
     event_record_callback: Option<Rc<dyn Fn(EventRecordDecoded, bool)>>,
-    events_error_map: RefCell<LinkedHashMap<(u32, i64), ()>>
+    unstored_events_map: RefCell<LinkedHashMap<(u32, i64), ()>>
 }
 
 unsafe impl std::marker::Send for Controller{}
@@ -65,7 +65,7 @@ impl Controller {
             h_consumer_thread: None,
             is_win8_or_greater: unsafe{ GetVersion() } >= _WIN32_WINNT_WINBLUE,
             event_record_callback: None,
-            events_error_map: RefCell::new(LinkedHashMap::new())
+            unstored_events_map: RefCell::new(LinkedHashMap::new())
         };
         cxt
     }
@@ -298,7 +298,7 @@ impl Controller {
         match r_lock {
             Ok(context_mg) => {
                 if is_stack_walk {
-                    if context_mg.events_error_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
+                    if context_mg.unstored_events_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
                         let cb = context_mg.event_record_callback.clone().unwrap();
                         mem::drop(context_mg);
                         cb(event_record_decoded, is_stack_walk);
@@ -341,13 +341,13 @@ impl Controller {
                 return;
             }
             if let Some(context_mg) = context_mg_op {
-                context_mg.events_error_map.borrow_mut().insert(key, ());
+                context_mg.unstored_events_map.borrow_mut().insert(key, ());
             } else {
                 let context_arc = CONTEXT.clone();
                 let r_lock = context_arc.lock();
                 match r_lock {
                     Ok(context_mg) => {
-                        context_mg.events_error_map.borrow_mut().insert(key, ());
+                        context_mg.unstored_events_map.borrow_mut().insert(key, ());
                     }
                     Err(e) => {
                         error!("Faild to lock: {}", e);
