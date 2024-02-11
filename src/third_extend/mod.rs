@@ -11,6 +11,7 @@ pub mod bytemuck {
 use windows::core::GUID;
 use serde::{Serialize, Serializer};
 
+
 #[derive(Debug)]
 pub struct Guid(pub GUID);
 
