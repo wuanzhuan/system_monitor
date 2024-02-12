@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { HorizontalBox, VerticalBox, ListView, StandardListView, CheckBox } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, ListView, StandardListView, CheckBox, Button, LineEdit } from "std-widgets.slint";
 
 export struct EventDesc {
     name: string,
@@ -15,13 +15,25 @@ export global EnablesData {
 }
 
 export component EventsEnables inherits VerticalBox {
-    spacing: 2rem;
+    spacing: 1rem;
     width: 25rem;
 
     Text {
+        height: self.font-size + 2px;
         text: @tr("events enables");
         font-size: 1.5rem;
         horizontal-alignment: left;
+    }
+    HorizontalBox {
+        is_expand := Button {
+            height: 2rem;
+            text: self.checked ? "-" : "+";
+            checkable: true;
+        }
+        LineEdit {
+            height: 2rem;
+            placeholder-text: "please query events";
+        }
     }
     ListView {
         for major[index_major] in EnablesData.event_descs: HorizontalBox {
@@ -29,7 +41,7 @@ export component EventsEnables inherits VerticalBox {
                 text: major.name;
                 toggled => {EnablesData.toggled_major(index_major, self.checked)}
             }
-            VerticalBox {
+            if is_expand.checked : VerticalBox {
                 for minor[index_minor] in major.minors : HorizontalBox {
                     minor_cb := CheckBox {
                         text: minor;
