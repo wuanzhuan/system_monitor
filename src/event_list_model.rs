@@ -4,6 +4,7 @@ use std::{
 };
 use linked_hash_map::LinkedHashMap;
 
+
 pub struct ListModel<'a: 'static, T> {
     // the backing data, access by cursor
     list: Box<LinkedList<Rc<T>>>,
