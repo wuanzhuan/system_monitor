@@ -1,8 +1,9 @@
 use slint::{Model, ModelNotify, ModelTracker};
 use std::{
-    cell::RefCell, collections::{LinkedList, linked_list::CursorMut}, rc::Rc
+    cell::RefCell, rc::Rc
 };
 use linked_hash_map::LinkedHashMap;
+use crate::linked_list::{LinkedList, CursorMut};
 
 
 pub struct ListModel<'a: 'static, T> {
