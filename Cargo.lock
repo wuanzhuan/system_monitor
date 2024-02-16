@@ -3572,6 +3572,7 @@ dependencies = [
  "chrono",
  "lazy_static",
  "linked-hash-map",
+ "rand",
  "serde",
  "serde_json",
  "slint",

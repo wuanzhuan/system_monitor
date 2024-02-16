@@ -1,11 +1,10 @@
 use super::*;
-use crate::testing::crash_test::{CrashTestDummy, Panic};
-use crate::vec::Vec;
-
+use crash_test::{CrashTestDummy, Panic};
 use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::thread;
-
 use rand::RngCore;
+
+mod crash_test;
 
 #[test]
 fn test_basic() {
@@ -521,7 +520,7 @@ fn fuzz_test(sz: i32, rng: &mut impl RngCore) {
 
 #[test]
 fn test_fuzz() {
-    let mut rng = crate::test_helpers::test_rng();
+    let mut rng = rand::thread_rng();
     for _ in 0..25 {
         fuzz_test(3, &mut rng);
         fuzz_test(16, &mut rng);
@@ -560,7 +559,8 @@ fn drain_to_empty_test() {
     check_links(&m);
 
     assert_eq!(deleted, &[1, 2, 3, 4, 5, 6]);
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
+    let array: &[u32] = &[];
+    assert_eq!(m.into_iter().collect::<Vec<_>>(), array);
 }
 
 #[test]
@@ -700,7 +700,8 @@ fn test_cursor_mut_insert() {
     let mut cursor = m.cursor_front_mut();
     cursor.move_prev();
     let tmp = cursor.split_before();
-    assert_eq!(m.into_iter().collect::<Vec<_>>(), &[]);
+    let array: &[u32] = &[];
+    assert_eq!(m.into_iter().collect::<Vec<_>>(), array);
     m = tmp;
     let mut cursor = m.cursor_front_mut();
     cursor.move_next();
@@ -824,7 +825,8 @@ fn extract_if_empty() {
     }
 
     assert_eq!(list.len(), 0);
-    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+    let vec: Vec<i32> = vec![]; 
+    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec);
 }
 
 #[test]
@@ -894,7 +896,8 @@ fn extract_if_true() {
 
     assert_eq!(count, initial_len);
     assert_eq!(list.len(), 0);
-    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![]);
+    let vec: Vec<i32> = vec![]; 
+    assert_eq!(list.into_iter().collect::<Vec<_>>(), vec);
 }
 
 #[test]
