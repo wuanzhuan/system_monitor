@@ -9,7 +9,6 @@
 //!
 //! [`Vec`]: crate::vec::Vec
 //! [`VecDeque`]: super::vec_deque::VecDeque
-extern crate alloc;
 
 use core::cmp::Ordering;
 use core::fmt;
@@ -18,18 +17,10 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
-use alloc::alloc::{Allocator, Global};
+use std::alloc::{Allocator, Global};
 
 #[cfg(test)]
 mod tests;
-
-/// An intermediate trait for specialization of `Extend`.
-#[doc(hidden)]
-#[cfg(not(no_global_oom_handling))]
-trait SpecExtend<I: IntoIterator> {
-    /// Extends `self` with the contents of the given iterator.
-    fn spec_extend(&mut self, iter: I);
-}
 
 /// A doubly-linked list with owned nodes.
 ///
@@ -1128,7 +1119,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     }
 }
 
-unsafe impl<T, A: Allocator> Drop for LinkedList<T, A> {
+impl<T, A: Allocator> Drop for LinkedList<T, A> {
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator>(&'a mut LinkedList<T, A>);
 
@@ -1952,24 +1943,12 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut LinkedList<T, A> {
 
 impl<T, A: Allocator> Extend<T> for LinkedList<T, A> {
     fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
-        <Self as SpecExtend<I>>::spec_extend(self, iter);
+        iter.into_iter().for_each(move |elt| self.push_back(elt));
     }
 
     #[inline]
     fn extend_one(&mut self, elem: T) {
         self.push_back(elem);
-    }
-}
-
-impl<I: IntoIterator, A: Allocator> SpecExtend<I> for LinkedList<I::Item, A> {
-    default fn spec_extend(&mut self, iter: I) {
-        iter.into_iter().for_each(move |elt| self.push_back(elt));
-    }
-}
-
-impl<T> SpecExtend<LinkedList<T>> for LinkedList<T> {
-    fn spec_extend(&mut self, ref mut other: LinkedList<T>) {
-        self.append(other);
     }
 }
 

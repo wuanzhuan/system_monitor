@@ -1,4 +1,4 @@
-#![feature(linked_list_cursors)]
+#![feature(linked_list_cursors, allocator_api, extend_one, exact_size_is_empty, hasher_prefixfree_extras)]
 
 
 use std::rc::Rc;
