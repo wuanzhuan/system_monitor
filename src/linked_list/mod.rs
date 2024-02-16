@@ -9,8 +9,7 @@
 //!
 //! [`Vec`]: crate::vec::Vec
 //! [`VecDeque`]: super::vec_deque::VecDeque
-
-#![stable(feature = "rust1", since = "1.0.0")]
+extern crate alloc;
 
 use core::cmp::Ordering;
 use core::fmt;
@@ -19,8 +18,7 @@ use core::iter::FusedIterator;
 use core::marker::PhantomData;
 use core::mem;
 use core::ptr::NonNull;
-
-use core::alloc::{Allocator, Global};
+use alloc::alloc::{Allocator, Global};
 
 #[cfg(test)]
 mod tests;
@@ -51,11 +49,9 @@ trait SpecExtend<I: IntoIterator> {
 ///
 /// [`Vec`]: crate::vec::Vec
 /// [`VecDeque`]: super::vec_deque::VecDeque
-#[cfg_attr(not(test), rustc_diagnostic_item = "LinkedList")]
-#[rustc_insignificant_dtor]
 pub struct LinkedList<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    A: Allocator = Global,
 > {
     head: Option<NonNull<Node<T>>>,
     tail: Option<NonNull<Node<T>>>,
@@ -140,7 +136,7 @@ impl<T: fmt::Debug> fmt::Debug for IterMut<'_, T> {
 #[derive(Clone)]
 pub struct IntoIter<
     T,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    A: Allocator = Global,
 > {
     list: LinkedList<T, A>,
 }
@@ -439,7 +435,6 @@ impl<T> LinkedList<T> {
     /// let list: LinkedList<u32> = LinkedList::new();
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_linked_list_new", since = "1.39.0")]
     #[must_use]
     pub const fn new() -> Self {
         LinkedList { head: None, tail: None, len: 0, alloc: Global, marker: PhantomData }
@@ -508,7 +503,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// let list: LinkedList<u32, _> = LinkedList::new_in(System);
     /// ```
     #[inline]
-    #[unstable(feature = "allocator_api", issue = "32838")]
     pub const fn new_in(alloc: A) -> Self {
         LinkedList { head: None, tail: None, len: 0, alloc, marker: PhantomData }
     }
@@ -569,7 +563,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// The cursor is pointing to the "ghost" non-element if the list is empty.
     #[inline]
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn cursor_front(&self) -> Cursor<'_, T, A> {
         Cursor { index: 0, current: self.head, list: self }
     }
@@ -579,7 +572,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// The cursor is pointing to the "ghost" non-element if the list is empty.
     #[inline]
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn cursor_front_mut(&mut self) -> CursorMut<'_, T, A> {
         CursorMut { index: 0, current: self.head, list: self }
     }
@@ -589,7 +581,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// The cursor is pointing to the "ghost" non-element if the list is empty.
     #[inline]
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn cursor_back(&self) -> Cursor<'_, T, A> {
         Cursor { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
     }
@@ -599,7 +590,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// The cursor is pointing to the "ghost" non-element if the list is empty.
     #[inline]
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn cursor_back_mut(&mut self) -> CursorMut<'_, T, A> {
         CursorMut { index: self.len.checked_sub(1).unwrap_or(0), current: self.tail, list: self }
     }
@@ -983,7 +973,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(d.remove(0), 3);
     /// assert_eq!(d.remove(0), 1);
     /// ```
-    #[unstable(feature = "linked_list_remove", issue = "69210")]
     pub fn remove(&mut self, at: usize) -> T {
         let len = self.len();
         assert!(at < len, "Cannot remove at an index outside of the list bounds");
@@ -1049,7 +1038,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(d.pop_front(), Some(2));
     /// assert_eq!(d.pop_front(), None);
     /// ```
-    #[unstable(feature = "linked_list_retain", issue = "114135")]
     pub fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&T) -> bool,
@@ -1084,7 +1072,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(d.pop_front(), Some(3));
     /// assert_eq!(d.pop_front(), None);
     /// ```
-    #[unstable(feature = "linked_list_retain", issue = "114135")]
     pub fn retain_mut<F>(&mut self, mut f: F)
     where
         F: FnMut(&mut T) -> bool,
@@ -1129,7 +1116,6 @@ impl<T, A: Allocator> LinkedList<T, A> {
     /// assert_eq!(evens.into_iter().collect::<Vec<_>>(), vec![2, 4, 6, 8, 14]);
     /// assert_eq!(odds.into_iter().collect::<Vec<_>>(), vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
-    #[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
     pub fn extract_if<F>(&mut self, filter: F) -> ExtractIf<'_, T, F, A>
     where
         F: FnMut(&mut T) -> bool,
@@ -1142,7 +1128,7 @@ impl<T, A: Allocator> LinkedList<T, A> {
     }
 }
 
-unsafe impl<#[may_dangle] T, A: Allocator> Drop for LinkedList<T, A> {
+unsafe impl<T, A: Allocator> Drop for LinkedList<T, A> {
     fn drop(&mut self) {
         struct DropGuard<'a, T, A: Allocator>(&'a mut LinkedList<T, A>);
 
@@ -1289,18 +1275,16 @@ impl<T> Default for IterMut<'_, T> {
 /// tail of the list.
 ///
 /// When created, cursors start at the front of the list, or the "ghost" non-element if the list is empty.
-#[unstable(feature = "linked_list_cursors", issue = "58533")]
 pub struct Cursor<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    A: Allocator = Global,
 > {
     index: usize,
     current: Option<NonNull<Node<T>>>,
     list: &'a LinkedList<T, A>,
 }
 
-#[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T, A: Allocator> Clone for Cursor<'_, T, A> {
     fn clone(&self) -> Self {
         let Cursor { index, current, list } = *self;
@@ -1308,7 +1292,6 @@ impl<T, A: Allocator> Clone for Cursor<'_, T, A> {
     }
 }
 
-#[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for Cursor<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Cursor").field(&self.list).field(&self.index()).finish()
@@ -1325,18 +1308,16 @@ impl<T: fmt::Debug, A: Allocator> fmt::Debug for Cursor<'_, T, A> {
 /// Cursors always rest between two elements in the list, and index in a logically circular way.
 /// To accommodate this, there is a "ghost" non-element that yields `None` between the head and
 /// tail of the list.
-#[unstable(feature = "linked_list_cursors", issue = "58533")]
 pub struct CursorMut<
     'a,
     T: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    A: Allocator = Global,
 > {
     index: usize,
     current: Option<NonNull<Node<T>>>,
     list: &'a mut LinkedList<T, A>,
 }
 
-#[unstable(feature = "linked_list_cursors", issue = "58533")]
 impl<T: fmt::Debug, A: Allocator> fmt::Debug for CursorMut<'_, T, A> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("CursorMut").field(&self.list).field(&self.index()).finish()
@@ -1349,7 +1330,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// This returns `None` if the cursor is currently pointing to the
     /// "ghost" non-element.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn index(&self) -> Option<usize> {
         let _ = self.current?;
         Some(self.index)
@@ -1360,7 +1340,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// If the cursor is pointing to the "ghost" non-element then this will move it to
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_next(&mut self) {
         match self.current.take() {
             // We had no current element; the cursor was sitting at the start position
@@ -1382,7 +1361,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// If the cursor is pointing to the "ghost" non-element then this will move it to
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_prev(&mut self) {
         match self.current.take() {
             // No current. We're at the start of the list. Yield None and jump to the end.
@@ -1404,7 +1382,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// This returns `None` if the cursor is currently pointing to the
     /// "ghost" non-element.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn current(&self) -> Option<&'a T> {
         unsafe { self.current.map(|current| &(*current.as_ptr()).element) }
     }
@@ -1415,7 +1392,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this returns `None`.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_next(&self) -> Option<&'a T> {
         unsafe {
             let next = match self.current {
@@ -1432,7 +1408,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this returns `None`.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_prev(&self) -> Option<&'a T> {
         unsafe {
             let prev = match self.current {
@@ -1446,7 +1421,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn front(&self) -> Option<&'a T> {
         self.list.front()
     }
@@ -1454,7 +1428,6 @@ impl<'a, T, A: Allocator> Cursor<'a, T, A> {
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn back(&self) -> Option<&'a T> {
         self.list.back()
     }
@@ -1466,7 +1439,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// This returns `None` if the cursor is currently pointing to the
     /// "ghost" non-element.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn index(&self) -> Option<usize> {
         let _ = self.current?;
         Some(self.index)
@@ -1477,7 +1449,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// If the cursor is pointing to the "ghost" non-element then this will move it to
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_next(&mut self) {
         match self.current.take() {
             // We had no current element; the cursor was sitting at the start position
@@ -1499,7 +1470,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// If the cursor is pointing to the "ghost" non-element then this will move it to
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this will move it to the "ghost" non-element.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn move_prev(&mut self) {
         match self.current.take() {
             // No current. We're at the start of the list. Yield None and jump to the end.
@@ -1521,7 +1491,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// This returns `None` if the cursor is currently pointing to the
     /// "ghost" non-element.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn current(&mut self) -> Option<&mut T> {
         unsafe { self.current.map(|current| &mut (*current.as_ptr()).element) }
     }
@@ -1531,7 +1500,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// If the cursor is pointing to the "ghost" non-element then this returns
     /// the first element of the `LinkedList`. If it is pointing to the last
     /// element of the `LinkedList` then this returns `None`.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_next(&mut self) -> Option<&mut T> {
         unsafe {
             let next = match self.current {
@@ -1547,7 +1515,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// If the cursor is pointing to the "ghost" non-element then this returns
     /// the last element of the `LinkedList`. If it is pointing to the first
     /// element of the `LinkedList` then this returns `None`.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn peek_prev(&mut self) -> Option<&mut T> {
         unsafe {
             let prev = match self.current {
@@ -1564,7 +1531,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// `CursorMut`, which means it cannot outlive the `CursorMut` and that the
     /// `CursorMut` is frozen for the lifetime of the `Cursor`.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn as_cursor(&self) -> Cursor<'_, T, A> {
         Cursor { list: self.list, current: self.current, index: self.index }
     }
@@ -1577,7 +1543,6 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new elements are
     /// inserted at the start of the `LinkedList`.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_after(&mut self, list: LinkedList<T>) {
         unsafe {
             let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
@@ -1600,7 +1565,6 @@ impl<'a, T> CursorMut<'a, T> {
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new elements are
     /// inserted at the end of the `LinkedList`.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn splice_before(&mut self, list: LinkedList<T>) {
         unsafe {
             let (splice_head, splice_tail, splice_len) = match list.detach_all_nodes() {
@@ -1622,7 +1586,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new element is
     /// inserted at the front of the `LinkedList`.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_after(&mut self, item: T) {
         unsafe {
             let spliced_node = Box::leak(Box::new_in(Node::new(item), &self.list.alloc)).into();
@@ -1642,7 +1605,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// If the cursor is pointing at the "ghost" non-element then the new element is
     /// inserted at the end of the `LinkedList`.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn insert_before(&mut self, item: T) {
         unsafe {
             let spliced_node = Box::leak(Box::new_in(Node::new(item), &self.list.alloc)).into();
@@ -1662,7 +1624,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current(&mut self) -> Option<T> {
         let unlinked_node = self.current?;
         unsafe {
@@ -1680,7 +1641,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// If the cursor is currently pointing to the "ghost" non-element then no element
     /// is removed and `None` is returned.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn remove_current_as_list(&mut self) -> Option<LinkedList<T, A>>
     where
         A: Clone,
@@ -1708,7 +1668,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_after(&mut self) -> LinkedList<T, A>
     where
         A: Clone,
@@ -1727,7 +1686,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     ///
     /// If the cursor is pointing at the "ghost" non-element then the entire contents
     /// of the `LinkedList` are moved.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn split_before(&mut self) -> LinkedList<T, A>
     where
         A: Clone,
@@ -1743,7 +1701,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// This operation should compute in *O*(1) time.
     // `push_front` continues to point to "ghost" when it adds a node to mimic
     // the behavior of `insert_before` on an empty list.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn push_front(&mut self, elt: T) {
         // Safety: We know that `push_front` does not change the position in
         // memory of other nodes. This ensures that `self.current` remains
@@ -1756,7 +1713,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// that the cursor points to is unchanged, even if it is the "ghost" node.
     ///
     /// This operation should compute in *O*(1) time.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn push_back(&mut self, elt: T) {
         // Safety: We know that `push_back` does not change the position in
         // memory of other nodes. This ensures that `self.current` remains
@@ -1775,7 +1731,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// points to the new front element.
     ///
     /// This operation should compute in *O*(1) time.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn pop_front(&mut self) -> Option<T> {
         // We can't check if current is empty, we must check the list directly.
         // It is possible for `self.current == None` and the list to be
@@ -1802,7 +1757,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// points to the "ghost" element.
     ///
     /// This operation should compute in *O*(1) time.
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn pop_back(&mut self) -> Option<T> {
         if self.list.is_empty() {
             None
@@ -1822,7 +1776,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// Provides a reference to the front element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn front(&self) -> Option<&T> {
         self.list.front()
     }
@@ -1830,7 +1783,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// Provides a mutable reference to the front element of the cursor's
     /// parent list, or None if the list is empty.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         self.list.front_mut()
     }
@@ -1838,7 +1790,6 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// Provides a reference to the back element of the cursor's parent list,
     /// or None if the list is empty.
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn back(&self) -> Option<&T> {
         self.list.back()
     }
@@ -1865,20 +1816,18 @@ impl<'a, T, A: Allocator> CursorMut<'a, T, A> {
     /// assert_eq!(contents.next(), None);
     /// ```
     #[must_use]
-    #[unstable(feature = "linked_list_cursors", issue = "58533")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         self.list.back_mut()
     }
 }
 
 /// An iterator produced by calling `extract_if` on LinkedList.
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 pub struct ExtractIf<
     'a,
     T: 'a,
     F: 'a,
-    #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    A: Allocator = Global,
 > where
     F: FnMut(&mut T) -> bool,
 {
@@ -1889,7 +1838,6 @@ pub struct ExtractIf<
     old_len: usize,
 }
 
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 impl<T, F, A: Allocator> Iterator for ExtractIf<'_, T, F, A>
 where
     F: FnMut(&mut T) -> bool,
@@ -1918,7 +1866,6 @@ where
     }
 }
 
-#[unstable(feature = "extract_if", reason = "recently added", issue = "43244")]
 impl<T: fmt::Debug, F> fmt::Debug for ExtractIf<'_, T, F>
 where
     F: FnMut(&mut T) -> bool,
