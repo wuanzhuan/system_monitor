@@ -31,8 +31,5 @@ features = [
     "Win32_System_SystemInformation"
 ]
 
-[dev-dependencies]
-rand = "0.8"
-
 [build-dependencies]
 slint-build = "1.4"

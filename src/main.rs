@@ -10,7 +10,6 @@ mod event_list_model;
 mod event_record_model;
 mod third_extend;
 mod utils;
-mod linked_list;
 
 
 slint::include_modules!();
