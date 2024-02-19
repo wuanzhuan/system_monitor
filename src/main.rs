@@ -1,4 +1,4 @@
-#![feature(linked_list_cursors, allocator_api, extend_one, exact_size_is_empty, hasher_prefixfree_extras)]
+#![feature(linked_list_cursors)]
 
 
 use std::rc::Rc;
@@ -7,6 +7,7 @@ use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition}
 
 mod event_trace;
 mod event_list_model;
+mod event_list;
 mod event_record_model;
 mod third_extend;
 mod utils;
