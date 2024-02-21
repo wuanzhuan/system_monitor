@@ -1,15 +1,13 @@
 use std::{
-    cell::SyncUnsafeCell,
-    sync::{
-        Arc, RwLock, RwLockWriteGuard,
+    cell::SyncUnsafeCell, ops::Deref, sync::{
         atomic::{
             AtomicUsize, Ordering
-        }
-    },
+        }, Arc, RwLock, RwLockWriteGuard
+    }
 };
 use linked_hash_map::LinkedHashMap;
 use intrusive_collections::intrusive_adapter;
-use intrusive_collections::{LinkedList, LinkedListLink, linked_list::{Cursor, CursorMut}};
+use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
 
 
 pub struct Node<T> {
@@ -28,17 +26,19 @@ impl<T> Node<T> {
 
 intrusive_adapter!(NodeAdapter<T> = Arc<Node<T>>: Node<T> { link: LinkedListLink });
 
+struct CursorSync<'a, T>(pub Cursor<'a, NodeAdapter<T>>);
+unsafe impl<'a, T> Send for CursorSync<'a, T> {}
+unsafe impl<'a, T> Sync for CursorSync<'a, T> {}
 
 pub struct EventList<'a: 'static, T> {
     // the backing data, access by cursor
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
-    cursor_reader: RwLock<(Cursor<'a, NodeAdapter<T>>, usize)>, /// only protect the cursor_reader
-    cursor_push_back: RwLock<CursorMut<'a, NodeAdapter<T>>>, /// protect the tail node and the cursor_push_back
-    cursor_remove: SyncUnsafeCell<CursorMut<'a, NodeAdapter<T>>>,
+    reader_lock: RwLock<(CursorSync<'a, T>, usize)>, /// only protect the cursor_reader
+    push_back_lock: RwLock<()>, /// protect the tail node and the cursor_push_back
 
     // the ModelNotify will allow to notify the UI that the model changes
-    pub stack_walk_map: RwLock<LinkedHashMap::<(u32, i64), Arc<Node<T>>>>
+    pub stack_walk_map: SyncUnsafeCell<LinkedHashMap::<(u32, i64), Arc<Node<T>>>>
 }
 
 // when modifying the model, we call the corresponding function in
@@ -47,22 +47,25 @@ impl<'a, T> EventList<'a, T> {
     pub fn new() -> Self {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
-        let cursor_reader = RwLock::new((unsafe{ &mut *list.get() }.cursor(), 0));
-        let cursor_push_back = RwLock::new(unsafe{ &mut *list.get() }.cursor_mut());
-        let cursor_remove = SyncUnsafeCell::new(unsafe{ &mut *list.get() }.cursor_mut());
-        let stack_walk_map = RwLock::new(LinkedHashMap::<(u32, i64), Arc<Node<T>>>::with_capacity(50));
-        Self { list, list_len, cursor_reader, cursor_push_back, cursor_remove, stack_walk_map }
+        let cursor_reader = RwLock::new((CursorSync(unsafe{ &mut *list.get() }.cursor()), 0));
+        let cursor_push_back = RwLock::new(());
+        let stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<T>>>::with_capacity(50));
+        Self { list, list_len, reader_lock: cursor_reader, push_back_lock: cursor_push_back, stack_walk_map }
+    }
+
+    pub fn len(&self) -> usize {
+        self.list_len.load(Ordering::Acquire)
     }
 
     pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>>{
-        let mut cursor_guard = self.cursor_reader.write().unwrap();
+        let mut cursor_guard = self.reader_lock.write().unwrap();
 
         let list_len = self.list_len.load(Ordering::Acquire);
         if index_to >= list_len {
             return None;
         }
 
-        let cursor_index =  if !cursor_guard.0.is_null() {
+        let cursor_index =  if !cursor_guard.0.0.is_null() {
             cursor_guard.1
         } else {
             list_len
@@ -74,9 +77,9 @@ impl<'a, T> EventList<'a, T> {
             if (index_to - cursor_index) * 2 <= list_len {
                 move_next_to_uncheck(&mut cursor_guard, index_to, list_len);
             } else {
-                let _push_back_guard = self.cursor_reader.read().unwrap();
+                let _push_back_guard = self.reader_lock.read().unwrap();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                cursor_guard.0 = unsafe{&*self.list.get()}.front();
+                cursor_guard.0 = CursorSync(unsafe{&*self.list.get()}.front());
                 cursor_guard.1 = 0;
                 move_prev_to_uncheck(&mut cursor_guard, index_to, list_len);
             }
@@ -84,20 +87,20 @@ impl<'a, T> EventList<'a, T> {
             if (cursor_index - index_to) * 2 <= list_len {
                 move_prev_to_uncheck(&mut cursor_guard, index_to, list_len);
             } else {
-                let _push_back_guard = self.cursor_reader.read().unwrap();
+                let _push_back_guard = self.reader_lock.read().unwrap();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                cursor_guard.0 = unsafe{&*self.list.get()}.back();
+                cursor_guard.0 = CursorSync(unsafe{&*self.list.get()}.back());
                 cursor_guard.1 = list_len - 1;
                 move_next_to_uncheck(&mut cursor_guard, index_to, list_len);
             }
         }
-        return cursor_guard.0.clone_pointer();
+        return cursor_guard.0.0.clone_pointer();
 
-        fn move_next_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (Cursor<'_, NodeAdapter<T>>, usize)>, index_to: usize, list_len: usize) {
+        fn move_next_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
             loop {
-                let prev_is_null = cursor_guard.0.is_null();
-                cursor_guard.0.move_next();
-                if !cursor_guard.0.is_null() {
+                let prev_is_null = cursor_guard.0.0.is_null();
+                cursor_guard.0.0.move_next();
+                if !cursor_guard.0.0.is_null() {
                     if prev_is_null {
                         cursor_guard.1 = 0;
                     } else {
@@ -112,11 +115,11 @@ impl<'a, T> EventList<'a, T> {
             };
         }
     
-        fn move_prev_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (Cursor<'_, NodeAdapter<T>>, usize)>, index_to: usize, list_len: usize) {
+        fn move_prev_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
             loop {
-                let prev_is_null = cursor_guard.0.is_null();
-                cursor_guard.0.move_prev();
-                if !cursor_guard.0.is_null() {
+                let prev_is_null = cursor_guard.0.0.is_null();
+                cursor_guard.0.0.move_prev();
+                if !cursor_guard.0.0.is_null() {
                     if prev_is_null {
                         cursor_guard.1 = list_len - 1;
                     } else {
@@ -133,7 +136,7 @@ impl<'a, T> EventList<'a, T> {
     }
 
     pub fn push(&self, value: Arc<Node<T>>) {
-        let mut _cursor_guard = self.cursor_push_back.write().unwrap();
+        let mut _cursor_guard = self.push_back_lock.write().unwrap();
         unsafe{ &mut *self.list.get() }.push_back(value);
         self.list_len.fetch_add(1, Ordering::Release);
         // notify update push_back_ptr
@@ -147,6 +150,10 @@ impl<'a, T> EventList<'a, T> {
             self.list_len.fetch_sub(1, Ordering::Release);
         }
         //notify
+    }
+
+    pub fn get_stack_walk_map_mut(&self) -> &'a LinkedHashMap::<(u32, i64), Arc<Node<T>>> {
+        &unsafe{ *self.stack_walk_map.get() }
     }
 
 }
