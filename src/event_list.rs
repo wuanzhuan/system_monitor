@@ -8,6 +8,7 @@ use std::{
 use linked_hash_map::LinkedHashMap;
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
+use parking_lot::FairMutex;
 
 
 pub struct Node<T> {
@@ -37,7 +38,7 @@ pub struct EventList<'a: 'static, T> {
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
     reader_lock: RwLock<(CursorSync<'a, T>, usize)>, /// only protect the cursor_reader
-    push_back_lock: RwLock<()>, /// protect the tail node and the cursor_push_back
+    push_back_lock: FairMutex<()>, /// protect the tail node and the cursor_push_back
 
     // the ModelNotify will allow to notify the UI that the model changes
     pub stack_walk_map: SyncUnsafeCell<LinkedHashMap::<(u32, i64), Arc<Node<T>>>>
@@ -50,7 +51,7 @@ impl<'a, T> EventList<'a, T> {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
         let reader_lock = RwLock::new((CursorSync(unsafe{ &mut *list.get() }.cursor()), 0));
-        let push_back_lock = RwLock::new(());
+        let push_back_lock = FairMutex::new(());
         let stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<T>>>::with_capacity(50));
         Self { list, list_len, reader_lock, push_back_lock, stack_walk_map }
     }
@@ -79,7 +80,7 @@ impl<'a, T> EventList<'a, T> {
             if (index_to - cursor_index) * 2 <= list_len {
                 move_next_to_uncheck(&mut reader_guard, index_to, list_len);
             } else {
-                let _push_back_guard = self.reader_lock.read().unwrap();
+                let _push_back_guard = self.push_back_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
                 reader_guard.0 = CursorSync(unsafe{&*self.list.get()}.front());
                 reader_guard.1 = 0;
@@ -89,7 +90,7 @@ impl<'a, T> EventList<'a, T> {
             if (cursor_index - index_to) * 2 <= list_len {
                 move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
             } else {
-                let _push_back_guard = self.reader_lock.read().unwrap();
+                let _push_back_guard = self.push_back_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
                 reader_guard.0 = CursorSync(unsafe{&*self.list.get()}.back());
                 reader_guard.1 = list_len - 1;
@@ -148,10 +149,9 @@ impl<'a, T> EventList<'a, T> {
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {
-        let mut _push_back_guard = self.push_back_lock.write().unwrap();
+        let mut _push_back_guard = self.push_back_lock.lock();
         unsafe{ &mut *self.list.get() }.push_back(value);
         let index = self.list_len.fetch_add(1, Ordering::Release);
-        drop(_push_back_guard);
         index
     }
 
