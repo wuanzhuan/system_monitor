@@ -99,10 +99,15 @@ impl<'a, T> EventList<'a, T> {
         return reader_guard.0.0.clone_pointer();
 
         fn move_next_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
+            assert!(list_len > 0);
             loop {
                 let prev_is_null = reader_guard.0.0.is_null();
                 reader_guard.0.0.move_next();
                 if reader_guard.0.0.is_null() {
+                    if prev_is_null {
+                        reader_guard.1 = 0;
+                        break;
+                    }
                     reader_guard.1 = list_len;
                 } else {
                     if prev_is_null {
@@ -118,10 +123,15 @@ impl<'a, T> EventList<'a, T> {
         }
     
         fn move_prev_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
+            assert!(list_len > 0);
             loop {
                 let prev_is_null = reader_guard.0.0.is_null();
                 reader_guard.0.0.move_prev();
                 if reader_guard.0.0.is_null() {
+                    if prev_is_null {
+                        reader_guard.1 = 0;
+                        break;
+                    }
                     reader_guard.1 = list_len;
                 } else {
                     if prev_is_null {
