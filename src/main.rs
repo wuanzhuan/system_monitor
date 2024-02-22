@@ -3,10 +3,15 @@
 
 use std::{
     rc::Rc,
-    sync::Arc
+    sync::Arc,
+    cell::SyncUnsafeCell
 };
 use tracing::{error, info};
 use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition};
+use linked_hash_map::LinkedHashMap;
+use event_list::Node;
+
+use crate::event_record_model::EventRecordModel;
 
 
 mod event_trace;
@@ -81,13 +86,14 @@ fn main() {
     app.on_start(move || {
         let app_weak = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
+        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<EventRecordModel>>>::with_capacity(50));
         let result = event_trace::Controller::start(move |event_record, is_stack_walk| {
             if !is_stack_walk {
                 let thread_id = event_record.thread_id;
                 let timestamp = event_record.timestamp.0;
                 let er = event_record_model::EventRecordModel::new(event_record);
                 let row_arc = Arc::new(event_list::Node::new(er));
-                event_list_arc_1.get_stack_walk_map_mut().insert((thread_id, timestamp), row_arc.clone());
+                stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
                 let index = event_list_arc_1.push(row_arc);
                 app_weak.upgrade_in_event_loop(move |app_handle|{
                     let row_data = app_handle.global::<EventsViewData>().get_row_data();
@@ -96,7 +102,7 @@ fn main() {
                 }).unwrap();
             } else {
                 let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
-                if let Some(row_rc) = event_list_arc_1.get_stack_walk_map_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
+                if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
                     let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                     if !erm.set_stack_walk(sw.clone()) {
                         error!("Stalkwalk event had been set! {}-{}", sw.stack_thread as i32, sw.event_timestamp);

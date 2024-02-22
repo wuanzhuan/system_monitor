@@ -5,7 +5,6 @@ use std::{
         }, Arc, RwLock, RwLockWriteGuard
     }
 };
-use linked_hash_map::LinkedHashMap;
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
 use parking_lot::FairMutex;
@@ -37,11 +36,8 @@ pub struct EventList<'a: 'static, T> {
     // the backing data, access by cursor
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
-    reader_lock: RwLock<(CursorSync<'a, T>, usize)>, /// only protect the cursor_reader
-    push_back_lock: FairMutex<()>, /// protect the tail node and the cursor_push_back
-
-    // the ModelNotify will allow to notify the UI that the model changes
-    pub stack_walk_map: SyncUnsafeCell<LinkedHashMap::<(u32, i64), Arc<Node<T>>>>
+    reader_lock: RwLock<(CursorSync<'a, T>, usize)>,
+    push_back_lock: FairMutex<()>,
 }
 
 // when modifying the model, we call the corresponding function in
@@ -52,8 +48,7 @@ impl<'a, T> EventList<'a, T> {
         let list_len = AtomicUsize::new(0);
         let reader_lock = RwLock::new((CursorSync(unsafe{ &mut *list.get() }.cursor()), 0));
         let push_back_lock = FairMutex::new(());
-        let stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<T>>>::with_capacity(50));
-        Self { list, list_len, reader_lock, push_back_lock, stack_walk_map }
+        Self { list, list_len, reader_lock, push_back_lock }
     }
 
     pub fn len(&self) -> usize {
@@ -164,12 +159,4 @@ impl<'a, T> EventList<'a, T> {
         }
         //notify
     }
-
-    pub fn get_stack_walk_map_mut(&self) -> &mut LinkedHashMap::<(u32, i64), Arc<Node<T>>> {
-        unsafe{
-            let map = &mut *self.stack_walk_map.get();
-            map
-        }
-    }
-
 }
