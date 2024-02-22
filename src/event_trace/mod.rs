@@ -1,5 +1,5 @@
 use std::{
-    cell::RefCell, ffi, fmt, mem, ptr, rc::Rc, 
+    cell::{RefCell, UnsafeCell}, ffi, fmt, mem, ptr, rc::Rc, 
     sync::{
         mpsc::{self, RecvTimeoutError},
         Arc
@@ -50,7 +50,7 @@ pub struct Controller {
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    event_record_callback: Option<Rc<dyn Fn(EventRecordDecoded, bool)>>,
+    event_record_callback: Option<Rc<UnsafeCell<dyn FnMut(EventRecordDecoded, bool)>>>,
     unstored_events_map: RefCell<LinkedHashMap<(u32, i64), ()>>
 }
 
@@ -72,7 +72,7 @@ impl Controller {
         cxt
     }
 
-    pub fn start(fn_event_callback: impl Fn(EventRecordDecoded, bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
+    pub fn start(fn_event_callback: impl FnMut(EventRecordDecoded, bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
         let context_arc = CONTEXT.clone();
         let mut context_mg = context_arc.lock();
         let mut h_trace = CONTROLTRACE_HANDLE::default();
@@ -123,7 +123,7 @@ impl Controller {
                 break Err(e);
             }
     
-            context_mg.event_record_callback = Some(Rc::new(fn_event_callback));
+            context_mg.event_record_callback = Some(Rc::new(UnsafeCell::new(fn_event_callback)));
             let mut trace_log = EVENT_TRACE_LOGFILEW {
                 Context: &mut *context_mg as *mut Controller as *mut ffi::c_void,
                 LoggerName: PWSTR::from_raw(session_name.as_ptr() as *mut u16),
@@ -280,6 +280,7 @@ impl Controller {
             if context_mg.unstored_events_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
+                let cb = unsafe{ &mut *cb.get() };
                 cb(event_record_decoded, is_stack_walk);
             }
         } else {
@@ -288,6 +289,7 @@ impl Controller {
                     if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
                         let cb = context_mg.event_record_callback.clone().unwrap();
                         mem::drop(context_mg);
+                        let cb = unsafe{ &mut *cb.get() };
                         cb(event_record_decoded, is_stack_walk);
                     } else {
                         insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
