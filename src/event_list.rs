@@ -98,50 +98,50 @@ impl<'a, T> EventList<'a, T> {
         }
         return reader_guard.0.0.clone_pointer();
 
-        fn move_next_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
+        fn move_next_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
             loop {
-                let prev_is_null = cursor_guard.0.0.is_null();
-                cursor_guard.0.0.move_next();
-                if !cursor_guard.0.0.is_null() {
+                let prev_is_null = reader_guard.0.0.is_null();
+                reader_guard.0.0.move_next();
+                if !reader_guard.0.0.is_null() {
                     if prev_is_null {
-                        cursor_guard.1 = 0;
+                        reader_guard.1 = 0;
                     } else {
-                        cursor_guard.1 += 1;
+                        reader_guard.1 += 1;
                     }
-                    if cursor_guard.1 == index_to {
+                    if reader_guard.1 == index_to {
                         break;
                     }
                 } else {
-                    cursor_guard.1 = list_len;
+                    reader_guard.1 = list_len;
                 }
             };
         }
     
-        fn move_prev_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
+        fn move_prev_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
             loop {
-                let prev_is_null = cursor_guard.0.0.is_null();
-                cursor_guard.0.0.move_prev();
-                if !cursor_guard.0.0.is_null() {
+                let prev_is_null = reader_guard.0.0.is_null();
+                reader_guard.0.0.move_prev();
+                if !reader_guard.0.0.is_null() {
                     if prev_is_null {
-                        cursor_guard.1 = list_len - 1;
+                        reader_guard.1 = list_len - 1;
                     } else {
-                        cursor_guard.1 -= 1;
+                        reader_guard.1 -= 1;
                     }
-                    if cursor_guard.1 == index_to {
+                    if reader_guard.1 == index_to {
                         break;
                     }
                 } else {
-                    cursor_guard.1 = list_len;
+                    reader_guard.1 = list_len;
                 }
             };
         }
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {
-        let mut _cursor_guard = self.push_back_lock.write().unwrap();
+        let mut _push_back_guard = self.push_back_lock.write().unwrap();
         unsafe{ &mut *self.list.get() }.push_back(value);
         let index = self.list_len.fetch_add(1, Ordering::Release);
-        drop(_cursor_guard);
+        drop(_push_back_guard);
         index
     }
 
