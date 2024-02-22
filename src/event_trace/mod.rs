@@ -1,7 +1,8 @@
 use std::{
-    cell::RefCell, ffi, fmt, mem, ptr, rc::Rc, sync::{
+    cell::RefCell, ffi, fmt, mem, ptr, rc::Rc, 
+    sync::{
         mpsc::{self, RecvTimeoutError},
-        Arc, Mutex, MutexGuard,
+        Arc
     }, thread, time::Duration
 };
 
@@ -14,6 +15,7 @@ use windows::{
     Win32::System::SystemInformation::*,
 };
 use linked_hash_map::LinkedHashMap;
+use parking_lot::{FairMutex, FairMutexGuard};
 
 mod event_decoder;
 mod event_kernel;
@@ -36,7 +38,7 @@ const INVALID_PROCESSTRACE_HANDLE: u64 = if cfg!(target_pointer_width = "64") {
 const DUMMY_GUID: GUID = GUID::from_u128(0xADA6BC38_93C9_00D1_7462_11D6841904AA);
 
 lazy_static! {
-    static ref CONTEXT: Arc::<Mutex<Controller>> = Arc::new(Mutex::new(Controller::new()));
+    static ref CONTEXT: Arc::<FairMutex<Controller>> = Arc::new(FairMutex::new(Controller::new()));
 }
 
 #[repr(C)]
@@ -72,9 +74,7 @@ impl Controller {
 
     pub fn start(fn_event_callback: impl Fn(EventRecordDecoded, bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
         let context_arc = CONTEXT.clone();
-        let mut context_mg = context_arc
-            .try_lock()
-            .map_err(|_| ERROR_LOCK_VIOLATION.to_hresult())?;
+        let mut context_mg = context_arc.lock();
         let mut h_trace = CONTROLTRACE_HANDLE::default();
         let session_name: &U16CStr = if context_mg.is_win8_or_greater {
             SESSION_NAME_SYSMON
@@ -157,7 +157,7 @@ impl Controller {
                     }
                 }
                 let context_arc = CONTEXT.clone();
-                let mut context_mg = context_arc.lock().unwrap();
+                let mut context_mg = context_arc.lock();
                 context_mg.h_consumer_thread = None;
                 fn_completion(r_pt);
             });
@@ -185,11 +185,9 @@ impl Controller {
         r
     }
 
-    pub fn stop(mg: Option<MutexGuard<Controller>>) -> Result<()> {
+    pub fn stop(mg: Option<FairMutexGuard<Controller>>) -> Result<()> {
         let context_arc = CONTEXT.clone();
-        let mut context_mg = mg.unwrap_or(context_arc
-            .try_lock()
-            .map_err(|_| ERROR_LOCK_VIOLATION.to_hresult())?);
+        let mut context_mg = mg.unwrap_or(context_arc.lock());
 
         if 0 != context_mg.h_trace_session.Value {
             let session_name: &U16CStr = if context_mg.is_win8_or_greater {
@@ -231,26 +229,25 @@ impl Controller {
 
     pub fn set_config_enables(index_major: usize, index_minor: Option<usize>, checked: bool) {
         let context_arc = CONTEXT.clone();
-        if let Ok(mut context_mg) = context_arc.lock() {
-            let mut is_change = false;
-            if let Some(index) = index_minor {
-                if context_mg.config.events_enables[index_major].minors[index] != checked {
-                    if !context_mg.config.events_enables[index_major].major {
-                        context_mg.config.events_enables[index_major].major = true;
-                    }
-                    is_change = true;
-                    context_mg.config.events_enables[index_major].minors[index] = checked;
+        let mut context_mg = context_arc.lock();
+        let mut is_change = false;
+        if let Some(index) = index_minor {
+            if context_mg.config.events_enables[index_major].minors[index] != checked {
+                if !context_mg.config.events_enables[index_major].major {
+                    context_mg.config.events_enables[index_major].major = true;
                 }
-            } else {
-                if context_mg.config.events_enables[index_major].major != checked {
-                    is_change = true;
-                    context_mg.config.events_enables[index_major].major = checked;
-                }
+                is_change = true;
+                context_mg.config.events_enables[index_major].minors[index] = checked;
             }
-            if is_change && 0 != context_mg.h_trace_session.Value {
-                let _ = context_mg.update_config();
+        } else {
+            if context_mg.config.events_enables[index_major].major != checked {
+                is_change = true;
+                context_mg.config.events_enables[index_major].major = checked;
             }
-        };
+        }
+        if is_change && 0 != context_mg.h_trace_session.Value {
+            let _ = context_mg.update_config();
+        }
     }
 
     unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
@@ -278,48 +275,40 @@ impl Controller {
         };
 
         let context_arc = CONTEXT.clone();
-        let r_lock = context_arc.lock();
-        match r_lock {
-            Ok(context_mg) => {
-                if is_stack_walk {
-                    if context_mg.unstored_events_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
+        let context_mg = context_arc.lock();
+        if is_stack_walk {
+            if context_mg.unstored_events_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
+                let cb = context_mg.event_record_callback.clone().unwrap();
+                mem::drop(context_mg);
+                cb(event_record_decoded, is_stack_walk);
+            }
+        } else {
+            if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
+                if context_mg.config.events_enables[enable_indexs.0].major {
+                    if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
                         let cb = context_mg.event_record_callback.clone().unwrap();
                         mem::drop(context_mg);
                         cb(event_record_decoded, is_stack_walk);
+                    } else {
+                        insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
                     }
                 } else {
-                    if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
-                        if context_mg.config.events_enables[enable_indexs.0].major {
-                            if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
-                                let cb = context_mg.event_record_callback.clone().unwrap();
-                                mem::drop(context_mg);
-                                cb(event_record_decoded, is_stack_walk);
-                            } else {
-                                insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                            }
-                        } else {
-                            insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                            mem::drop(context_mg);
-                            // the major event is filter by flag. so a error happens when a event that is not enable comes
-                            // the EventTrace event is always enable.
-                            if event_record_decoded.event_name != "EventTrace" {
-                                error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
-                            }
-                        }
-                    }else {
-                        insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                        mem::drop(context_mg);
-                        warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                    insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                    mem::drop(context_mg);
+                    // the major event is filter by flag. so a error happens when a event that is not enable comes
+                    // the EventTrace event is always enable.
+                    if event_record_decoded.event_name != "EventTrace" {
+                        error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                     }
                 }
-            },
-            Err(e) => {
-                error!("Failed to lock: {e} event_record_decoded: {}", serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default())
+            }else {
+                insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                mem::drop(context_mg);
+                warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
             }
         }
-    
         // contains error and inactivated event
-        fn insert_unstored_event(is_stack_walk: bool, key: (u32, i64), context_mg_op: Option<&MutexGuard<Controller>>) {
+        fn insert_unstored_event(is_stack_walk: bool, key: (u32, i64), context_mg_op: Option<&FairMutexGuard<Controller>>) {
             if is_stack_walk {
                 return;
             }
@@ -327,38 +316,22 @@ impl Controller {
                 context_mg.unstored_events_map.borrow_mut().insert(key, ());
             } else {
                 let context_arc = CONTEXT.clone();
-                let r_lock = context_arc.lock();
-                match r_lock {
-                    Ok(context_mg) => {
-                        context_mg.unstored_events_map.borrow_mut().insert(key, ());
-                    }
-                    Err(e) => {
-                        error!("Faild to lock: {}", e);
-                    }
-                }
+                let context_mg = context_arc.lock();
+                context_mg.unstored_events_map.borrow_mut().insert(key, ());
             }
         }
 
         fn decode_kernel_event_when_error(er: &EVENT_RECORD, is_stack_walk: bool, e: Error) -> Option<EventRecordDecoded> {
             let context_arc = CONTEXT.clone();
-            let r_lock = context_arc.lock();
-            match r_lock {
-                Ok(context_mg) => {
-                    if let Some(indexs) = context_mg.config.events_opcode_map.get(&(er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode as u32)) {
-                        Some(event_decoder::decode_kernel_event(er, event_kernel::EVENTS_DESC[indexs.0].major.name, event_kernel::EVENTS_DESC[indexs.0].minors[indexs.1].name))
-                    } else {
-                        insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                        mem::drop(context_mg);
-                        error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
-                        warn!("Can't find events: {:?}-{}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode);
-                        return None;
-                    }
-                }
-                Err(e) => {
-                    error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
-                    error!("Faild to lock: {}", e);
-                    return None;
-                }
+            let context_mg = context_arc.lock();
+            if let Some(indexs) = context_mg.config.events_opcode_map.get(&(er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode as u32)) {
+                Some(event_decoder::decode_kernel_event(er, event_kernel::EVENTS_DESC[indexs.0].major.name, event_kernel::EVENTS_DESC[indexs.0].minors[indexs.1].name))
+            } else {
+                insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                mem::drop(context_mg);
+                error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                warn!("Can't find events: {:?}-{}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode);
+                return None;
             }
         }
     }
