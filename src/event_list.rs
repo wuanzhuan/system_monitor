@@ -74,7 +74,7 @@ impl<'a, T> EventList<'a, T> {
         };
 
         if cursor_index == index_to {
-            return None;
+            return reader_guard.0.0.clone_pointer();
         } else if cursor_index < index_to {
             if (index_to - cursor_index) * 2 <= list_len {
                 move_next_to_uncheck(&mut reader_guard, index_to, list_len);
