@@ -1,14 +1,13 @@
-use std::cell::UnsafeCell;
-
-use slint::{Model, ModelNotify, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
+use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
 use super::event_trace::{EventRecordDecoded, StackWalk};
 use crate::StackWalkInfo;
+use std::sync::{OnceLock, Arc};
 
 
+#[derive(Clone)]
 pub struct EventRecordModel{
-    array: Box<EventRecordDecoded>,
-    notify: ModelNotify,
-    stack_walk: UnsafeCell<Option<StackWalk>>,
+    array: Arc<EventRecordDecoded>,
+    stack_walk: OnceLock<Arc<StackWalk>>,
 }
 
 const COLUMN_NAMES: &[&str] = &[
@@ -23,30 +22,24 @@ const COLUMN_NAMES: &[&str] = &[
 impl EventRecordModel {
     pub fn new(event_record: EventRecordDecoded) -> Self {
         EventRecordModel{
-            array: Box::new(event_record),
-            notify: ModelNotify::default(),
-            stack_walk: UnsafeCell::new(None)
+            array: Arc::new(event_record),
+            stack_walk: OnceLock::new()
         }
     }
 
     pub fn data_detail(&self) -> Option<SharedString> {
-        Some(SharedString::from(serde_json::to_string_pretty(&self.array).unwrap_or_default()))
+        Some(SharedString::from(serde_json::to_string_pretty(&*self.array).unwrap_or_default()))
     }
 
-    /// Returns if the `sw_op` is None
+    /// Returns true if the `stack_walk` is None
     pub fn set_stack_walk(&self, sw: StackWalk) -> bool {
-        let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
-        if sw_op.is_none() {
-            *sw_op = Some(sw);
-            true
-        } else {
-            false
-        }
+        let ret = if self.stack_walk.get().is_some() { false } else { true };
+        let _ = self.stack_walk.set(Arc::new(sw));
+        ret
     }
 
     pub fn stack_walk(&self) -> StackWalkInfo {
-        let sw_op = unsafe{ self.stack_walk.get().as_mut().unwrap() };
-        if let Some(sw) = sw_op {
+        if let Some(sw) = self.stack_walk.get() {
             let vec = VecModel::<SharedString>::default();
             for item in sw.stacks.iter() {
                 let str = format!("{}: {:#x}", item.0, item.1);
@@ -55,7 +48,7 @@ impl EventRecordModel {
             StackWalkInfo{
                 event_timestamp: SharedString::from(sw.event_timestamp.to_string()), 
                 process_id: SharedString::from(format!("{}", sw.stack_process as i32)), 
-                thread_id: SharedString::from(format!("{}", sw.stack_thread as i32)), 
+                thread_id: SharedString::from(format!("{}", sw.stack_thread as i32)),
                 stacks: ModelRc::<SharedString>::new(vec)}
         } else {
             StackWalkInfo::default()
@@ -93,7 +86,7 @@ impl Model for EventRecordModel {
     }
 
     fn model_tracker(&self) -> &dyn ModelTracker {
-        &self.notify
+        &()
     }
 
     fn as_any(&self) -> &dyn core::any::Any {

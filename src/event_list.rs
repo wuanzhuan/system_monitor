@@ -1,5 +1,5 @@
 use std::{
-    cell::SyncUnsafeCell, ops::Deref, sync::{
+    cell::SyncUnsafeCell, sync::{
         atomic::{
             AtomicUsize, Ordering
         }, Arc, RwLock, RwLockWriteGuard
@@ -14,6 +14,8 @@ pub struct Node<T> {
     link: LinkedListLink,
     pub value: T,
 }
+unsafe impl<T> Send for Node<T> {}
+unsafe impl<T> Sync for Node<T> {}
 
 impl<T> Node<T> {
     pub fn new(value: T) -> Self {
@@ -135,11 +137,12 @@ impl<'a, T> EventList<'a, T> {
         }
     }
 
-    pub fn push(&self, value: Arc<Node<T>>) {
+    pub fn push(&self, value: Arc<Node<T>>) -> usize {
         let mut _cursor_guard = self.push_back_lock.write().unwrap();
         unsafe{ &mut *self.list.get() }.push_back(value);
-        self.list_len.fetch_add(1, Ordering::Release);
-        // notify update push_back_ptr
+        let index = self.list_len.fetch_add(1, Ordering::Release);
+        drop(_cursor_guard);
+        index
     }
 
     /// Remove the row at the given index from the model
@@ -152,8 +155,11 @@ impl<'a, T> EventList<'a, T> {
         //notify
     }
 
-    pub fn get_stack_walk_map_mut(&self) -> &'a LinkedHashMap::<(u32, i64), Arc<Node<T>>> {
-        &unsafe{ *self.stack_walk_map.get() }
+    pub fn get_stack_walk_map_mut(&self) -> &mut LinkedHashMap::<(u32, i64), Arc<Node<T>>> {
+        unsafe{
+            let map = &mut *self.stack_walk_map.get();
+            map
+        }
     }
 
 }
