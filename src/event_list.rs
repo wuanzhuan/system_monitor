@@ -102,7 +102,9 @@ impl<'a, T> EventList<'a, T> {
             loop {
                 let prev_is_null = reader_guard.0.0.is_null();
                 reader_guard.0.0.move_next();
-                if !reader_guard.0.0.is_null() {
+                if reader_guard.0.0.is_null() {
+                    reader_guard.1 = list_len;
+                } else {
                     if prev_is_null {
                         reader_guard.1 = 0;
                     } else {
@@ -111,8 +113,6 @@ impl<'a, T> EventList<'a, T> {
                     if reader_guard.1 == index_to {
                         break;
                     }
-                } else {
-                    reader_guard.1 = list_len;
                 }
             };
         }
@@ -121,7 +121,9 @@ impl<'a, T> EventList<'a, T> {
             loop {
                 let prev_is_null = reader_guard.0.0.is_null();
                 reader_guard.0.0.move_prev();
-                if !reader_guard.0.0.is_null() {
+                if reader_guard.0.0.is_null() {
+                    reader_guard.1 = list_len;
+                } else {
                     if prev_is_null {
                         reader_guard.1 = list_len - 1;
                     } else {
@@ -130,8 +132,6 @@ impl<'a, T> EventList<'a, T> {
                     if reader_guard.1 == index_to {
                         break;
                     }
-                } else {
-                    reader_guard.1 = list_len;
                 }
             };
         }
