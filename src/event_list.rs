@@ -60,15 +60,15 @@ impl<'a, T> EventList<'a, T> {
     }
 
     pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>>{
-        let mut cursor_guard = self.reader_lock.write().unwrap();
+        let mut reader_guard = self.reader_lock.write().unwrap();
 
         let list_len = self.list_len.load(Ordering::Acquire);
         if index_to >= list_len {
             return None;
         }
 
-        let cursor_index =  if !cursor_guard.0.0.is_null() {
-            cursor_guard.1
+        let cursor_index =  if !reader_guard.0.0.is_null() {
+            reader_guard.1
         } else {
             list_len
         };
@@ -77,26 +77,26 @@ impl<'a, T> EventList<'a, T> {
             return None;
         } else if cursor_index < index_to {
             if (index_to - cursor_index) * 2 <= list_len {
-                move_next_to_uncheck(&mut cursor_guard, index_to, list_len);
+                move_next_to_uncheck(&mut reader_guard, index_to, list_len);
             } else {
                 let _push_back_guard = self.reader_lock.read().unwrap();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                cursor_guard.0 = CursorSync(unsafe{&*self.list.get()}.front());
-                cursor_guard.1 = 0;
-                move_prev_to_uncheck(&mut cursor_guard, index_to, list_len);
+                reader_guard.0 = CursorSync(unsafe{&*self.list.get()}.front());
+                reader_guard.1 = 0;
+                move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
             }
         } else {
             if (cursor_index - index_to) * 2 <= list_len {
-                move_prev_to_uncheck(&mut cursor_guard, index_to, list_len);
+                move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
             } else {
                 let _push_back_guard = self.reader_lock.read().unwrap();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                cursor_guard.0 = CursorSync(unsafe{&*self.list.get()}.back());
-                cursor_guard.1 = list_len - 1;
-                move_next_to_uncheck(&mut cursor_guard, index_to, list_len);
+                reader_guard.0 = CursorSync(unsafe{&*self.list.get()}.back());
+                reader_guard.1 = list_len - 1;
+                move_next_to_uncheck(&mut reader_guard, index_to, list_len);
             }
         }
-        return cursor_guard.0.0.clone_pointer();
+        return reader_guard.0.0.clone_pointer();
 
         fn move_next_to_uncheck<'a, T>(cursor_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
             loop {
