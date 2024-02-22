@@ -49,10 +49,10 @@ impl<'a, T> EventList<'a, T> {
     pub fn new() -> Self {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
-        let cursor_reader = RwLock::new((CursorSync(unsafe{ &mut *list.get() }.cursor()), 0));
-        let cursor_push_back = RwLock::new(());
+        let reader_lock = RwLock::new((CursorSync(unsafe{ &mut *list.get() }.cursor()), 0));
+        let push_back_lock = RwLock::new(());
         let stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<T>>>::with_capacity(50));
-        Self { list, list_len, reader_lock: cursor_reader, push_back_lock: cursor_push_back, stack_walk_map }
+        Self { list, list_len, reader_lock, push_back_lock, stack_walk_map }
     }
 
     pub fn len(&self) -> usize {
