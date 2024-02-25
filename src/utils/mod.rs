@@ -1,9 +1,9 @@
 use chrono::*;
 use serde::{Serialize, Serializer};
-
+use std::ops::Sub;
 
 /// https://learn.microsoft.com/zh-CN/windows/win32/api/minwinbase/ns-minwinbase-filetime
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct TimeStamp(pub i64);
 
 impl TimeStamp {
@@ -27,6 +27,13 @@ impl TimeStamp {
 impl std::string::ToString for TimeStamp {
     fn to_string(&self) -> String {
         self.0.to_string()
+    }
+}
+
+impl Sub for TimeStamp {
+    type Output = i64;
+    fn sub(self, rhs: Self) -> Self::Output {
+        self.0 - rhs.0
     }
 }
 
