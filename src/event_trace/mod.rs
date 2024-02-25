@@ -223,7 +223,13 @@ impl Controller {
             let h = context_mg.h_consumer_thread.take().unwrap();
             mem::drop(context_mg);
             let _ = h.join();
+            context_mg = context_arc.lock();
         }
+
+        // clear other
+        let _ = context_mg.event_record_callback.take();
+        context_mg.unstored_events_map.borrow_mut().clear();
+
         Ok(())
     }
 
