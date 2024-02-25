@@ -2,9 +2,7 @@
 
 
 use std::{
-    rc::Rc,
-    sync::Arc,
-    cell::SyncUnsafeCell
+    cell::SyncUnsafeCell, rc::Rc, sync::Arc
 };
 use tracing::{error, info};
 use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition};
@@ -17,6 +15,7 @@ use crate::event_record_model::EventRecordModel;
 mod event_trace;
 mod event_list_model;
 mod event_list;
+mod delay_notify;
 mod event_record_model;
 mod third_extend;
 mod utils;
@@ -42,11 +41,12 @@ fn main() {
 
     let event_list_arc = Arc::new(event_list::EventList::<event_record_model::EventRecordModel>::new());
     let event_list_arc_1 = event_list_arc.clone();
+    
 
     let event_list_model_rc = Rc::new(event_list_model::ListModel::new(event_list_arc));
     let event_list_model_rc_1 = event_list_model_rc.clone();
     let event_list_model_rc_2 = event_list_model_rc.clone();
-    
+
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_model_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
     app.global::<EventsViewData>().on_row_data_detail(move |index_row| {
@@ -82,11 +82,14 @@ fn main() {
     app.global::<EnablesData>().on_toggled_minor(|index_major, index_minor, checked| {
         event_trace::Controller::set_config_enables(index_major as usize, Some(index_minor as usize), checked);
     });
+
     let app_weak = app.as_weak();
     app.on_start(move || {
-        let app_weak = app_weak.clone();
+        let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
         let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<EventRecordModel>>>::with_capacity(50));
+        let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
+        delay_notify.init(app_weak_1.clone());
         let result = event_trace::Controller::start(move |event_record, is_stack_walk| {
             if !is_stack_walk {
                 let thread_id = event_record.thread_id;
@@ -95,11 +98,7 @@ fn main() {
                 let row_arc = Arc::new(event_list::Node::new(er));
                 stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
                 let index = event_list_arc_1.push(row_arc);
-                app_weak.upgrade_in_event_loop(move |app_handle|{
-                    let row_data = app_handle.global::<EventsViewData>().get_row_data();
-                    let rows = row_data.as_any().downcast_ref::<event_list_model::ListModel>().unwrap();
-                    rows.notify_push(index, 1);
-                }).unwrap();
+                delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
             } else {
                 let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
