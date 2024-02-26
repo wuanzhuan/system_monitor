@@ -30,7 +30,7 @@ impl<'a> Decoder<'a> {
         let header = &event_record.EventHeader;
 
         if (header.Flags & EVENT_HEADER_FLAG_TRACE_MESSAGE as u16) != 0 {
-            return Err(Error::new(E_FAIL, HSTRING::from("this is wpp event, don't handle")));
+            return Err(Error::new(E_FAIL, "this is wpp event, don't handle"));
         }
 
         let mut buffer_size = 4096u32;
@@ -53,11 +53,11 @@ impl<'a> Decoder<'a> {
                 event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
                 continue;
             }
-            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failded to TdhGetEventInformation: {} at: {}:{}", status, file!(), line!()))));
+            return Err(Error::new(WIN32_ERROR(status).to_hresult(), format!("Failded to TdhGetEventInformation: {} at: {}:{}", status, file!(), line!())));
         }
 
         if event_info.TopLevelPropertyCount > event_info.PropertyCount {
-            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {} at: {}:{}", event_info.TopLevelPropertyCount, event_info.PropertyCount, file!(), line!()))));
+            return Err(Error::new(E_FAIL, format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {} at: {}:{}", event_info.TopLevelPropertyCount, event_info.PropertyCount, file!(), line!())));
         }
 
         let event_info_slice = unsafe {slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize)};
@@ -180,7 +180,7 @@ impl<'a> Decoder<'a> {
         user_data_index: &mut u16,
     ) -> Result<LinkedHashMap<String, PropertyDecoded>> {
         if properties_array_end > self.property_info_array.len() as u16 {
-            return Err(Error::new(E_FAIL, HSTRING::from(format!("Too larget properties_array_end: {properties_array_end} property_info_array len: {} at: {}:{}", self.property_info_array.len(), file!(), line!()))));
+            return Err(Error::new(E_FAIL, format!("Too larget properties_array_end: {properties_array_end} property_info_array len: {} at: {}:{}", self.property_info_array.len(), file!(), line!())));
         }
         let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
@@ -249,7 +249,7 @@ impl<'a> Decoder<'a> {
                 16
             } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
                 if length_property_index >= self.int_values.len() as u16 {
-                    return Err(Error::new(E_FAIL, HSTRING::from(format!("index overflow: length_property_index: {length_property_index} array len: {} at: {}:{}", self.int_values.len(), file!(), line!()))));
+                    return Err(Error::new(E_FAIL, format!("index overflow: length_property_index: {length_property_index} array len: {} at: {}:{}", self.int_values.len(), file!(), line!())));
                 }
                 self.int_values[length_property_index as usize]
             // Look up the value of a previous property
@@ -260,7 +260,7 @@ impl<'a> Decoder<'a> {
             let (array_count, is_array) = if (property_info.Flags.0 & PropertyParamCount.0) != 0 {
                 let count_property_index = unsafe { property_info.Anonymous2.countPropertyIndex };
                 if count_property_index >= property_index as u16 {
-                    return Err(Error::new(E_FAIL, HSTRING::from(format!("invalid count_property_index: {count_property_index} property_index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!()))));
+                    return Err(Error::new(E_FAIL, format!("invalid count_property_index: {count_property_index} property_index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!())));
                 }
                 (self.int_values[count_property_index as usize], true) // Look up the value of a previous property
             } else {
@@ -390,7 +390,7 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
-                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), HSTRING::from(format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} thread_id: {} timestamp: {}", self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp))));
+                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} thread_id: {} timestamp: {}", self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp)));
                         }
                     }
     

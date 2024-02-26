@@ -23,10 +23,11 @@ parking_lot = "0.12"
 smol = "2.0"
 
 [dependencies.windows]
-version = "0.51"
+version = "0.53"
 features = [
     "Win32_Foundation",
     "Win32_System_Time",
+    "Win32_System_Performance",
     "Win32_Security",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Threading",
