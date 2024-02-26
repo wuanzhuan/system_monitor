@@ -2,12 +2,12 @@ use std::{
     cell::SyncUnsafeCell, sync::{
         atomic::{
             AtomicUsize, Ordering
-        }, Arc, RwLock, RwLockWriteGuard
+        }, Arc
     }
 };
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
-use parking_lot::FairMutex;
+use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
 
 
 pub struct Node<T> {
@@ -56,7 +56,7 @@ impl<'a, T> EventList<'a, T> {
     }
 
     pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>>{
-        let mut reader_guard = self.reader_lock.write().unwrap();
+        let mut reader_guard = self.reader_lock.write();
 
         let list_len = self.list_len.load(Ordering::Acquire);
         if index_to >= list_len {
