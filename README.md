@@ -11,7 +11,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [ ] find for events
   - [ ] easy query language
   - [ ] mark result of query at scroll bar of TableView
-- [ ] stack trace
+- [ ] call stack view
   - [ ] record original module and monitor change
   - [ ] translate a address to code location
 
