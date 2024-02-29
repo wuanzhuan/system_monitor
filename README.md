@@ -4,6 +4,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 
 # features
 - [x] more events
+  - [x] public and unpublished. refer to [`monitor events`](#monitor-events)
 - [ ] more useful filter
   - [ ] filter one event with some filter condition
   - [ ] filter two events by match some condition. i.e. handle create and close
