@@ -11,6 +11,9 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [ ] find for events
   - [ ] easy query language
   - [ ] mark result of query at scroll bar of TableView
+- [ ] stack trace
+  - [ ] record original module and monitor change
+  - [ ] translate a address to code location
 
 ## monitor events
 ![image](https://github.com/wuanzhuan/system_monitor/assets/11628049/8956c35a-031e-4045-92db-aa4d906a004d)
