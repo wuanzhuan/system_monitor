@@ -5,7 +5,13 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 # features
 - [x] more events
 - [ ] more useful filter
-# monitor events
+  - [ ] filter one event with some filter condition
+  - [ ] filter two events by match some condition. i.e. handle create and close
+- [ ] find for events
+  - [ ] easy query language
+  - [ ] mark result of query at scroll bar of TableView
+
+## monitor events
 ![image](https://github.com/wuanzhuan/system_monitor/assets/11628049/8956c35a-031e-4045-92db-aa4d906a004d)
 
 
