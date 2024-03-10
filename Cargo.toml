@@ -21,6 +21,7 @@ linked-hash-map = { version = "0.5.6", features = ["serde_impl"] }
 intrusive-collections = "0.9.6"
 parking_lot = "0.12"
 smol = "2.0"
+anyhow = "1.0"
 
 [dependencies.windows]
 version = "0.53"

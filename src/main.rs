@@ -46,6 +46,7 @@ fn main() {
     let event_list_model_rc = Rc::new(event_list_model::ListModel::new(event_list_arc));
     let event_list_model_rc_1 = event_list_model_rc.clone();
     let event_list_model_rc_2 = event_list_model_rc.clone();
+    let event_list_model_rc_3 = event_list_model_rc.clone();
 
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_model_rc);
     app.global::<EventsViewData>().set_row_data(row_data);
@@ -65,6 +66,13 @@ fn main() {
             }
         }
         StackWalkInfo::default()
+    });
+    app.global::<EventsViewData>().on_row_find(move |text| {
+        if let Some(row) = event_list_model_rc_3.row_data_detail(1) {
+            if let Some(row_item) = row.value.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
+            }
+        }
+        (SharedString::new(), -1)
     });
 
     let mut event_descs = vec![];
