@@ -19,6 +19,7 @@ mod delay_notify;
 mod event_record_model;
 mod third_extend;
 mod utils;
+mod filter_expr;
 
 
 slint::include_modules!();
