@@ -8,6 +8,7 @@ use std::{
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
 use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
+use crate::filter_expr::FilterExpr;
 
 
 pub struct Node<T> {
@@ -141,6 +142,12 @@ impl<'a, T> EventList<'a, T> {
                 }
             };
         }
+    }
+
+    pub fn get_by_filter_expr(&self, filter_expr: FilterExpr) -> Vec<i32> {
+        let mut reader_guard = self.reader_lock.read();
+        let list_len = self.list_len.load(Ordering::Acquire);
+        return vec![];
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {

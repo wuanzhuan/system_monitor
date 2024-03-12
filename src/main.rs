@@ -5,7 +5,7 @@ use std::{
     cell::SyncUnsafeCell, rc::Rc, sync::Arc
 };
 use tracing::{error, info};
-use slint::{SharedString, ModelRc, StandardListViewItem, Model, LogicalPosition};
+use slint::{SharedString, ModelRc, VecModel, StandardListViewItem, Model, LogicalPosition};
 use linked_hash_map::LinkedHashMap;
 use event_list::Node;
 
@@ -69,11 +69,26 @@ fn main() {
         StackWalkInfo::default()
     });
     app.global::<EventsViewData>().on_row_find(move |text| {
-        if let Some(row) = event_list_model_rc_3.row_data_detail(1) {
-            if let Some(row_item) = row.value.as_any().downcast_ref::<event_record_model::EventRecordModel>() {
+        let r = filter_expr::parse(text.as_str());
+        let fe = match r {
+            Ok(fe) => fe,
+            Err(e) => return (SharedString::from(e.to_string()), ModelRc::default(), false)
+        };
+        if let filter_expr::FilterExpr::KvPair { key, value } = fe.clone() {
+            if !event_record_model::COLUMN_NAMES.contains(key.key.as_str()) {
+                return (SharedString::from(format!("no this column name: {} i.e. {} {}", 
+                    key.key,
+                    event_record_model::COLUMN_NAMES.index(1).unwrap(),
+                    event_record_model::COLUMN_NAMES.index(2).unwrap(),
+                    )
+                ), ModelRc::default(), false);
             }
+            let rows = event_list_model_rc_3.row_find(fe);
+            return (SharedString::from("the input is not a key value pair"), ModelRc::new(VecModel::from(rows)), true);
+
+        } else {
+            return (SharedString::from("the input is not a key value pair"), ModelRc::default(), false);
         }
-        (SharedString::new(), -1)
     });
 
     let mut event_descs = vec![];

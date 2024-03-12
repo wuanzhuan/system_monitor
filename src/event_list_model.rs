@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::event_list::EventList;
 use crate::event_list::Node;
 use crate::event_record_model::EventRecordModel;
+use crate::filter_expr::FilterExpr;
 
 
 pub struct ListModel<'a: 'static> {
@@ -64,6 +65,10 @@ impl<'a> ListModel<'a> {
             return None;
         }
         self.list.get_by_index(row)
+    }
+
+    pub fn row_find(&self, filter_expr: FilterExpr) -> Vec<i32> {
+        self.list.get_by_filter_expr(filter_expr)
     }
 
 }

@@ -19,7 +19,7 @@ export global EventsViewData  {
     callback sort_descending(int);
     callback row-data-detail(/* row-index */ int) -> string;
     callback stack-walk(/* row-index */ int) -> StackWalkInfo;
-    callback row-find(string) -> {index: int, error: string}; // error if index is -1
+    callback row-find(string) -> {result: bool, indexes: [int], error: string};
 }
 
 export component EventsView inherits VerticalBox {
@@ -42,12 +42,16 @@ export component EventsView inherits VerticalBox {
             height: 2rem;
             placeholder-text: "find items i.e. process_id = 1 && properties.xxx = 1";
 
-            private property <{index: int, error: string}> row-find-info;
+            private property <{result: bool, indexes: [int], error: string}> row-find-info;
 
             accepted(text) => {
                 self.row-find-info = EventsViewData.row-find(text);
-                if self.row-find-info.index != -1 {
-                    table_view.set-current-row(self.row-find-info.index);
+                if self.row-find-info.result {
+                    if self.row-find-info.indexes.length != 0 {
+                        table_view.set-current-row(self.row-find-info.indexes[0]);
+                    } else {
+                        debug("no row is find");
+                    }
                 } else {
                     debug(self.row-find-info.error);
                 }
