@@ -29,7 +29,10 @@ impl<T> Node<T> {
 
 intrusive_adapter!(NodeAdapter<T> = Arc<Node<T>>: Node<T> { link: LinkedListLink });
 
-struct CursorSync<'a, T>(pub Cursor<'a, NodeAdapter<T>>);
+struct CursorSync<'a, T>{
+    pub inner: Cursor<'a, NodeAdapter<T>>,
+    pub index: usize
+}
 unsafe impl<'a, T> Send for CursorSync<'a, T> {}
 unsafe impl<'a, T> Sync for CursorSync<'a, T> {}
 
@@ -37,7 +40,7 @@ pub struct EventList<'a: 'static, T> {
     // the backing data, access by cursor
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
-    reader_lock: RwLock<(CursorSync<'a, T>, usize)>,
+    reader_lock: RwLock<CursorSync<'a, T>>,
     push_back_lock: FairMutex<()>,
 }
 
@@ -47,7 +50,7 @@ impl<'a, T> EventList<'a, T> {
     pub fn new() -> Self {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
-        let reader_lock = RwLock::new((CursorSync(unsafe{ &mut *list.get() }.cursor()), 0));
+        let reader_lock = RwLock::new(CursorSync{inner: unsafe{ &mut *list.get() }.cursor(), index: 0});
         let push_back_lock = FairMutex::new(());
         Self { list, list_len, reader_lock, push_back_lock }
     }
@@ -64,22 +67,21 @@ impl<'a, T> EventList<'a, T> {
             return None;
         }
 
-        let cursor_index =  if !reader_guard.0.0.is_null() {
-            reader_guard.1
+        let cursor_index =  if !reader_guard.inner.is_null() {
+            reader_guard.index
         } else {
             list_len
         };
 
         if cursor_index == index_to {
-            return reader_guard.0.0.clone_pointer();
+            return reader_guard.inner.clone_pointer();
         } else if cursor_index < index_to {
             if (index_to - cursor_index) * 2 <= list_len {
                 move_next_to_uncheck(&mut reader_guard, index_to, list_len);
             } else {
                 let _push_back_guard = self.push_back_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                reader_guard.0 = CursorSync(unsafe{&*self.list.get()}.front());
-                reader_guard.1 = 0;
+                *reader_guard = CursorSync{inner: unsafe{&*self.list.get()}.front(), index: 0};
                 move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
             }
         } else {
@@ -88,55 +90,54 @@ impl<'a, T> EventList<'a, T> {
             } else {
                 let _push_back_guard = self.push_back_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                reader_guard.0 = CursorSync(unsafe{&*self.list.get()}.back());
-                reader_guard.1 = list_len - 1;
+                *reader_guard = CursorSync{inner: unsafe{&*self.list.get()}.back(), index: list_len - 1};
                 move_next_to_uncheck(&mut reader_guard, index_to, list_len);
             }
         }
-        return reader_guard.0.0.clone_pointer();
+        return reader_guard.inner.clone_pointer();
 
-        fn move_next_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
+        fn move_next_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>, index_to: usize, list_len: usize) {
             assert!(list_len > 0);
             loop {
-                let prev_is_null = reader_guard.0.0.is_null();
-                reader_guard.0.0.move_next();
-                if reader_guard.0.0.is_null() {
+                let prev_is_null = reader_guard.inner.is_null();
+                reader_guard.inner.move_next();
+                if reader_guard.inner.is_null() {
                     if prev_is_null {
-                        reader_guard.1 = 0;
+                        reader_guard.index = 0;
                         break;
                     }
-                    reader_guard.1 = list_len;
+                    reader_guard.index = list_len;
                 } else {
                     if prev_is_null {
-                        reader_guard.1 = 0;
+                        reader_guard.index = 0;
                     } else {
-                        reader_guard.1 += 1;
+                        reader_guard.index += 1;
                     }
-                    if reader_guard.1 == index_to {
+                    if reader_guard.index == index_to {
                         break;
                     }
                 }
             };
         }
     
-        fn move_prev_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, (CursorSync<'_, T>, usize)>, index_to: usize, list_len: usize) {
+        fn move_prev_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>, index_to: usize, list_len: usize) {
             assert!(list_len > 0);
             loop {
-                let prev_is_null = reader_guard.0.0.is_null();
-                reader_guard.0.0.move_prev();
-                if reader_guard.0.0.is_null() {
+                let prev_is_null = reader_guard.inner.is_null();
+                reader_guard.inner.move_prev();
+                if reader_guard.inner.is_null() {
                     if prev_is_null {
-                        reader_guard.1 = 0;
+                        reader_guard.index = 0;
                         break;
                     }
-                    reader_guard.1 = list_len;
+                    reader_guard.index = list_len;
                 } else {
                     if prev_is_null {
-                        reader_guard.1 = list_len - 1;
+                        reader_guard.index = list_len - 1;
                     } else {
-                        reader_guard.1 -= 1;
+                        reader_guard.index -= 1;
                     }
-                    if reader_guard.1 == index_to {
+                    if reader_guard.index == index_to {
                         break;
                     }
                 }
