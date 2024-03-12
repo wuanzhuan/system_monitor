@@ -2,6 +2,7 @@ use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, Ve
 use super::event_trace::{EventRecordDecoded, StackWalk};
 use crate::StackWalkInfo;
 use std::sync::{OnceLock, Arc};
+use phf::{OrderedSet, phf_ordered_set};
 
 
 #[derive(Clone)]
@@ -10,14 +11,14 @@ pub struct EventRecordModel{
     stack_walk: OnceLock<Arc<StackWalk>>,
 }
 
-const COLUMN_NAMES: &[&str] = &[
+pub static COLUMN_NAMES: phf::OrderedSet<&'static str> = phf_ordered_set! {
     "datetime",
     "process_id",
     "thread_id",
     "event_name",
     "opcode_name",
     "properties",
-];
+};
 
 impl EventRecordModel {
     pub fn new(event_record: EventRecordDecoded) -> Self {
