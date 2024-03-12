@@ -225,6 +225,7 @@ mod tests {
         let src = r#"(key1.field = 1.556 && key2 = 2.55"#;
         //let (json, errs) = parse_test().parse(src.trim()).into_output_errors();
         let r = super::parse(src.trim());
+        assert!(r.is_err());
         println!("{}", r.err().unwrap());
     }
 }
