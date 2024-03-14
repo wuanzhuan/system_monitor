@@ -8,8 +8,7 @@ use std::{
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
 use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
-use crate::filter_expr::FilterExpr;
-
+use anyhow::Result;
 
 pub struct Node<T> {
     link: LinkedListLink,
@@ -145,10 +144,24 @@ impl<'a, T> EventList<'a, T> {
         }
     }
 
-    pub fn get_by_filter_expr(&self, filter_expr: FilterExpr) -> Vec<i32> {
-        let mut reader_guard = self.reader_lock.read();
+    pub fn traversal(&self, mut cb: impl FnMut(&T) -> Result<bool>) -> Result<Vec<i32>> {
+        let mut _reader_guard = self.reader_lock.read();
         let list_len = self.list_len.load(Ordering::Acquire);
-        return vec![];
+        let list = unsafe{ &*self.list.get() };
+        let mut index = 0i32;
+        let mut vec = vec![];
+        for item in list.iter() {
+            let is_find = cb(&item.value)?;
+            if is_find {
+                vec.push(index);
+                break;
+            }
+            index += 1;
+            if index as usize >= list_len {
+                break;
+            }
+        }
+        Ok(vec)
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {

@@ -4,6 +4,7 @@ use crate::event_list::EventList;
 use crate::event_list::Node;
 use crate::event_record_model::EventRecordModel;
 use crate::filter_expr::FilterExpr;
+use anyhow::{Result, anyhow};
 
 
 pub struct ListModel<'a: 'static> {
@@ -67,8 +68,14 @@ impl<'a> ListModel<'a> {
         self.list.get_by_index(row)
     }
 
-    pub fn row_find(&self, filter_expr: FilterExpr) -> Vec<i32> {
-        self.list.get_by_filter_expr(filter_expr)
+    pub fn row_find(&self, filter_expr: FilterExpr) -> Result<Vec<i32>> {
+        if let FilterExpr::KvPair { key, value } = filter_expr.clone() {
+            return self.list.traversal(|item| {
+                item.find_by_path_value(&key, &value)
+            });
+        } else {
+            return Err(anyhow!("This is not KvPair expr"));
+        }
     }
 
 }

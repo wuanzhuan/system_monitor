@@ -10,6 +10,7 @@ pub enum Value {
     Null,
     Bool(bool),
     Str(String),
+    I64(i64),
     Num(f64),
     Array(Vec<Value>),
     Object(HashMap<String, Value>),
@@ -58,6 +59,13 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                 .or(just('E'))
                 .then(one_of("+-").or_not())
                 .then(digits);
+
+            let number_i64 = just('-')
+                .or_not()
+                .then(text::int(10))
+                .to_slice()
+                .map(|s: &str| s.parse().unwrap())
+                .boxed();
     
             let number = just('-')
                 .or_not()
@@ -141,6 +149,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                 just("null").to(Value::Null),
                 just("true").to(Value::Bool(true)),
                 just("false").to(Value::Bool(false)),
+                number_i64.map(Value::I64),
                 number.map(Value::Num),
                 string.map(Value::Str),
                 array.map(Value::Array),
@@ -223,9 +232,24 @@ mod tests {
     #[test]
     fn fail() {
         let src = r#"(key1.field = 1.556 && key2 = 2.55"#;
-        //let (json, errs) = parse_test().parse(src.trim()).into_output_errors();
         let r = super::parse(src.trim());
         assert!(r.is_err());
         println!("{}", r.err().unwrap());
     }
+
+    #[test]
+    fn value_i64() {
+        let src = r#"key = 2555555554421"#;
+        let r = super::parse(src.trim()).unwrap();
+        assert_eq!(r, FilterExpr::KvPair {
+            key: Path {
+                key: "key".to_string(),
+                field: None,
+            },
+            value: Value::I64(
+                2555555554421,
+            ),
+        });
+    }
+
 }

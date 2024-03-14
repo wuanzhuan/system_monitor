@@ -74,20 +74,9 @@ fn main() {
             Ok(fe) => fe,
             Err(e) => return (SharedString::from(e.to_string()), ModelRc::default(), false)
         };
-        if let filter_expr::FilterExpr::KvPair { key, value } = fe.clone() {
-            if !event_record_model::COLUMN_NAMES.contains(key.key.as_str()) {
-                return (SharedString::from(format!("no this column name: {} i.e. {} {}", 
-                    key.key,
-                    event_record_model::COLUMN_NAMES.index(1).unwrap(),
-                    event_record_model::COLUMN_NAMES.index(2).unwrap(),
-                    )
-                ), ModelRc::default(), false);
-            }
-            let rows = event_list_model_rc_3.row_find(fe);
-            return (SharedString::from("the input is not a key value pair"), ModelRc::new(VecModel::from(rows)), true);
-
-        } else {
-            return (SharedString::from("the input is not a key value pair"), ModelRc::default(), false);
+        match event_list_model_rc_3.row_find(fe) {
+            Ok(vec) => (SharedString::default(), ModelRc::new(VecModel::from(vec)), true),
+            Err(e) => (SharedString::from(e.to_string()), ModelRc::default(), false)
         }
     });
 

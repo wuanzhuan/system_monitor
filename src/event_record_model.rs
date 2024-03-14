@@ -2,7 +2,8 @@ use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, Ve
 use super::event_trace::{EventRecordDecoded, StackWalk};
 use crate::StackWalkInfo;
 use std::sync::{OnceLock, Arc};
-use phf::{OrderedSet, phf_ordered_set};
+use crate::filter_expr::{Path, Value};
+use anyhow::{Result, anyhow};
 
 
 #[derive(Clone)]
@@ -11,14 +12,14 @@ pub struct EventRecordModel{
     stack_walk: OnceLock<Arc<StackWalk>>,
 }
 
-pub static COLUMN_NAMES: phf::OrderedSet<&'static str> = phf_ordered_set! {
+pub const COLUMN_NAMES: &[&str] = &[
     "datetime",
     "process_id",
     "thread_id",
     "event_name",
     "opcode_name",
     "properties",
-};
+];
 
 impl EventRecordModel {
     pub fn new(event_record: EventRecordDecoded) -> Self {
@@ -53,6 +54,66 @@ impl EventRecordModel {
                 stacks: ModelRc::<SharedString>::new(vec)}
         } else {
             StackWalkInfo::default()
+        }
+    }
+
+    pub fn find_by_path_value(&self, path: &Path, value: &Value) -> Result<bool> {
+        match path.key.as_str() {
+            "datetime" => {
+                if let Value::I64(num) = value {
+                    if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            },
+            "process_id" => {
+                if let Value::I64(num) = value {
+                    if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            },
+            "thread_id" => {
+                if let Value::I64(num) = value {
+                    if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            },
+            "event_name" => {
+                if let Value::I64(num) = value {
+                    if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            },
+            "opcode_name" => {
+                if let Value::I64(num) = value {
+                    if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            },
+            "properties"=> {
+                if let Value::I64(num) = value {
+                    if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            },
+            _ => Err(anyhow!("no this column name"))
         }
     }
 
