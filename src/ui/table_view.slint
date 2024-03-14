@@ -3,6 +3,7 @@
 
 import { Icons } from "styling.slint";
 import { ListView, ScrollView, Palette, HorizontalBox, TabWidget, VerticalBox } from "std-widgets.slint";
+import { TextCopiable } from "text_copiable.slint";
 
 component TableViewColumn inherits Rectangle {
     background: Palette.background;
@@ -32,7 +33,7 @@ component TableViewColumn inherits Rectangle {
         padding-right: 12px;
         spacing: 2px;
 
-        Text {
+        TextCopiable {
             width: 100%;
             height: 100%;
             vertical-alignment: center;
@@ -40,7 +41,7 @@ component TableViewColumn inherits Rectangle {
             font-weight: 600;
             font-size: 1.4rem;
             color: Palette.foreground;
-            overflow: elide;
+            single-line: true;
         }
 
         i-icon := Image {
@@ -129,16 +130,16 @@ component TableViewCell inherits Rectangle {
         padding-top: 9px;
         padding-bottom: 9px;
 
-        main-text := Text {
+        main-text := TextCopiable {
             width: 100%;
             height: 100%;
-            overflow: elide;
             horizontal-alignment: horizontal-alignment;
             vertical-alignment: center;
             text: text;
             font-weight: 500;
             font-size: 1.2rem;
             color: mod(index_row, 2) == 0 ? Palette.foreground : Palette.alternate-foreground;
+            single-line: true;
         }
     }
 }

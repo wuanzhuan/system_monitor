@@ -3,6 +3,7 @@
 
 import {StandardTableView, VerticalBox, TabWidget, ScrollView, HorizontalBox, ListView, Palette, Button, LineEdit} from "std-widgets.slint";
 import {TableView} from "table_view.slint";
+import { TextCopiable } from "text_copiable.slint";
 
 
 export struct StackWalkInfo {
@@ -33,7 +34,7 @@ export component EventsView inherits VerticalBox {
         spacing: 5rem;
         text-element := Text {
             height: 2rem;
-            text: @tr("Events view");
+            text: @tr("Events View");
             font-size: 1.5rem;
             horizontal-alignment: left;
         }
@@ -88,9 +89,9 @@ export component EventsView inherits VerticalBox {
         padding-left: 12px;
         padding-right: 12px;
 
-        text := Text {
+        text := TextCopiable {
             height: self.font-size + 2px;
-            text: @tr("totle: {}", EventsViewData.row_data.length);
+            text: @tr("total: {}", EventsViewData.row_data.length);
             font-weight: 500;
             font-size: 1.2rem;
         }
@@ -140,7 +141,7 @@ export component EventsView inherits VerticalBox {
                                 
                                 HorizontalBox {
                                     padding: 12px;
-                                    Text {
+                                    TextCopiable {
                                         width: 100%;
                                         height: 100%;
                                         max-width: 100rem;
@@ -165,19 +166,19 @@ export component EventsView inherits VerticalBox {
                                 padding-top: 9px;
                                 padding-bottom: 9px;
 
-                                Text {
+                                TextCopiable {
                                     text: @tr("process id: {}", root.stacks-info.process-id);
                                     font-weight: 500;
                                     font-size: 1.2rem;
                                 }
             
-                                Text {
+                                TextCopiable {
                                     text: @tr("thread id: {}", root.stacks-info.thread-id);
                                     font-weight: 500;
                                     font-size: 1.2rem;
                                 }
 
-                                Text {
+                                TextCopiable {
                                     text: @tr("event timestamp: {}", root.stacks-info.event-timestamp);
                                     font-weight: 500;
                                     font-size: 1.2rem;
@@ -191,15 +192,15 @@ export component EventsView inherits VerticalBox {
                                         padding-top: 9px;
                                         padding-bottom: 9px;
                                 
-                                        main-text := Text {
+                                        main-text := TextCopiable {
                                             width: 100%;
                                             height: 100%;
-                                            overflow: elide;
                                             horizontal-alignment: left;
                                             vertical-alignment: center;
                                             text: item;
                                             font-weight: 500;
                                             font-size: 1.2rem;
+                                            single-line: true;
                                         }
                                     }
                                 }

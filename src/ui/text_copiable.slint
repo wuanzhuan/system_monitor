@@ -1,0 +1,13 @@
+export component TextCopiable inherits TextInput {
+    read-only: true;
+    FocusScope {
+        key-released(event) => {
+            if event.modifiers.control && event.text == "c" {
+                root.copy();
+                accept
+            } else {
+                reject
+            }
+        }
+    }
+}
