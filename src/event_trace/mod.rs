@@ -262,9 +262,7 @@ impl Controller {
         let event_record_decoded = match event_decoder::Decoder::new(er) {
             Ok(mut decoder) => {
                 match decoder.decode() {
-                    Ok(event_record_decoded) => {
-                        event_record_decoded
-                    },
+                    Ok(event_record_decoded) => event_record_decoded,
                     Err(e) => {
                         error!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
                         insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
