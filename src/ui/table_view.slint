@@ -5,15 +5,16 @@ import { Icons } from "styling.slint";
 import { ListView, ScrollView, Palette, HorizontalBox, TabWidget, VerticalBox } from "std-widgets.slint";
 import { TextCopiable } from "text_copiable.slint";
 
-component TableViewColumn inherits Rectangle {
-    background: Palette.background;
-
+component TableViewColumn inherits Rectangle {    
     in property <string> text;
     in property <int> index_column;
     in property <SortOrder> sort-order: SortOrder.unsorted;
 
     callback clicked <=> i-touch-area.clicked;
     callback adjust_size(length);
+
+    background: Palette.background;
+    clip: true;
 
     states [
         pressed when i-touch-area.pressed : {
@@ -96,11 +97,14 @@ component TableViewCell inherits Rectangle {
     in property <TextHorizontalAlignment> horizontal-alignment;
     out property <bool> has-hover: i-touch-area.has-hover;
     out property <bool> pressed: i-touch-area.pressed;
-    private property <string> info;
 
     callback clicked;
     callback double-clicked;
     callback pointer-event(/* event */ PointerEvent, /* absolute mouse position */ Point);
+
+    clip: true;
+    
+    private property <string> info;
 
     states [
         hover when i-touch-area.has-hover: {
