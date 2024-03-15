@@ -9,7 +9,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - [ ] filter one event with some filter condition
   - [ ] filter two events by match some condition. i.e. handle create and close
 - [ ] find for events
-  - [ ] easy query language
+  - [x] easy query language
   - [ ] mark result of query at scroll bar of TableView
 - [ ] call stack view
   - [ ] record original module and monitor change
