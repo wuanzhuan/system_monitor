@@ -281,7 +281,8 @@ impl Controller {
         let context_arc = CONTEXT.clone();
         let context_mg = context_arc.lock();
         if is_stack_walk {
-            if context_mg.unstored_events_map.borrow_mut().remove(&(er.EventHeader.ThreadId, er.EventHeader.TimeStamp)).is_none() {
+            let sw = StackWalk::from_event_record_decoded(&event_record_decoded);
+            if context_mg.unstored_events_map.borrow_mut().remove(&(sw.stack_thread, sw.event_timestamp)).is_none() {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
                 let cb = unsafe{ &mut *cb.get() };
