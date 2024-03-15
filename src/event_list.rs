@@ -8,7 +8,7 @@ use std::{
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
 use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 
 pub struct Node<T> {
     link: LinkedListLink,
@@ -161,7 +161,11 @@ impl<'a, T> EventList<'a, T> {
                 break;
             }
         }
-        Ok(vec)
+        if vec.is_empty() {
+            Err(anyhow!("No item is find"))
+        } else {
+            Ok(vec)
+        }
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {
