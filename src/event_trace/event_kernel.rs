@@ -19,6 +19,7 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 			MinorDescribe{name: "End", op_code: 2},
 			MinorDescribe{name: "DCStart", op_code: 3},
 			MinorDescribe{name: "DCEnd", op_code: 4},
+			MinorDescribe{name: "Terminate", op_code: 11},
 			MinorDescribe{name: "Defunct", op_code: 39},
 		],
 		guid: ProcessGuid
@@ -38,7 +39,9 @@ pub const EVENTS_DESC: &'static[EventsDescribe] = &[
 		major: MajorDescribe{name: "Image", flag: Major::ImageLoad as u32},
 		minors: &[
 			MinorDescribe{name: "Load", op_code: 10},
-			MinorDescribe{name: "Unload", op_code: 2},
+			MinorDescribe{name: "UnLoad", op_code: 2},
+			MinorDescribe{name: "KernelBase", op_code: 33},
+			MinorDescribe{name: "HypercallPage", op_code: 34},
 			MinorDescribe{name: "DCStart", op_code: 3},
 			MinorDescribe{name: "DCEnd", op_code: 4}
 		],
