@@ -39,4 +39,4 @@ features = [
 ]
 
 [build-dependencies]
-slint-build = "1.4"
+slint-build = "1.5"
