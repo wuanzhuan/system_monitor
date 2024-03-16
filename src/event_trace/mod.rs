@@ -265,13 +265,16 @@ impl Controller {
                     Ok(event_record_decoded) => event_record_decoded,
                     Err(e) => {
                         error!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
-                        insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), None);
-                        return;
+                        match decode_kernel_event_when_error(er, is_stack_walk) {
+                            Some(erd) => erd,
+                            None => return
+                        }
                     }
                 }
             },
             Err(e) => {
-                match decode_kernel_event_when_error(er, is_stack_walk, e) {
+                error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                match decode_kernel_event_when_error(er, is_stack_walk) {
                     Some(erd) => erd,
                     None => return
                 }
@@ -328,7 +331,7 @@ impl Controller {
             }
         }
 
-        fn decode_kernel_event_when_error(er: &EVENT_RECORD, is_stack_walk: bool, e: Error) -> Option<EventRecordDecoded> {
+        fn decode_kernel_event_when_error(er: &EVENT_RECORD, is_stack_walk: bool) -> Option<EventRecordDecoded> {
             let context_arc = CONTEXT.clone();
             let context_mg = context_arc.lock();
             if let Some(indexs) = context_mg.config.events_opcode_map.get(&(er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode as u32)) {
@@ -336,8 +339,7 @@ impl Controller {
             } else {
                 insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
                 mem::drop(context_mg);
-                error!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
-                warn!("Can't find events: {:?}-{}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode);
+                error!("Failed to find event in events_opcode_map EventRecord: {}", EventRecord(er));
                 return None;
             }
         }
