@@ -117,10 +117,16 @@ fn main() {
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
                     let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                     if !erm.set_stack_walk(sw.clone()) {
-                        error!("Stalkwalk event had been set! {}-{}", sw.stack_thread as i32, sw.event_timestamp);
+                        let process_id = event_record.process_id as i32;
+                        let thread_id = event_record.thread_id as i32;
+                        let timestamp = event_record.timestamp.0;
+                        error!("Stalkwalk event had been set! {process_id}:{thread_id}:{timestamp}  {}:{}:{}", sw.stack_process, sw.stack_thread as i32, sw.event_timestamp);
                     }
                 } else {
-                    error!("Can't find event for the stack walk: {}-{}",  sw.stack_thread as i32, sw.event_timestamp);
+                    let process_id = event_record.process_id as i32;
+                    let thread_id = event_record.thread_id as i32;
+                    let timestamp = event_record.timestamp.0;
+                    error!("Can't find event for the stack walk: {process_id}:{thread_id}:{timestamp}  {}:{}:{} {:?}",  sw.stack_process, sw.stack_thread as i32, sw.event_timestamp, sw.stacks);
                 }
             }
         }, |ret| {
