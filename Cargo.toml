@@ -35,7 +35,12 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Threading",
     "Win32_System_Diagnostics_Etw",
-    "Win32_System_SystemInformation"
+    "Win32_System_SystemInformation",
+    "Win32_System_WindowsProgramming",
+    "Win32_System_ProcessStatus",
+    "Wdk_Foundation",
+    "Wdk_System",
+    "Wdk_System_SystemServices",
 ]
 
 [build-dependencies]

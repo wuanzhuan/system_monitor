@@ -20,6 +20,7 @@ mod event_record_model;
 mod third_extend;
 mod utils;
 mod filter_expr;
+mod process_modules;
 
 
 slint::include_modules!();
