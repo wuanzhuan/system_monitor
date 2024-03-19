@@ -40,19 +40,32 @@ pub fn store_process_modules(process_id: u32) -> Result<Vec<ModuleInfo>> {
     }
 
     const MODULE_COUNT: usize = 1024;
-    let mut module_array = [HMODULE::default(); MODULE_COUNT];
+
+    let mut module_array = Vec::<HMODULE>::with_capacity(MODULE_COUNT);
     let mut cbneeded = 0u32;
-    let r = unsafe{
-        EnumProcessModulesEx(h_process_out, module_array.as_mut_ptr(), mem::size_of_val(&module_array) as u32, &mut cbneeded, LIST_MODULES_ALL)
-    };
-    if let Err(e) = r {
-        unsafe{ ZwClose(h_process_out) };
-        return Err(anyhow!("Failed to EnumProcessModules: {}", e));
+    loop {
+        let cb = (mem::size_of::<HMODULE>() * module_array.capacity()) as u32;
+        let r = unsafe{
+            EnumProcessModulesEx(h_process_out, module_array.as_mut_ptr(), cb, &mut cbneeded, LIST_MODULES_ALL)
+        };
+        match r {
+            Ok(_) => {
+                if cbneeded > cb {
+                    module_array = Vec::<HMODULE>::with_capacity(cbneeded as usize / mem::size_of::<HMODULE>());
+                    continue;
+                }
+                unsafe{ module_array.set_len(cbneeded as usize / mem::size_of::<HMODULE>()) };
+                break;
+            },
+            Err(e) => {
+                unsafe{ ZwClose(h_process_out) };
+                return Err(anyhow!("Failed to EnumProcessModules: {}", e));
+            }
+        }
     }
-    let module_count = cbneeded/mem::size_of::<HMODULE>() as u32;
-    let mut module_info_vec = Vec::<ModuleInfo>::with_capacity(module_count as usize);
+    let mut module_info_vec = Vec::<ModuleInfo>::with_capacity(module_array.len());
     let mut vec = Vec::<u16>::with_capacity(1024);
-    for i in 0..module_count {
+    for i in 0..module_array.len() {
         let status = unsafe{
             let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
             GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
@@ -91,6 +104,5 @@ mod tests {
         let current_id = unsafe{ GetCurrentProcessId() };
         let r = super::store_process_modules(current_id);
         assert!(r.is_ok());
-        println!("{:#?}", r.unwrap());
     }
 }
