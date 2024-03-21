@@ -1,4 +1,4 @@
-#![feature(linked_list_cursors, sync_unsafe_cell)]
+#![feature(sync_unsafe_cell)]
 
 
 use std::{
