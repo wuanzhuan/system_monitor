@@ -1009,8 +1009,8 @@ pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57f
 
 
 pub mod event_property {
-    use tracing::error;
-
+	use anyhow::{anyhow, Result};
+	use tracing::error;
     use crate::event_trace::event_decoder;
 	
 	#[derive(Debug, Clone)]
@@ -1129,6 +1129,118 @@ pub mod event_property {
 				Self{event_timestamp: erd.timestamp.0, stack_process: 0, stack_thread: 0, stacks: vec![]}
 			}
 		}
+	}
+
+	#[derive(Debug, Clone, Default)]
+	pub struct Image {
+	    pub image_base: u64,
+	    pub image_size: u32,
+	    pub process_id: u32,
+	    pub image_check_sum: u32,
+	    pub time_date_stamp: u64,
+	    pub default_base: u64,
+	    pub file_name: String	
+	}
+
+	impl Image {
+		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
+			if let event_decoder::PropertyDecoded::Struct(map) = &erd.properties {
+				let image_base = map.get("ImageBase").map(|property| {
+					u64_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ImageBase: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let image_size = map.get("ImageSize").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ImageSize: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let process_id = map.get("ProcessId").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ImageSize: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let image_check_sum = map.get("ImageChecksum").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ImageSize: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let time_date_stamp = map.get("TimeDateStamp").map(|property| {
+					u64_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ImageSize: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let default_base = map.get("DefaultBase").map(|property| {
+					u64_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ImageSize: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let file_name = map.get("FileName").map(|property| {
+					if let event_decoder::PropertyDecoded::String(s) = property {
+						s.clone()
+					} else {
+						String::new()
+					}
+				}).unwrap_or_default();
+				Self{ image_base, image_size, process_id, image_check_sum, time_date_stamp, default_base, file_name}
+			} else {
+				Self::default()
+			}
+		}
+	}
+
+	fn u64_from_string(property: &event_decoder::PropertyDecoded) -> Result<u64> {
+		if let event_decoder::PropertyDecoded::String(s) = property {
+			let has_0x = s.starts_with("0x") || s.starts_with("0X");
+			let r = if has_0x {
+				let s = s.get(2..).unwrap_or_default();
+				u64::from_str_radix(s, 16)
+			} else {
+				u64::from_str_radix(s, 10)
+			};
+			match r {
+				Ok(num) => Ok(num),
+				Err(e) => {
+					if *e.kind() == std::num::IntErrorKind::Empty {
+						Ok(0)
+					} else {
+						Err(anyhow!("Failed to parse: {s} for EventTimeStamp, {e}"))
+					}
+				}
+			}
+		} else {
+			Err(anyhow!("The property's type is not string!"))
+		} 
+	}
+
+	fn u32_from_string(property: &event_decoder::PropertyDecoded) -> Result<u32> {
+		if let event_decoder::PropertyDecoded::String(s) = property {
+			let has_0x = s.starts_with("0x") || s.starts_with("0X");
+			let r = if has_0x {
+				let s = s.get(2..).unwrap_or_default();
+				u32::from_str_radix(s, 16)
+			} else {
+				u32::from_str_radix(s, 10)
+			};
+			match r {
+				Ok(num) => Ok(num),
+				Err(e) => {
+					if *e.kind() == std::num::IntErrorKind::Empty {
+						Ok(0)
+					} else {
+						Err(anyhow!("Failed to parse: {s} for EventTimeStamp, {e}"))
+					}
+				}
+			}
+		} else {
+			Err(anyhow!("The property's type is not string!"))
+		} 
 	}
 }
 
