@@ -1,4 +1,4 @@
-#![feature(sync_unsafe_cell)]
+#![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
 
 
 use std::{
