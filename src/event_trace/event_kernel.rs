@@ -1025,73 +1025,22 @@ pub mod event_property {
 		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
 			if let event_decoder::PropertyDecoded::Struct(map) = &erd.properties {
 				let event_timestamp = map.get("EventTimeStamp").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property {
-						let has_0x = s.starts_with("0x") || s.starts_with("0X");
-						let r = if has_0x {
-							let s = s.get(2..).unwrap_or_default();
-							u64::from_str_radix(s, 16)
-						} else {
-							u64::from_str_radix(s, 10)
-						};
-						match r {
-							Ok(num) => num,
-							Err(e) => {
-								if *e.kind() != std::num::IntErrorKind::Empty {
-									error!("Failed to parse: {s} for EventTimeStamp, {e}");
-								}
-								0
-							}
-						}
-					} else {
-						error!("The EventTimeStamp's value is not string!");
-					    0 
-					} 
+					u64_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get EventTimeStamp: {e}");
+						0
+					})
 				}).unwrap_or_default();
 				let stack_process = map.get("StackProcess").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property {
-						let has_0x = s.starts_with("0x") || s.starts_with("0X");
-						let r = if has_0x {
-							let s = s.get(2..).unwrap_or_default();
-							u32::from_str_radix(s, 16)
-						} else {
-							u32::from_str_radix(s, 10)
-						};
-						match r {
-							Ok(num) => num,
-							Err(e) => {
-								if *e.kind() != std::num::IntErrorKind::Empty {
-									error!("Failed to parse: {s} for EventTimeStamp, {e}");
-								}
-								0
-							}
-						}
-					} else {
-						error!("The StackProcess's value is not string!");
-					    0 
-					} 
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get StackProcess: {e}");
+						0
+					})
 				}).unwrap_or_default();
 				let stack_thread = map.get("StackThread").map(|property| {
-					if let event_decoder::PropertyDecoded::String(s) = property {
-						let has_0x = s.starts_with("0x") || s.starts_with("0X");
-						let r = if has_0x {
-							let s = s.get(2..).unwrap_or_default();
-							u32::from_str_radix(s, 16)
-						} else {
-							u32::from_str_radix(s, 10)
-						};
-						match r {
-							Ok(num) => num,
-							Err(e) => {
-								if *e.kind() != std::num::IntErrorKind::Empty {
-									error!("Failed to parse: {s} for EventTimeStamp, {e}");
-								}
-								0
-							}
-						}
-					} else {
-						error!("The StackThread's value is not string!");
-					    0 
-					}  
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get StackThread: {e}");
+						0
+					}) 
 				}).unwrap_or_default();
 				let mut stacks = vec![];
 				for entry in map.iter() {
@@ -1101,27 +1050,10 @@ pub mod event_property {
 					if entry.0.get("Stack".len()..).unwrap_or_default().parse::<u32>().is_err() {
 						continue;
 					}
-					let v = if let event_decoder::PropertyDecoded::String(s) = entry.1 {
-						let has_0x = s.starts_with("0x") || s.starts_with("0X");
-						let r = if has_0x {
-							let s = s.get(2..).unwrap_or_default();
-							u64::from_str_radix(s, 16)
-						} else {
-							u64::from_str_radix(s, 10)
-						};
-						match r {
-							Ok(num) => num,
-							Err(e) => {
-								if *e.kind() != std::num::IntErrorKind::Empty {
-									error!("Failed to parse: {s} for EventTimeStamp, {e}");
-								}
-								0
-							}
-						}
-					} else {
-						error!("The stack's address value is not string!");
+					let v = u64_from_string(entry.1).unwrap_or_else(|e| {
+						error!("Failed to get stack address: {e}");
 						0
-					};
+					});
 					stacks.push((entry.0.clone(), v))
 				}
 				Self{event_timestamp: event_timestamp as i64, stack_process, stack_thread, stacks}
@@ -1159,25 +1091,25 @@ pub mod event_property {
 				}).unwrap_or_default();
 				let process_id = map.get("ProcessId").map(|property| {
 					u32_from_string(property).unwrap_or_else(|e| {
-						error!("Failed to get ImageSize: {e}");
+						error!("Failed to get ProcessId: {e}");
 						0
 					})
 				}).unwrap_or_default();
 				let image_check_sum = map.get("ImageChecksum").map(|property| {
 					u32_from_string(property).unwrap_or_else(|e| {
-						error!("Failed to get ImageSize: {e}");
+						error!("Failed to get ImageChecksum: {e}");
 						0
 					})
 				}).unwrap_or_default();
 				let time_date_stamp = map.get("TimeDateStamp").map(|property| {
 					u64_from_string(property).unwrap_or_else(|e| {
-						error!("Failed to get ImageSize: {e}");
+						error!("Failed to get TimeDateStamp: {e}");
 						0
 					})
 				}).unwrap_or_default();
 				let default_base = map.get("DefaultBase").map(|property| {
 					u64_from_string(property).unwrap_or_else(|e| {
-						error!("Failed to get ImageSize: {e}");
+						error!("Failed to get DefaultBase: {e}");
 						0
 					})
 				}).unwrap_or_default();
