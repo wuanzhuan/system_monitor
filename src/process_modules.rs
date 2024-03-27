@@ -35,21 +35,17 @@ pub struct ModuleInfo {
     pub end: OnceLock<TimeStamp>
 }
 
-static modules_map: Lazy<IndexMap<String, BTreeMap<u64, Arc<ModuleInfo>>>> = Lazy::new(|| {
+static MODULES_MAP: Lazy<IndexMap<String, BTreeMap<u64, Arc<ModuleInfo>>>> = Lazy::new(|| {
     IndexMap::new()
 });
 
-static running_modules_map: Lazy<FairMutex<HashMap<u32, Arc<FairMutex<BTreeMap<u64, Arc<ModuleInfo>>>>>>> = Lazy::new(|| {
+static RUNNING_MODULES_MAP: Lazy<FairMutex<HashMap<u32, Arc<FairMutex<BTreeMap<u64, Arc<ModuleInfo>>>>>>> = Lazy::new(|| {
     FairMutex::new(HashMap::new())
 });
 
-pub fn store(path: String, module_info: ModuleInfo) {
-    //modules_map.insert(path, module_info);
-}
-
 
 pub fn process_modules_init(process_id: u32) {
-    let mut lock = running_modules_map.lock();
+    let mut lock = RUNNING_MODULES_MAP.lock();
     let process_mutex = match lock.try_insert(process_id, Arc::new(FairMutex::new(BTreeMap::new()))) {
         Ok(ok) => ok.clone(),
         Err(ref err) => err.entry.get().clone()
@@ -136,11 +132,11 @@ pub fn process_modules_update() {
 #[cfg(test)]
 mod tests {
     use windows::Win32::System::Threading::GetCurrentProcessId;
-    use super::running_modules_map;
+    use super::RUNNING_MODULES_MAP;
     #[test]
     fn store_process_modules() {
         let current_id = unsafe{ GetCurrentProcessId() };
         let r = super::process_modules_init(current_id);
-        println!("{:#?}", running_modules_map);
+        println!("{:#?}", RUNNING_MODULES_MAP);
     }
 }
