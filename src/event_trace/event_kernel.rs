@@ -1069,7 +1069,7 @@ pub mod event_property {
 	    pub image_size: u32,
 	    pub process_id: u32,
 	    pub image_check_sum: u32,
-	    pub time_date_stamp: u64,
+	    pub time_date_stamp: u32,
 	    pub default_base: u64,
 	    pub file_name: String	
 	}
@@ -1102,7 +1102,7 @@ pub mod event_property {
 					})
 				}).unwrap_or_default();
 				let time_date_stamp = map.get("TimeDateStamp").map(|property| {
-					u64_from_string(property).unwrap_or_else(|e| {
+					u32_from_string(property).unwrap_or_else(|e| {
 						error!("Failed to get TimeDateStamp: {e}");
 						0
 					})
