@@ -1,7 +1,7 @@
 use widestring::*;
 use crate::third_extend::bytemuck::*;
 pub use windows::core::PCWSTR;
-use tracing::{debug};
+use tracing::debug;
 
 
 pub trait AsPcwstr {
