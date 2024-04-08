@@ -3,11 +3,12 @@ use windows::{
         Foundation::OBJECT_ATTRIBUTES, System::SystemServices::{NtOpenProcess, ZwClose}
     }, 
     Win32::{
-        Foundation::{GetLastError, GENERIC_ALL, HANDLE, HMODULE},
+        Foundation::*,
         System::{
             ProcessStatus::{EnumProcessModulesEx, GetModuleFileNameExW, GetModuleInformation, MODULEINFO, LIST_MODULES_ALL},
             WindowsProgramming::CLIENT_ID
-        }
+        },
+        Storage::FileSystem::{GetVolumePathNameW, QueryDosDeviceW}
     }
 };
 use std::{
@@ -23,6 +24,8 @@ use once_cell::sync::Lazy;
 use parking_lot::{FairMutex, FairMutexGuard};
 use crate::utils::TimeStamp;
 use crate::event_trace::Image;
+use crate::third_extend::strings::AsPcwstr;
+use ascii::AsciiChar;
 
 
 #[derive(Debug)]
@@ -49,6 +52,38 @@ static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> = 
 static RUNNING_MODULES_MAP: Lazy<FairMutex<HashMap<u32, Arc<FairMutex<BTreeMap<u64, ModuleInfoRunning>>>>>> = Lazy::new(|| {
     FairMutex::new(HashMap::new())
 });
+
+static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
+
+pub fn drive_letter_map_init() {
+    let mut map = HashMap::<String, AsciiChar>::new();
+    let mut file_name_ret = Vec::<u16>::with_capacity(260);
+    unsafe{file_name_ret.set_len(file_name_ret.capacity());}
+    for letter in 'c'..'z' {
+        let file_name_raw = U16CString::from_str_truncate(format!("{letter}:"));
+        match unsafe{ QueryDosDeviceW(file_name_raw.as_pcwstr(), Some(file_name_ret.as_mut_slice())) } {
+            0 => {
+                let err =  unsafe{ GetLastError().unwrap_err() };
+                if err.code() != ERROR_FILE_NOT_FOUND.to_hresult() {
+                    println!("Failed to QueryDosDeviceW: {err}");
+                }
+            }
+            num => {
+                unsafe{file_name_ret.set_len(num as usize);}
+                match U16CStr::from_slice_truncate(file_name_ret.as_slice()) {
+                    Ok(ok) => {
+                        map.insert(ok.to_string().unwrap(), AsciiChar::new(letter));
+                        println!("{ok:?}");
+                    }
+                    Err(err) => {
+                        println!("Failed to from_ptr_truncate: {err}");
+                    }
+                }
+            }
+        };
+    }
+    DRIVE_LETTER_MAP.set(map).unwrap();
+}
 
 
 pub fn process_modules_init(process_id: u32) {
@@ -149,10 +184,17 @@ pub fn process_modules_init(process_id: u32) {
 
 pub fn process_modules_load(image_info: &Image) {
     // \\Device\\HarddiskVolume3\\Windows\\System32\\sechost.dll
-    let file_name = if image_info.file_name.starts_with("\\") {
-        String::new()
-    } else {
-        String::new()
+    let file_name_raw = U16CString::from_str_truncate(image_info.file_name.clone());
+    let mut file_name_ret = Vec::<u16>::with_capacity(MAX_PATH as usize);
+    unsafe{file_name_ret.set_len(MAX_PATH as usize);}
+    let file_name = match unsafe{ GetVolumePathNameW(file_name_raw.as_pcwstr(), file_name_ret.as_mut_slice()) } {
+        Ok(_) => {
+            unsafe{ U16CStr::from_ptr_str(file_name_raw.as_ptr()) }.to_string().unwrap_or_default()
+        }
+        Err(err) => {
+            error!("Failed to GetVolumePathNameW: {err}");
+            image_info.file_name.clone()
+        }
     };
     let process_id = image_info.process_id;
     let mut module_lock = MODULES_MAP.lock();
@@ -188,11 +230,18 @@ pub fn process_modules_load(image_info: &Image) {
 #[cfg(test)]
 mod tests {
     use windows::Win32::System::Threading::GetCurrentProcessId;
-    use super::RUNNING_MODULES_MAP;
+    use super::{RUNNING_MODULES_MAP, DRIVE_LETTER_MAP};
+
     #[test]
     fn store_process_modules() {
         let current_id = unsafe{ GetCurrentProcessId() };
-        let r = super::process_modules_init(current_id);
+        let _ = super::process_modules_init(current_id);
         println!("{:#?}", RUNNING_MODULES_MAP);
+    }
+
+    #[test]
+    fn drive_letter_map_init() {
+        super::drive_letter_map_init();
+        println!("{:#?}", DRIVE_LETTER_MAP);
     }
 }
