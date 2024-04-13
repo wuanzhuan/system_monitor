@@ -82,9 +82,8 @@ pub fn drive_letter_map_init() {
             }
         };
     }
-    DRIVE_LETTER_MAP.set(map).unwrap();
+    let _ = DRIVE_LETTER_MAP.set(map);
 }
-
 
 pub fn process_modules_init(process_id: u32) {
     let process_module_mutex = match RUNNING_MODULES_MAP.lock().try_insert(process_id, Arc::new(FairMutex::new(BTreeMap::new()))) {
