@@ -104,7 +104,8 @@ fn main() {
         let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<EventRecordModel>>>::with_capacity(50));
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
-        let result = event_trace::Controller::start(move |event_record, is_stack_walk| {
+        process_modules::drive_letter_map_init();
+        let result = event_trace::Controller::start(move |event_record, is_stack_walk, module_info | {
             if !is_stack_walk {
                 let thread_id = event_record.thread_id;
                 let timestamp = event_record.timestamp.0;

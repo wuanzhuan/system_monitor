@@ -11,8 +11,11 @@ use lazy_static::lazy_static;
 use tracing::{error, warn};
 use widestring::*;
 use windows::{
-    core::*, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*,
-    Win32::System::SystemInformation::*,
+    core::*, 
+    Win32::{
+        Foundation::*, 
+        System::{Diagnostics::Etw::*, SystemInformation::*}
+    },
 };
 use linked_hash_map::LinkedHashMap;
 use parking_lot::{FairMutex, FairMutexGuard};
@@ -50,7 +53,7 @@ pub struct Controller {
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    event_record_callback: Option<Rc<UnsafeCell<dyn FnMut(EventRecordDecoded, bool)>>>,
+    event_record_callback: Option<Rc<UnsafeCell<dyn FnMut(EventRecordDecoded, bool, Option<bool>)>>>,
     unstored_events_map: RefCell<LinkedHashMap<(u32, i64), ()>>
 }
 
@@ -72,7 +75,7 @@ impl Controller {
         cxt
     }
 
-    pub fn start(fn_event_callback: impl FnMut(EventRecordDecoded, bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
+    pub fn start(fn_event_callback: impl FnMut(EventRecordDecoded, bool, Option<bool>) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
         let context_arc = CONTEXT.clone();
         let mut context_mg = context_arc.lock();
         let mut h_trace = CONTROLTRACE_HANDLE::default();
@@ -289,32 +292,31 @@ impl Controller {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
                 let cb = unsafe{ &mut *cb.get() };
-                cb(event_record_decoded, is_stack_walk);
+                cb(event_record_decoded, true, None);
             }
         } else {
+            let is_module_info_event = if er.EventHeader.ProviderId == ProcessGuid || er.EventHeader.ProviderId == ImageLoadGuid { true } else { false };
             if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
                 if context_mg.config.events_enables[enable_indexs.0].major {
                     if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
-                        let cb = context_mg.event_record_callback.clone().unwrap();
-                        mem::drop(context_mg);
-                        let cb = unsafe{ &mut *cb.get() };
-                        cb(event_record_decoded, is_stack_walk);
+                        call_non_stack_walk_cb(context_mg, true, is_module_info_event, event_record_decoded);
                     } else {
                         insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
+                        call_non_stack_walk_cb(context_mg, false, is_module_info_event, event_record_decoded);
                     }
                 } else {
                     insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                    mem::drop(context_mg);
                     // the major event is filter by flag. so a error happens when a event that is not enable comes
                     // the EventTrace event is always enable.
                     if event_record_decoded.event_name != "EventTrace" {
                         error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                     }
+                    call_non_stack_walk_cb(context_mg, false, is_module_info_event, event_record_decoded);
                 }
             }else {
                 insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                mem::drop(context_mg);
                 warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                call_non_stack_walk_cb(context_mg, false, is_module_info_event, event_record_decoded);
             }
         }
         // contains error and inactivated event
@@ -329,6 +331,17 @@ impl Controller {
                 let context_mg = context_arc.lock();
                 context_mg.unstored_events_map.borrow_mut().insert(key, ());
             }
+        }
+
+        fn call_non_stack_walk_cb(context_mg: FairMutexGuard<Controller>, is_selected: bool, is_module_info_event: bool, event_record_decoded: EventRecordDecoded) {
+            if !is_selected && !is_module_info_event {
+                mem::drop(context_mg);
+                return;
+            }
+            let cb = context_mg.event_record_callback.clone().unwrap();
+            mem::drop(context_mg);
+            let cb = unsafe{ &mut *cb.get() };
+            cb(event_record_decoded, false, if is_module_info_event { Some(is_selected) } else { None });
         }
 
         fn decode_kernel_event_when_error(er: &EVENT_RECORD, is_stack_walk: bool) -> Option<EventRecordDecoded> {
