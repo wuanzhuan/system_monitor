@@ -123,13 +123,20 @@ fn main() {
                     error!("Can't find event for the stack walk: {process_id}:{thread_id}:{timestamp}  {}:{}:{} {:?}",  sw.stack_process, sw.stack_thread as i32, sw.event_timestamp, sw.stacks);
                 }
             } else {
-                let thread_id = event_record.thread_id;
-                let timestamp = event_record.timestamp.0;
-                let er = event_record_model::EventRecordModel::new(event_record);
-                let row_arc = Arc::new(event_list::Node::new(er));
-                stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
-                let index = event_list_arc_1.push(row_arc);
-                delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
+                let is_selected = if let Some(is_selected) = module_info {
+                    is_selected
+                } else {
+                    true
+                };
+                if is_selected {
+                    let thread_id = event_record.thread_id;
+                    let timestamp = event_record.timestamp.0;
+                    let er = event_record_model::EventRecordModel::new(event_record);
+                    let row_arc = Arc::new(event_list::Node::new(er));
+                    stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
+                    let index = event_list_arc_1.push(row_arc);
+                    delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
+                }
             }
         }, |ret| {
             info!("{:?}", ret);
