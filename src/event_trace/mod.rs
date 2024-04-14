@@ -295,7 +295,7 @@ impl Controller {
                 cb(event_record_decoded, true, None);
             }
         } else {
-            let is_module_info_event = if er.EventHeader.ProviderId == ProcessGuid || er.EventHeader.ProviderId == ImageLoadGuid { true } else { false };
+            let is_module_info_event = er.EventHeader.ProviderId == ImageLoadGuid;
             if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
                 if context_mg.config.events_enables[enable_indexs.0].major {
                     if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
