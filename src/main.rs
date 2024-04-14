@@ -106,15 +106,7 @@ fn main() {
         delay_notify.init(app_weak_1.clone());
         process_modules::drive_letter_map_init();
         let result = event_trace::Controller::start(move |event_record, is_stack_walk, module_info | {
-            if !is_stack_walk {
-                let thread_id = event_record.thread_id;
-                let timestamp = event_record.timestamp.0;
-                let er = event_record_model::EventRecordModel::new(event_record);
-                let row_arc = Arc::new(event_list::Node::new(er));
-                stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
-                let index = event_list_arc_1.push(row_arc);
-                delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
-            } else {
+            if is_stack_walk {
                 let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
                     let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
@@ -130,6 +122,14 @@ fn main() {
                     let timestamp = event_record.timestamp.0;
                     error!("Can't find event for the stack walk: {process_id}:{thread_id}:{timestamp}  {}:{}:{} {:?}",  sw.stack_process, sw.stack_thread as i32, sw.event_timestamp, sw.stacks);
                 }
+            } else {
+                let thread_id = event_record.thread_id;
+                let timestamp = event_record.timestamp.0;
+                let er = event_record_model::EventRecordModel::new(event_record);
+                let row_arc = Arc::new(event_list::Node::new(er));
+                stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
+                let index = event_list_arc_1.push(row_arc);
+                delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
             }
         }, |ret| {
             info!("{:?}", ret);
