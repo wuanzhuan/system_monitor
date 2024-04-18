@@ -123,7 +123,7 @@ fn main() {
                     error!("Can't find event for the stack walk: {process_id}:{thread_id}:{timestamp}  {}:{}:{} {:?}",  sw.stack_process, sw.stack_thread as i32, sw.event_timestamp, sw.stacks);
                 }
             } else {
-                process_modules::handle_module_event(&event_record);
+                process_modules::handle_event_for_module(&event_record);
                 if is_selected {
                     let thread_id = event_record.thread_id;
                     let timestamp = event_record.timestamp.0;
