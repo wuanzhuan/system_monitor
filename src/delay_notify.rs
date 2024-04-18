@@ -46,7 +46,7 @@ impl DelayNotify {
                         data.is_notified = false;
                     }
                 }
-                Timer::interval(period).await;
+                Timer::after(period).await;
             }
         }));
     }
