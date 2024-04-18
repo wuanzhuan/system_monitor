@@ -102,8 +102,10 @@ fn drive_letter_map_init() {
     let _ = DRIVE_LETTER_MAP.set(map);
 }
 
-pub fn handle_event_for_module(event_record: &EventRecordDecoded) {
-    process_add(event_record.process_id);
+pub fn handle_event_for_module(event_record: &EventRecordDecoded, is_selected: bool) {
+    if is_selected {
+        process_add(event_record.process_id);
+    }
     match event_record.provider_id.0 {
         ProcessGuid => {}
         ImageLoadGuid => {}
