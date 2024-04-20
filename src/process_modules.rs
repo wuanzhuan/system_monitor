@@ -11,6 +11,7 @@ use std::{
     collections::{BTreeMap, HashMap},
     mem, slice,
     sync::{Arc, OnceLock},
+    time::Duration
 };
 use tracing::{debug, error};
 use widestring::*;
@@ -23,7 +24,7 @@ use windows::{
         Foundation::*,
         Storage::FileSystem::{GetVolumePathNameW, QueryDosDeviceW},
         System::{
-            Diagnostics::Etw::*,
+            Diagnostics::Etw,
             ProcessStatus::{
                 EnumProcessModulesEx, GetModuleFileNameExW, GetModuleInformation, LIST_MODULES_ALL,
                 MODULEINFO,
@@ -32,6 +33,7 @@ use windows::{
         },
     },
 };
+use crate::event_trace::EVENTS_DESC;
 
 #[derive(Debug)]
 pub struct ModuleInfo {
@@ -107,8 +109,24 @@ pub fn handle_event_for_module(event_record: &EventRecordDecoded, is_selected: b
         process_add(event_record.process_id);
     }
     match event_record.provider_id.0 {
-        ProcessGuid => {}
-        ImageLoadGuid => {}
+        Etw::ProcessGuid => {
+            if event_record.opcode_name == "End" {
+                process_delete(event_record.process_id);
+            }
+        }
+        Etw::ImageLoadGuid => {
+            match event_record.opcode_name.as_str() {
+                "Load" => {
+                    let image = Image::from_event_record_decoded(event_record);
+                    process_modules_load(&image, event_record.timestamp);
+                }
+                "UnLoad" => {
+                    let image = Image::from_event_record_decoded(event_record);
+                    process_modules_unload(&image);
+                }
+                _ => {}
+            }
+        }
         _ => {}
     }
 }
@@ -242,58 +260,64 @@ fn process_add(process_id: u32) {
     .detach();
 }
 
-pub fn process_modules_load(image_info: &Image) {
-    // \\Device\\HarddiskVolume3\\Windows\\System32\\sechost.dll
-    let file_name_raw = U16CString::from_str_truncate(image_info.file_name.clone());
-    let mut file_name_ret = Vec::<u16>::with_capacity(MAX_PATH as usize);
-    unsafe {
-        file_name_ret.set_len(MAX_PATH as usize);
-    }
-    let file_name = match unsafe {
-        GetVolumePathNameW(file_name_raw.as_pcwstr(), file_name_ret.as_mut_slice())
-    } {
-        Ok(_) => unsafe { U16CStr::from_ptr_str(file_name_raw.as_ptr()) }
-            .to_string()
-            .unwrap_or_default(),
-        Err(err) => {
-            error!("Failed to GetVolumePathNameW: {err}");
-            image_info.file_name.clone()
-        }
-    };
-    let process_id = image_info.process_id;
+fn process_delete(process_id: u32) {
+    smol::spawn(async move {
+        let period = Duration::from_secs(10);
+        smol::Timer::after(period).await;
+        let mut running_modules_lock = RUNNING_MODULES_MAP.lock();
+        let _ = running_modules_lock.remove(&process_id);
+    }).detach();
+}
+
+fn process_modules_load(image: &Image, timestamp: TimeStamp) {
     let mut module_lock = MODULES_MAP.lock();
     let (id, module_info_arc) = if let Some(some) =
-        module_lock.get_full(&(file_name.clone(), image_info.time_date_stamp))
+        module_lock.get_full(&(image.file_name.clone(), image.time_date_stamp))
     {
         (some.0, some.2.clone())
     } else {
         let module_info_arc = Arc::new(ModuleInfo {
-            file_name: file_name.clone(),
+            file_name: image.file_name.clone(),
             time_data_stamp: 0,
         });
-        let entry = module_lock.insert_full((file_name.clone(), 0), module_info_arc.clone());
+        let entry = module_lock.insert_full((image.file_name.clone(), 0), module_info_arc.clone());
         (entry.0, entry.1.unwrap())
     };
     drop(module_lock);
 
-    let process_module_mutex = match RUNNING_MODULES_MAP
-        .lock()
-        .try_insert(process_id, Arc::new(FairMutex::new(BTreeMap::new())))
-    {
-        Ok(ok) => ok.clone(),
-        Err(ref err) => err.entry.get().clone(),
+    let running_module_lock = RUNNING_MODULES_MAP.lock();
+    let process_module_mutex = if let Some(process_module_mutex) = running_module_lock.get(&image.process_id){
+        process_module_mutex
+    } else {
+        return;
     };
     let mut process_module_lock = process_module_mutex.lock();
     let module_info_running = ModuleInfoRunning {
         id: id as u32,
         module_info: module_info_arc.clone(),
-        base_of_dll: image_info.image_base,
-        size_of_image: image_info.image_size,
-        entry_point: image_info.default_base,
-        start: TimeStamp(0),
+        base_of_dll: image.image_base,
+        size_of_image: image.image_size,
+        entry_point: image.default_base,
+        start: timestamp,
         end: OnceLock::new(),
     };
-    let _ = process_module_lock.try_insert(image_info.image_base, module_info_running);
+    let _ = process_module_lock.try_insert(image.image_base, module_info_running);
+}
+
+fn process_modules_unload(image: &Image) {
+    let running_module_lock = RUNNING_MODULES_MAP.lock();
+    let process_module = if let Some(process_module_mutex) = running_module_lock.get(&image.process_id){
+        process_module_mutex.clone()
+    } else {
+        return;
+    };
+    let image_base = image.image_base;
+    smol::spawn(async move {
+        let period = Duration::from_secs(5);
+        smol::Timer::after(period).await;
+        let mut process_module_lock = process_module.lock();
+        let _ = process_module_lock.remove(&image_base);
+    }).detach();
 }
 
 #[cfg(test)]
