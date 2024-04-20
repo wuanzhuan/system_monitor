@@ -2,11 +2,10 @@ use crate::event_trace::EventRecordDecoded;
 use crate::event_trace::Image;
 use crate::third_extend::strings::AsPcwstr;
 use crate::utils::TimeStamp;
-use anyhow::{anyhow, Result};
 use ascii::AsciiChar;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
-use parking_lot::{FairMutex, FairMutexGuard};
+use parking_lot::FairMutex;
 use std::{
     collections::{BTreeMap, HashMap},
     mem, slice,
@@ -33,7 +32,6 @@ use windows::{
         },
     },
 };
-use crate::event_trace::EVENTS_DESC;
 
 #[derive(Debug)]
 pub struct ModuleInfo {
