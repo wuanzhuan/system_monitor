@@ -21,7 +21,7 @@ use windows::{
     },
     Win32::{
         Foundation::*,
-        Storage::FileSystem::{GetVolumePathNameW, QueryDosDeviceW},
+        Storage::FileSystem::QueryDosDeviceW,
         System::{
             Diagnostics::Etw,
             ProcessStatus::{
