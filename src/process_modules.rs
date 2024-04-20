@@ -49,7 +49,6 @@ pub struct ModuleInfoRunning {
     pub size_of_image: u32,
     pub entry_point: u64,
     pub start: TimeStamp,
-    pub end: OnceLock<TimeStamp>,
 }
 
 static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
@@ -249,7 +248,6 @@ fn process_add(process_id: u32) {
                     size_of_image: module_info.SizeOfImage,
                     entry_point: module_info.EntryPoint as u64,
                     start: TimeStamp(0),
-                    end: OnceLock::new(),
                 };
                 let _ = process_module_lock
                     .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
@@ -299,7 +297,6 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
         size_of_image: image.image_size,
         entry_point: image.default_base,
         start: timestamp,
-        end: OnceLock::new(),
     };
     let _ = process_module_lock.try_insert(image.image_base, module_info_running);
 }
