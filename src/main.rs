@@ -105,9 +105,8 @@ fn main() {
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init();
-        let result = event_trace::Controller::start(move |mut event_record, is_stack_walk, is_selected | {
-            if is_stack_walk {
-                let sw = event_trace::StackWalk::from_event_record_decoded(&event_record);
+        let result = event_trace::Controller::start(move |mut event_record, stack_walk, is_selected | {
+            if let Some(sw) = stack_walk {
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
                     let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                     if !erm.set_stack_walk(sw.clone()) {

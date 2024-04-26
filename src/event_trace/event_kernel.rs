@@ -1013,13 +1013,19 @@ pub mod event_property {
 	use tracing::error;
     use crate::event_trace::event_decoder;
 	use ascii::AsciiChar;
+
+	#[derive(Debug, Clone)]
+	pub struct StackAddress {
+			pub raw: u64,
+			pub relative: (/*module_id*/u32, /*offset*/u32)
+	}
 	
 	#[derive(Debug, Clone)]
     pub struct StackWalk {
         pub event_timestamp: i64,
         pub stack_process: u32,
         pub stack_thread: u32,
-        pub stacks: Vec<(String, u64)>
+        pub stacks: Vec<(String, StackAddress)>
     }
 
 	impl StackWalk {
@@ -1051,11 +1057,11 @@ pub mod event_property {
 					if entry.0.get("Stack".len()..).unwrap_or_default().parse::<u32>().is_err() {
 						continue;
 					}
-					let v = u64_from_string(entry.1).unwrap_or_else(|e| {
+					let address_raw: u64 = u64_from_string(entry.1).unwrap_or_else(|e| {
 						error!("Failed to get stack address: {e}");
 						0
 					});
-					stacks.push((entry.0.clone(), v))
+					stacks.push((entry.0.clone(), StackAddress{raw: address_raw, relative: (u32::MAX, u32::MAX)}))
 				}
 				Self{event_timestamp: event_timestamp as i64, stack_process, stack_thread, stacks}
 			} else {

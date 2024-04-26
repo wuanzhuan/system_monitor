@@ -53,7 +53,7 @@ pub struct Controller {
     h_trace_consumer: PROCESSTRACE_HANDLE,
     h_consumer_thread: Option<thread::JoinHandle<()>>,
     is_win8_or_greater: bool,
-    event_record_callback: Option<Rc<UnsafeCell<dyn FnMut(EventRecordDecoded, /*is_stack_walk*/bool, /*is_selected*/bool)>>>,
+    event_record_callback: Option<Rc<UnsafeCell<dyn FnMut(EventRecordDecoded, /*stack_walk*/Option<StackWalk>, /*is_selected*/bool)>>>,
     unstored_events_map: RefCell<LinkedHashMap<(u32, i64), ()>>
 }
 
@@ -75,7 +75,7 @@ impl Controller {
         cxt
     }
 
-    pub fn start(fn_event_callback: impl FnMut(EventRecordDecoded,  /*is_stack_walk*/bool, /*is_selected*/bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
+    pub fn start(fn_event_callback: impl FnMut(EventRecordDecoded,  /*stack_walk*/Option<StackWalk>, /*is_selected*/bool) + Send + 'static, fn_completion: impl FnOnce(Result<()>) + Send + 'static) -> Result<()> {
         let context_arc = CONTEXT.clone();
         let mut context_mg = context_arc.lock();
         let mut h_trace = CONTROLTRACE_HANDLE::default();
@@ -292,7 +292,7 @@ impl Controller {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
                 let cb = unsafe{ &mut *cb.get() };
-                cb(event_record_decoded, true, false);
+                cb(event_record_decoded, Some(sw), false);
             }
         } else {
             if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name.as_str())) {
@@ -343,7 +343,7 @@ impl Controller {
             let cb = context_mg.event_record_callback.clone().unwrap();
             mem::drop(context_mg);
             let cb = unsafe{ &mut *cb.get() };
-            cb(event_record_decoded, false, is_selected);
+            cb(event_record_decoded, None, is_selected);
         }
 
         fn decode_kernel_event_when_error(er: &EVENT_RECORD, is_stack_walk: bool) -> Option<EventRecordDecoded> {
