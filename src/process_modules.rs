@@ -79,7 +79,7 @@ fn drive_letter_map_init() {
             0 => {
                 let err = unsafe { GetLastError().unwrap_err() };
                 if err.code() != ERROR_FILE_NOT_FOUND.to_hresult() {
-                    println!("Failed to QueryDosDeviceW: {err}");
+                    error!("Failed to QueryDosDeviceW: {err}");
                 }
             }
             num => {
@@ -89,10 +89,9 @@ fn drive_letter_map_init() {
                 match U16CStr::from_slice_truncate(file_name_ret.as_slice()) {
                     Ok(ok) => {
                         map.insert(ok.to_string().unwrap(), AsciiChar::new(letter));
-                        println!("{ok:?}");
                     }
                     Err(err) => {
-                        println!("Failed to from_ptr_truncate: {err}");
+                        error!("Failed to from_ptr_truncate: {err}");
                     }
                 }
             }

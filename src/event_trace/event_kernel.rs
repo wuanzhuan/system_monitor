@@ -1012,6 +1012,7 @@ pub mod event_property {
     use anyhow::{anyhow, Result};
 	use tracing::error;
     use crate::event_trace::event_decoder;
+	use ascii::AsciiChar;
 	
 	#[derive(Debug, Clone)]
     pub struct StackWalk {
@@ -1075,8 +1076,8 @@ pub mod event_property {
 	}
 
 	impl Image {
-		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
-			if let event_decoder::PropertyDecoded::Struct(map) = &erd.properties {
+		pub fn from_event_record_decoded_with_mut(erd: &mut event_decoder::EventRecordDecoded, fn_get_drive_letter: impl Fn(&str) -> Option<AsciiChar>) -> Self {
+			if let event_decoder::PropertyDecoded::Struct(ref mut map) = erd.properties {
 				let image_base = map.get("ImageBase").map(|property| {
 					u64_from_string(property).unwrap_or_else(|e| {
 						error!("Failed to get ImageBase: {e}");
@@ -1113,13 +1114,25 @@ pub mod event_property {
 						0
 					})
 				}).unwrap_or_default();
-				let file_name = map.get("FileName").map(|property| {
+				let mut file_name = map.get("FileName").map(|property| {
 					if let event_decoder::PropertyDecoded::String(s) = property {
 						s.clone()
 					} else {
 						String::new()
 					}
 				}).unwrap_or_default();
+				if let Some(some) = split_path_for_drive_letter(file_name.as_str()) {
+					let disk_name = if !some.0.ends_with("\\") {
+						some.0
+					} else {
+						&some.0[..some.0.len() - 1]
+					};
+					if let Some(drive_letter) = fn_get_drive_letter(disk_name) {
+						let new_name = format!("{drive_letter}:\\{}", some.1);
+						map.insert("FileName".to_string(), event_decoder::PropertyDecoded::String(new_name.clone()));
+						file_name = new_name;
+					}
+				};
 				Self{ image_base, image_size, process_id, image_check_sum, time_date_stamp, default_base, file_name}
 			} else {
 				Self::default()
@@ -1173,6 +1186,27 @@ pub mod event_property {
 		} else {
 			Err(anyhow!("The property's type is not string!"))
 		} 
+	}
+
+	fn split_path_for_drive_letter(file_name: &str) -> Option<(&str, &str)> {
+		use std::str;
+		use regex::Regex;
+		
+		let re = Regex::new(r"(?i)\\Device\\HarddiskVolume\d{1, 3}\\").unwrap();
+		re.find(file_name).map(|some|{
+			(unsafe{str::from_utf8_unchecked(&file_name.as_bytes()[..some.end()]) },
+			unsafe{ str::from_utf8_unchecked(&file_name.as_bytes()[some.end()..]) }
+		)
+		})
+	}
+
+	#[cfg(test)]
+	mod tests {
+		#[test]
+		fn make_path_in_drive_letter() {
+			let s = super::split_path_for_drive_letter("\\device\\HarddiskVolume1\\windows\\test.txt");
+			assert_eq!(s, Some(("\\device\\HarddiskVolume1\\", "windows\\test.txt")));
+		}
 	}
 }
 
