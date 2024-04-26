@@ -101,7 +101,7 @@ fn drive_letter_map_init() {
     let _ = DRIVE_LETTER_MAP.set(map);
 }
 
-pub fn handle_event_for_module(event_record: &EventRecordDecoded, is_selected: bool) {
+pub fn handle_event_for_module(event_record: &mut EventRecordDecoded, is_selected: bool) {
     if is_selected {
         process_add(event_record.process_id);
     }
@@ -114,11 +114,15 @@ pub fn handle_event_for_module(event_record: &EventRecordDecoded, is_selected: b
         Etw::ImageLoadGuid => {
             match event_record.opcode_name.as_str() {
                 "Load" => {
-                    let image = Image::from_event_record_decoded(event_record);
+                    let image = Image::from_event_record_decoded_with_mut(event_record, |disk_name| {
+                        DRIVE_LETTER_MAP.get().unwrap().get(disk_name).map(|some| some.clone())
+                    });
                     process_modules_load(&image, event_record.timestamp);
                 }
                 "UnLoad" => {
-                    let image = Image::from_event_record_decoded(event_record);
+                    let image = Image::from_event_record_decoded_with_mut(event_record, |disk_name| {
+                        DRIVE_LETTER_MAP.get().unwrap().get(disk_name).map(|some| some.clone())
+                    });
                     process_modules_unload(&image);
                 }
                 _ => {}
@@ -234,7 +238,7 @@ fn process_add(process_id: u32) {
                         });
                         let entry = module_lock
                             .insert_full((file_name.clone(), 0), module_info_arc.clone());
-                        (entry.0, entry.1.unwrap())
+                        (entry.0, module_info_arc)
                     };
                 drop(module_lock);
 
@@ -276,8 +280,8 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
             file_name: image.file_name.clone(),
             time_data_stamp: 0,
         });
-        let entry = module_lock.insert_full((image.file_name.clone(), 0), module_info_arc.clone());
-        (entry.0, entry.1.unwrap())
+        let entry = module_lock.insert_full((image.file_name.clone(), image.time_date_stamp), module_info_arc.clone());
+        (entry.0, module_info_arc)
     };
     drop(module_lock);
 
