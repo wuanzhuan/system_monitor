@@ -1017,7 +1017,7 @@ pub mod event_property {
 	#[derive(Debug, Clone)]
 	pub struct StackAddress {
 			pub raw: u64,
-			pub relative: (/*module_id*/u32, /*offset*/u32)
+			pub relative: Option<(/*module_id*/u32, /*offset*/u32)>
 	}
 	
 	#[derive(Debug, Clone)]
@@ -1061,11 +1061,22 @@ pub mod event_property {
 						error!("Failed to get stack address: {e}");
 						0
 					});
-					stacks.push((entry.0.clone(), StackAddress{raw: address_raw, relative: (u32::MAX, u32::MAX)}))
+					stacks.push((entry.0.clone(), StackAddress{raw: address_raw, relative: None}))
 				}
 				Self{event_timestamp: event_timestamp as i64, stack_process, stack_thread, stacks}
 			} else {
 				Self{event_timestamp: erd.timestamp.0, stack_process: 0, stack_thread: 0, stacks: vec![]}
+			}
+		}
+
+		pub fn convert_to_module_offset(&mut self, get_module_offset: impl Fn(/*process_id*/u32, /*address*/u64) -> Option<(/*module_id*/u32, /*offset*/u32)>) {
+			for item in self.stacks.iter_mut() {
+				if item.1.raw == 0 {
+					continue;
+				}
+				if let Some(module_offset) = get_module_offset(self.stack_process, item.1.raw) {
+					item.1.relative = Some(module_offset);
+				}
 			}
 		}
 	}

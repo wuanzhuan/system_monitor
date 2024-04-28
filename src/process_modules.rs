@@ -12,7 +12,7 @@ use std::{
     sync::{Arc, OnceLock},
     time::Duration
 };
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 use widestring::*;
 use windows::{
     Wdk::{
@@ -60,6 +60,39 @@ static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 
 pub fn init() {
     drive_letter_map_init();
+}
+
+pub fn get_module_offset(process_id: u32, address: u64) -> Option<(/*module_id*/u32, /*offset*/u32)> {
+    use std::ops::Bound;
+    if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
+        let process_module_lock = process_module_mutex.lock();
+        let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+        if let Some(module_info_running) = cursor.value() {
+            if address >= module_info_running.base_of_dll + module_info_running.size_of_image as u64 {
+                warn!("Cross the border address: {address:#x} the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
+                None
+            } else {
+                Some((module_info_running.id,( address - module_info_running.base_of_dll) as u32))
+            }
+        } else {
+            warn!("{address:#x} is not find in process_id: {process_id}");
+            None
+        }
+    } else {
+        warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
+        None
+    }
+}
+
+pub fn get_module_info_by_id(id: u32) -> Option<Arc<ModuleInfo>> {
+    let lock = MODULES_MAP.lock();
+    if let Some(entry) = lock.get_index(id as usize) {
+        let module_info = entry.1.clone();
+        drop(lock);
+        Some(module_info)
+    } else {
+        None
+    }
 }
 
 fn drive_letter_map_init() {

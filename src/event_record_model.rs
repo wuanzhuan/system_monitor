@@ -1,8 +1,9 @@
+use std::sync::{OnceLock, Arc};
 use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
 use super::event_trace::{EventRecordDecoded, StackWalk};
 use crate::StackWalkInfo;
-use std::sync::{OnceLock, Arc};
 use crate::filter_expr::{Path, Value};
+use crate::process_modules;
 use anyhow::{Result, anyhow};
 
 
@@ -44,8 +45,21 @@ impl EventRecordModel {
         if let Some(sw) = self.stack_walk.get() {
             let vec = VecModel::<SharedString>::default();
             for item in sw.stacks.iter() {
-                let str = format!("{}: {}:{}({:#x})", item.0, item.1.relative.0, item.1.relative.1, item.1.raw);
-                vec.push(SharedString::from(str.as_str()))
+                let s = if let Some(relative) =item.1.relative {
+                    if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
+                        let file_name = if let Some(offset) = module_info.file_name.rfind("\\") {
+                            module_info.file_name.get(offset..).unwrap_or("no_file_name")
+                        } else {
+                            module_info.file_name.as_str()
+                        };
+                        format!("{}: {:#x} {}+{}", item.0, item.1.raw, file_name, relative.1)
+                    } else {
+                        format!("{}: {:#x} {}+{}", item.0, item.1.raw, relative.0, relative.1)
+                    }
+                } else {
+                    format!("{}: {:#x}", item.0, item.1.raw)
+                };
+                vec.push(SharedString::from(s.as_str()))
             }
             StackWalkInfo{
                 event_timestamp: SharedString::from(sw.event_timestamp.to_string()), 
