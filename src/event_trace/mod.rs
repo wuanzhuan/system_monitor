@@ -306,16 +306,17 @@ impl Controller {
                 } else {
                     insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
                     // the major event is filter by flag. so a error happens when a event that is not enable comes
-                    // the EventTrace event is always enable.
-                    if event_record_decoded.event_name != "EventTrace" {
-                        error!("Major is not enable for event: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
+                    // the EventTrace Process Image event is always enable.
+                    if event_record_decoded.event_name != "EventTrace"
+                      && event_record_decoded.event_name != "Process"
+                      && event_record_decoded.event_name != "Image" {
+                        error!("No enable major event is coming: {}-{} event_record_decoded: {}", event_record_decoded.event_name, event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
                     }
                     call_non_stack_walk_cb(context_mg, event_record_decoded, false);
                 }
-            }else {
+            } else {
                 insert_unstored_event(is_stack_walk, (er.EventHeader.ThreadId, er.EventHeader.TimeStamp), Some(&context_mg));
-                warn!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
-                call_non_stack_walk_cb(context_mg, event_record_decoded, false);
+                error!("Can't find {}-{} in events_enable_map event_record_decoded: {}", event_record_decoded.event_name.as_str(), event_record_decoded.opcode_name, serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default());
             }
         }
         // contains error and inactivated event
