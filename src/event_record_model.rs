@@ -48,13 +48,13 @@ impl EventRecordModel {
                 let s = if let Some(relative) =item.1.relative {
                     if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
                         let file_name = if let Some(offset) = module_info.file_name.rfind("\\") {
-                            module_info.file_name.get(offset..).unwrap_or("no_file_name")
+                            module_info.file_name.get(offset + 1..).unwrap_or("no_file_name")
                         } else {
                             module_info.file_name.as_str()
                         };
-                        format!("{}: {:#x} {}+{}", item.0, item.1.raw, file_name, relative.1)
+                        format!("{}: {:#x} {}+{:#x}", item.0, item.1.raw, file_name, relative.1)
                     } else {
-                        format!("{}: {:#x} {}+{}", item.0, item.1.raw, relative.0, relative.1)
+                        format!("{}: {:#x} {}+{:#x}", item.0, item.1.raw, relative.0, relative.1)
                     }
                 } else {
                     format!("{}: {:#x}", item.0, item.1.raw)
