@@ -64,23 +64,35 @@ pub fn init() {
 
 pub fn get_module_offset(process_id: u32, address: u64) -> Option<(/*module_id*/u32, /*offset*/u32)> {
     use std::ops::Bound;
-    if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
-        let process_module_lock = process_module_mutex.lock();
-        let cursor = process_module_lock.upper_bound(Bound::Included(&address));
-        if let Some(module_info_running) = cursor.value() {
-            if address >= module_info_running.base_of_dll + module_info_running.size_of_image as u64 {
-                warn!("Cross the border address: {address:#x} the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
-                None
-            } else {
-                Some((module_info_running.id,( address - module_info_running.base_of_dll) as u32))
-            }
+
+    // is in kernel space
+    if is_kernel_space(address) {
+        if is_kernel_session_space(address) {
+            // todo:
+            None
         } else {
-            warn!("{address:#x} is not find in process_id: {process_id}");
+            // todo:
             None
         }
     } else {
-        warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
-        None
+        if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
+            let process_module_lock = process_module_mutex.lock();
+            let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+            if let Some(module_info_running) = cursor.value() {
+                if address >= module_info_running.base_of_dll + module_info_running.size_of_image as u64 {
+                    warn!("Cross the border address: {address:#x} the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
+                    None
+                } else {
+                    Some((module_info_running.id,( address - module_info_running.base_of_dll) as u32))
+                }
+            } else {
+                warn!("{address:#x} is not find in process_id: {process_id}");
+                None
+            }
+        } else {
+            warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
+            None
+        }
     }
 }
 
@@ -349,6 +361,20 @@ fn process_modules_unload(image: &Image) {
         let mut process_module_lock = process_module.lock();
         let _ = process_module_lock.remove(&image_base);
     }).detach();
+}
+
+fn is_kernel_space(address: u64) -> bool {
+    // fixme: 32 or 64
+    if (address >> 48) == 0xffff {
+        true
+    } else {
+        false
+    }
+}
+
+fn is_kernel_session_space(address: u64) -> bool {
+    // todo:
+    false
 }
 
 #[cfg(test)]
