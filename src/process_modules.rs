@@ -12,7 +12,7 @@ use std::{
     sync::{Arc, OnceLock},
     time::Duration
 };
-use tracing::{debug, error, warn};
+use tracing::{debug, error, warn, info};
 use widestring::*;
 use windows::{
     Wdk::{
@@ -202,7 +202,11 @@ fn process_add(process_id: u32) {
             NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
         };
         if status.is_err() {
-            error!("Failed to NtOpenProcess: {}", status.0);
+            if STATUS_ACCESS_DENIED == status {
+                info!("Failed to NtOpenProcess {process_id}: {}", status.0);
+            } else {
+                error!("Failed to NtOpenProcess {process_id}: {}", status.0);
+            }
             return;
         }
 
