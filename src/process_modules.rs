@@ -177,16 +177,13 @@ pub fn handle_event_for_module(event_record: &mut EventRecordDecoded, is_selecte
 }
 
 fn process_add(process_id: u32) {
-    let mut running_module_lock = RUNNING_MODULES_MAP.lock();
-    let process_module_mutex = match running_module_lock
+    let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock()
         .try_insert(process_id, Arc::new(FairMutex::new(BTreeMap::new())))
     {
-        Err(_) => {
-            return;
-        }
-        Ok(ok) => ok.clone(),
+        ok.clone()
+    } else {
+        return;
     };
-    drop(running_module_lock);
 
     smol::spawn(async move {
         let mut h_process_out = HANDLE::default();
@@ -333,9 +330,8 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
     };
     drop(module_lock);
 
-    let running_module_lock = RUNNING_MODULES_MAP.lock();
-    let process_module_mutex = if let Some(process_module_mutex) = running_module_lock.get(&image.process_id){
-        process_module_mutex
+    let process_module_mutex = if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id){
+        process_module_mutex.clone()
     } else {
         return;
     };
@@ -352,8 +348,7 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
 }
 
 fn process_modules_unload(image: &Image) {
-    let running_module_lock = RUNNING_MODULES_MAP.lock();
-    let process_module = if let Some(process_module_mutex) = running_module_lock.get(&image.process_id){
+    let process_module = if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id){
         process_module_mutex.clone()
     } else {
         return;
