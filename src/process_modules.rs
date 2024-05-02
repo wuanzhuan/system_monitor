@@ -147,6 +147,7 @@ fn drive_letter_map_init() {
 
 pub fn handle_event_for_module(event_record: &mut EventRecordDecoded, is_selected: bool) {
     if is_selected {
+        // process_add must be handle before image event
         process_add(event_record.process_id);
     }
     match event_record.provider_id.0 {
@@ -315,6 +316,12 @@ fn process_delete(process_id: u32) {
 }
 
 fn process_modules_load(image: &Image, timestamp: TimeStamp) {
+    let process_module_mutex = if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id){
+        process_module_mutex.clone()
+    } else {
+        return;
+    };
+
     let mut module_lock = MODULES_MAP.lock();
     let (id, module_info_arc) = if let Some(some) =
         module_lock.get_full(&(image.file_name.clone(), image.time_date_stamp))
@@ -330,11 +337,6 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
     };
     drop(module_lock);
 
-    let process_module_mutex = if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id){
-        process_module_mutex.clone()
-    } else {
-        return;
-    };
     let mut process_module_lock = process_module_mutex.lock();
     let module_info_running = ModuleInfoRunning {
         id: id as u32,
