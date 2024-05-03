@@ -5,6 +5,7 @@ use crate::StackWalkInfo;
 use crate::filter_expr::{Path, Value};
 use crate::process_modules;
 use anyhow::{Result, anyhow};
+use tracing::error;
 
 
 #[derive(Clone)]
@@ -35,10 +36,16 @@ impl EventRecordModel {
     }
 
     /// Returns true if the `stack_walk` is None
-    pub fn set_stack_walk(&self, sw: StackWalk) -> bool {
-        let ret = if self.stack_walk.get().is_some() { false } else { true };
-        let _ = self.stack_walk.set(Arc::new(sw));
-        ret
+    pub fn set_stack_walk(&self, sw: StackWalk) {
+        let stack_process = sw.stack_process;
+        let stack_thread = sw.stack_thread as i32;
+        let event_timestamp = sw.event_timestamp;
+        if self.stack_walk.set(Arc::new(sw)).is_err() {
+            let process_id = self.array.process_id as i32;
+            let thread_id = self.array.thread_id as i32;
+            let timestamp = self.array.timestamp.0;
+            error!("Stalkwalk event had been set! {process_id}:{thread_id}:{timestamp}  {}:{}:{}", stack_process, stack_thread as i32, event_timestamp);
+        }
     }
 
     pub fn stack_walk(&self) -> StackWalkInfo {

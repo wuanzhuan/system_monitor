@@ -12,7 +12,7 @@ use std::{
     sync::{Arc, OnceLock},
     time::Duration
 };
-use tracing::{debug, error, warn, info};
+use tracing::{debug, error, warn};
 use widestring::*;
 use windows::{
     Wdk::{
@@ -33,6 +33,7 @@ use windows::{
     },
 };
 
+
 #[derive(Debug)]
 pub struct ModuleInfo {
     pub file_name: String,
@@ -49,11 +50,18 @@ pub struct ModuleInfoRunning {
     pub start: TimeStamp,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum ProcessState {
+    Initial,
+    Ready,
+    Error(String)
+}
+
 static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
     Lazy::new(|| FairMutex::new(IndexMap::new()));
 
 static RUNNING_MODULES_MAP: Lazy<
-    FairMutex<HashMap<u32, Arc<FairMutex<BTreeMap<u64, ModuleInfoRunning>>>>>,
+    FairMutex<HashMap<u32, Arc<FairMutex<(ProcessState, BTreeMap<u64, ModuleInfoRunning>)>>>>,
 > = Lazy::new(|| FairMutex::new(HashMap::new()));
 
 static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
@@ -77,7 +85,7 @@ pub fn get_module_offset(process_id: u32, address: u64) -> Option<(/*module_id*/
     } else {
         if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
             let process_module_lock = process_module_mutex.lock();
-            let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+            let cursor = process_module_lock.1.upper_bound(Bound::Included(&address));
             if let Some(module_info_running) = cursor.value() {
                 if address >= module_info_running.base_of_dll + module_info_running.size_of_image as u64 {
                     warn!("Cross the border address: {address:#x} the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
@@ -93,6 +101,14 @@ pub fn get_module_offset(process_id: u32, address: u64) -> Option<(/*module_id*/
             warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
             None
         }
+    }
+}
+
+pub fn get_process_state(process_id: u32) -> ProcessState {
+    if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id) {
+        process_module_mutex.lock().0.clone()
+    } else {
+        ProcessState::Error(format!("No this process: {process_id}"))
     }
 }
 
@@ -179,7 +195,7 @@ pub fn handle_event_for_module(event_record: &mut EventRecordDecoded, is_selecte
 
 fn process_add(process_id: u32) {
     let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock()
-        .try_insert(process_id, Arc::new(FairMutex::new(BTreeMap::new())))
+        .try_insert(process_id, Arc::new(FairMutex::new((ProcessState::Initial, BTreeMap::new()))))
     {
         ok.clone()
     } else {
@@ -200,10 +216,13 @@ fn process_add(process_id: u32) {
             NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
         };
         if status.is_err() {
-            if STATUS_ACCESS_DENIED == status {
-                info!("Failed to NtOpenProcess {process_id}: {}", status.0);
-            } else {
-                error!("Failed to NtOpenProcess {process_id}: {}", status.0);
+            process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to NtOpenProcess {process_id}: {}", status.0));
+            if STATUS_ACCESS_DENIED != status {
+                if STATUS_INVALID_CID == status{
+                    error!("Failed to NtOpenProcess {process_id}: {} the process may be closed", status.0);
+                } else {
+                    error!("Failed to NtOpenProcess {process_id}: {}", status.0);
+                }
             }
             return;
         }
@@ -236,6 +255,7 @@ fn process_add(process_id: u32) {
                 }
                 Err(e) => {
                     unsafe { ZwClose(h_process_out) };
+                    process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to EnumProcessModules: {}", e));
                     error!("Failed to EnumProcessModules: {}", e);
                     return;
                 }
@@ -288,7 +308,6 @@ fn process_add(process_id: u32) {
                     };
                 drop(module_lock);
 
-                let mut process_module_lock = process_module_mutex.lock();
                 let module_info_running = ModuleInfoRunning {
                     id: id as u32,
                     module_info: module_info_arc.clone(),
@@ -297,9 +316,10 @@ fn process_add(process_id: u32) {
                     entry_point: module_info.EntryPoint as u64,
                     start: TimeStamp(0),
                 };
-                let _ = process_module_lock
+                let _ = process_module_mutex.lock().1
                     .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
             }
+            process_module_mutex.lock().0 = ProcessState::Ready;
         }
         unsafe { ZwClose(h_process_out) };
     })
@@ -346,7 +366,7 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
         entry_point: image.default_base,
         start: timestamp,
     };
-    let _ = process_module_lock.try_insert(image.image_base, module_info_running);
+    let _ = process_module_lock.1.try_insert(image.image_base, module_info_running);
 }
 
 fn process_modules_unload(image: &Image) {
@@ -360,7 +380,7 @@ fn process_modules_unload(image: &Image) {
         let period = Duration::from_secs(5);
         smol::Timer::after(period).await;
         let mut process_module_lock = process_module.lock();
-        let _ = process_module_lock.remove(&image_base);
+        let _ = process_module_lock.1.remove(&image_base);
     }).detach();
 }
 

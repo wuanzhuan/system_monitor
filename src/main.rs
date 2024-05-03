@@ -2,7 +2,8 @@
 
 
 use std::{
-    cell::SyncUnsafeCell, rc::Rc, sync::Arc
+    cell::SyncUnsafeCell, rc::Rc, sync::Arc,
+    time::Duration
 };
 use tracing::{error, info};
 use slint::{SharedString, ModelRc, VecModel, StandardListViewItem, Model, LogicalPosition};
@@ -108,13 +109,44 @@ fn main() {
         let result = event_trace::Controller::start(move |mut event_record, stack_walk, is_selected | {
             if let Some(mut sw) = stack_walk {
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
-                    sw.convert_to_module_offset(process_modules::get_module_offset);
-                    let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
-                    if !erm.set_stack_walk(sw.clone()) {
-                        let process_id = event_record.process_id as i32;
-                        let thread_id = event_record.thread_id as i32;
-                        let timestamp = event_record.timestamp.0;
-                        error!("Stalkwalk event had been set! {process_id}:{thread_id}:{timestamp}  {}:{}:{}", sw.stack_process, sw.stack_thread as i32, sw.event_timestamp);
+                    match process_modules::get_process_state(sw.stack_process) {
+                        process_modules::ProcessState::Initial => {
+                            let process_id = sw.stack_process;
+                            smol::spawn(async move {
+                                let period = Duration::from_secs(1);
+                                let mut process_state = process_modules::ProcessState::Initial;
+                                for _ in 0..5 {
+                                    smol::Timer::after(period).await;
+                                    match process_modules::get_process_state(process_id) {
+                                        process_modules::ProcessState::Initial => {continue}
+                                        process_modules::ProcessState::Ready => {
+                                            process_state = process_modules::ProcessState::Ready;
+                                            sw.convert_to_module_offset(process_modules::get_module_offset);
+                                            break;
+                                        }
+                                        process_modules::ProcessState::Error(e) => {
+                                            process_state =process_modules::ProcessState::Error(e);
+                                            break;
+                                        }
+                                    }
+                                }
+                                if process_modules::ProcessState::Initial == process_state {
+                                    process_state = process_modules::ProcessState::Error(format!("No ready for process module init: {}, but is waited for 5s", process_id));
+                                    error!("No ready for process module init: {}, but is waited for 5s", process_id);
+                                }
+                                let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
+                                erm.set_stack_walk(sw.clone());
+                            }).detach();
+                        }
+                        process_modules::ProcessState::Ready => {
+                            sw.convert_to_module_offset(process_modules::get_module_offset);
+                            let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
+                            erm.set_stack_walk(sw.clone());
+                        },
+                        process_modules::ProcessState::Error(e) => {
+                            let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
+                            erm.set_stack_walk(sw.clone());
+                        }
                     }
                 } else {
                     let process_id = event_record.process_id as i32;
