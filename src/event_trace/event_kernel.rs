@@ -1160,18 +1160,18 @@ pub mod event_property {
 
 	#[derive(Debug, Default)]
 	pub struct Process {
-		unique_process_key: u64,
-        process_id: u32,
-        parent_id: u32,
-        session_id: u32,
-        exit_status: i32,
-        directory_table_base: u64,
-        flags: u32,
-        user_sid: String,
-        image_file_name: String,
-        command_line: String,
-        package_full_name: String,
-        application_id: String
+		pub unique_process_key: u64,
+        pub process_id: u32,
+        pub parent_id: u32,
+        pub session_id: u32,
+        pub exit_status: i32,
+        pub directory_table_base: u64,
+        pub flags: u32,
+        pub user_sid: String,
+        pub image_file_name: String,
+        pub command_line: String,
+        pub package_full_name: String,
+        pub application_id: String
 	}
 
 	impl Process {
