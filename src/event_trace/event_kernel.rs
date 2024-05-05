@@ -1158,6 +1158,115 @@ pub mod event_property {
 		}
 	}
 
+	#[derive(Debug, Default)]
+	pub struct Process {
+		unique_process_key: u64,
+        process_id: u32,
+        parent_id: u32,
+        session_id: u32,
+        exit_status: i32,
+        directory_table_base: u64,
+        flags: u32,
+        user_sid: String,
+        image_file_name: String,
+        command_line: String,
+        package_full_name: String,
+        application_id: String
+	}
+
+	impl Process {
+		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
+			if let event_decoder::PropertyDecoded::Struct(ref map) = erd.properties {
+				let unique_process_key = map.get("UniqueProcessKey").map(|property| {
+					u64_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get UniqueProcessKey: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let process_id = map.get("ProcessId").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ProcessId: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let parent_id = map.get("ParentId").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ParentId: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let session_id = map.get("SessionId").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get SessionId: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let exit_status = map.get("ExitStatus").map(|property| {
+					i32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get ExitStatus: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let directory_table_base = map.get("DirectoryTableBase").map(|property| {
+					u64_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get DirectoryTableBase: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let flags = map.get("Flags").map(|property| {
+					u32_from_string(property).unwrap_or_else(|e| {
+						error!("Failed to get Flags: {e}");
+						0
+					})
+				}).unwrap_or_default();
+				let user_sid = map.get("UserSID").map(|property| {
+					if let event_decoder::PropertyDecoded::String(s) = property {
+						s.clone()
+					} else {
+						error!("The property's type is not string! {property:?}");
+						String::new()
+					}
+				}).unwrap_or_default();
+				let image_file_name = map.get("ImageFileName").map(|property| {
+					if let event_decoder::PropertyDecoded::String(s) = property {
+						s.clone()
+					} else {
+						error!("The property's type is not string! {property:?}");
+						String::new()
+					}
+				}).unwrap_or_default();
+				let command_line = map.get("CommandLine").map(|property| {
+					if let event_decoder::PropertyDecoded::String(s) = property {
+						s.clone()
+					} else {
+						error!("The property's type is not string! {property:?}");
+						String::new()
+					}
+				}).unwrap_or_default();
+				let package_full_name = map.get("PackageFullName").map(|property| {
+					if let event_decoder::PropertyDecoded::String(s) = property {
+						s.clone()
+					} else {
+						error!("The property's type is not string! {property:?}");
+						String::new()
+					}
+				}).unwrap_or_default();
+				let application_id = map.get("ApplicationID").map(|property| {
+					if let event_decoder::PropertyDecoded::String(s) = property {
+						s.clone()
+					} else {
+						error!("The property's type is not string! {property:?}");
+						String::new()
+					}
+				}).unwrap_or_default();
+				Self{ unique_process_key, process_id, parent_id, session_id, exit_status, directory_table_base, flags, user_sid, image_file_name, command_line, package_full_name, application_id}
+			} else {
+				Self::default()
+			}
+		}
+	}
+
+
 	fn u64_from_string(property: &event_decoder::PropertyDecoded) -> Result<u64> {
 		if let event_decoder::PropertyDecoded::String(s) = property {
 			let has_0x = s.starts_with("0x") || s.starts_with("0X");
@@ -1197,12 +1306,31 @@ pub mod event_property {
 					if *e.kind() == std::num::IntErrorKind::Empty {
 						Ok(0)
 					} else {
-						Err(anyhow!("Failed to parse: {s} for EventTimeStamp, {e}"))
+						Err(anyhow!("Failed to parse: {s}: {e}"))
 					}
 				}
 			}
 		} else {
-			Err(anyhow!("The property's type is not string!"))
+			Err(anyhow!("The property's type is not string! {property:?}"))
+		} 
+	}
+
+	fn i32_from_string(property: &event_decoder::PropertyDecoded) -> Result<i32> {
+		if let event_decoder::PropertyDecoded::String(s) = property {
+			let has_0x = s.starts_with("0x") || s.starts_with("0X");
+			let r = i32::from_str_radix(s, 10);
+			match r {
+				Ok(num) => Ok(num),
+				Err(e) => {
+					if *e.kind() == std::num::IntErrorKind::Empty {
+						Ok(0)
+					} else {
+						Err(anyhow!("Failed to parse: {s}: {e}"))
+					}
+				}
+			}
+		} else {
+			Err(anyhow!("The property's type is not string! {property:?}"))
 		} 
 	}
 
