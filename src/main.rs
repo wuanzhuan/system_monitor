@@ -105,7 +105,7 @@ fn main() {
         let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<EventRecordModel>>>::with_capacity(50));
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
-        process_modules::init();
+        process_modules::init(&vec![]);
         let result = event_trace::Controller::start(move |mut event_record, stack_walk, is_selected | {
             if let Some(mut sw) = stack_walk {
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
@@ -155,7 +155,7 @@ fn main() {
                     error!("Can't find event for the stack walk: {process_id}:{thread_id}:{timestamp}  {}:{}:{} {:?}",  sw.stack_process, sw.stack_thread as i32, sw.event_timestamp, sw.stacks);
                 }
             } else {
-                process_modules::handle_event_for_module(&mut event_record, is_selected);
+                process_modules::handle_event_for_module(&mut event_record);
                 if is_selected {
                     let thread_id = event_record.thread_id;
                     let timestamp = event_record.timestamp.0;

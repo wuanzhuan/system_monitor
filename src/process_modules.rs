@@ -1,5 +1,4 @@
-use crate::event_trace::EventRecordDecoded;
-use crate::event_trace::Image;
+use crate::event_trace::{EventRecordDecoded, Image, Process};
 use crate::third_extend::strings::AsPcwstr;
 use crate::utils::TimeStamp;
 use ascii::AsciiChar;
@@ -26,7 +25,7 @@ use windows::{
             Diagnostics::Etw,
             ProcessStatus::{
                 EnumProcessModulesEx, GetModuleFileNameExW, GetModuleInformation, LIST_MODULES_ALL,
-                MODULEINFO,
+                MODULEINFO, EnumProcesses
             },
             WindowsProgramming::CLIENT_ID,
         },
@@ -66,8 +65,9 @@ static RUNNING_MODULES_MAP: Lazy<
 
 static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 
-pub fn init() {
+pub fn init(selected_process_ids: &Vec<u32>) {
     drive_letter_map_init();
+    enum_processes(selected_process_ids);
 }
 
 pub fn get_module_offset(process_id: u32, address: u64) -> Option<(/*module_id*/u32, /*offset*/u32)> {
@@ -161,15 +161,16 @@ fn drive_letter_map_init() {
     let _ = DRIVE_LETTER_MAP.set(map);
 }
 
-pub fn handle_event_for_module(event_record: &mut EventRecordDecoded, is_selected: bool) {
-    if is_selected {
-        // process_add must be handle before image event
-        process_add(event_record.process_id);
-    }
+pub fn handle_event_for_module(event_record: &mut EventRecordDecoded) {
     match event_record.provider_id.0 {
         Etw::ProcessGuid => {
-            if event_record.opcode_name == "End" {
-                process_delete(event_record.process_id);
+            match event_record.opcode_name.as_str() {
+                "Start" => {
+                    let process = Process::from_event_record_decoded(event_record);
+                    process_start(process);
+                }
+                "End" => process_end(event_record.process_id),
+                _ => {}
             }
         }
         Etw::ImageLoadGuid => {
@@ -193,7 +194,40 @@ pub fn handle_event_for_module(event_record: &mut EventRecordDecoded, is_selecte
     }
 }
 
-fn process_add(process_id: u32) {
+// all process when filter_processes is empty
+fn enum_processes(selected_process_ids: &Vec<u32>) {
+    if !selected_process_ids.is_empty() {
+        for id in selected_process_ids.iter() {
+            process_init(*id, false);
+        }
+    } else {
+        let mut process_ids = vec![0u32; 100];
+        let mut cb_needed = 0u32;
+        loop {
+            let cb = (process_ids.len() * mem::size_of::<u32>()) as u32;
+            match unsafe{ EnumProcesses(process_ids.as_mut_ptr(), cb, &mut cb_needed) } {
+                Ok(_) => {
+                    if cb_needed == cb {
+                        process_ids = vec![0u32; process_ids.len() * 2];
+                        continue;
+                    }
+                    unsafe{ process_ids.set_len(cb_needed as usize / mem::size_of::<u32>()); }
+                    break;
+                },
+                Err(e) => {
+                    error!("Failed to EnumProcesses: {e}");
+                    return;
+                }
+            }
+        }
+        for id in process_ids.iter() {
+            process_init(*id, false);
+        }
+    }
+}
+
+fn process_init(process_id: u32, is_delay: bool) {
+
     let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock()
         .try_insert(process_id, Arc::new(FairMutex::new((ProcessState::Initial, BTreeMap::new()))))
     {
@@ -202,131 +236,143 @@ fn process_add(process_id: u32) {
         return;
     };
 
-    smol::spawn(async move {
+    let fn_process_modules_init = move || {
         let mut h_process_out = HANDLE::default();
-        let oa = OBJECT_ATTRIBUTES {
-            Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
-            ..Default::default()
+    let oa = OBJECT_ATTRIBUTES {
+        Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
+        ..Default::default()
+    };
+    let status = unsafe {
+        let client_id = CLIENT_ID {
+            UniqueProcess: HANDLE(process_id as isize),
+            UniqueThread: HANDLE::default(),
         };
-        let status = unsafe {
-            let client_id = CLIENT_ID {
-                UniqueProcess: HANDLE(process_id as isize),
-                UniqueThread: HANDLE::default(),
-            };
-            NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
-        };
-        if status.is_err() {
-            process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to NtOpenProcess {process_id}: {}", status.0));
-            if STATUS_ACCESS_DENIED != status {
-                if STATUS_INVALID_CID == status{
-                    error!("Failed to NtOpenProcess {process_id}: {} the process may be closed", status.0);
-                } else {
-                    error!("Failed to NtOpenProcess {process_id}: {}", status.0);
-                }
+        NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
+    };
+    if status.is_err() {
+        process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to NtOpenProcess {process_id}: {}", status.0));
+        if STATUS_ACCESS_DENIED != status {
+            if STATUS_INVALID_CID == status{
+                error!("Failed to NtOpenProcess {process_id}: {} the process may be closed", status.0);
+            } else {
+                error!("Failed to NtOpenProcess {process_id}: {}", status.0);
             }
-            return;
         }
+        return;
+    }
 
-        const MODULE_COUNT: usize = 1024;
+    const MODULE_COUNT: usize = 1024;
 
-        let mut module_array = Vec::<HMODULE>::with_capacity(MODULE_COUNT);
-        let mut cbneeded = 0u32;
-        loop {
-            let cb = (mem::size_of::<HMODULE>() * module_array.capacity()) as u32;
+    let mut module_array = Vec::<HMODULE>::with_capacity(MODULE_COUNT);
+    let mut cbneeded = 0u32;
+    loop {
+        let cb = (mem::size_of::<HMODULE>() * module_array.capacity()) as u32;
+        let r = unsafe {
+            EnumProcessModulesEx(
+                h_process_out,
+                module_array.as_mut_ptr(),
+                cb,
+                &mut cbneeded,
+                LIST_MODULES_ALL,
+            )
+        };
+        match r {
+            Ok(_) => {
+                if cbneeded > cb {
+                    module_array = Vec::<HMODULE>::with_capacity(
+                        cbneeded as usize / mem::size_of::<HMODULE>(),
+                    );
+                    continue;
+                }
+                unsafe { module_array.set_len(cbneeded as usize / mem::size_of::<HMODULE>()) };
+                break;
+            }
+            Err(e) => {
+                unsafe { ZwClose(h_process_out) };
+                process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to EnumProcessModules: {}", e));
+                error!("Failed to EnumProcessModules: {}", e);
+                return;
+            }
+        }
+    }
+    if !module_array.is_empty() {
+        let mut vec = Vec::<u16>::with_capacity(1024);
+        for i in 0..module_array.len() {
+            let status = unsafe {
+                let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
+                GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
+            };
+            let file_name = if 0 == status {
+                debug!("Failed to GetModuleFileNameExW: {}", unsafe {
+                    GetLastError().unwrap_err()
+                });
+                String::new()
+            } else {
+                unsafe {
+                    U16CStr::from_ptr(vec.as_mut_ptr(), status as usize).unwrap_or_default()
+                }
+                .to_string()
+                .unwrap_or_else(|e| e.to_string())
+            };
+
+            let mut module_info = MODULEINFO::default();
             let r = unsafe {
-                EnumProcessModulesEx(
+                GetModuleInformation(
                     h_process_out,
-                    module_array.as_mut_ptr(),
-                    cb,
-                    &mut cbneeded,
-                    LIST_MODULES_ALL,
+                    module_array[i as usize],
+                    &mut module_info,
+                    mem::size_of::<MODULEINFO>() as u32,
                 )
             };
-            match r {
-                Ok(_) => {
-                    if cbneeded > cb {
-                        module_array = Vec::<HMODULE>::with_capacity(
-                            cbneeded as usize / mem::size_of::<HMODULE>(),
-                        );
-                        continue;
-                    }
-                    unsafe { module_array.set_len(cbneeded as usize / mem::size_of::<HMODULE>()) };
-                    break;
-                }
-                Err(e) => {
-                    unsafe { ZwClose(h_process_out) };
-                    process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to EnumProcessModules: {}", e));
-                    error!("Failed to EnumProcessModules: {}", e);
-                    return;
-                }
+            if let Err(e) = r {
+                debug!("Failed to GetModuleInformation: {}", e);
             }
-        }
-        if !module_array.is_empty() {
-            let mut vec = Vec::<u16>::with_capacity(1024);
-            for i in 0..module_array.len() {
-                let status = unsafe {
-                    let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
-                    GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
-                };
-                let file_name = if 0 == status {
-                    debug!("Failed to GetModuleFileNameExW: {}", unsafe {
-                        GetLastError().unwrap_err()
-                    });
-                    String::new()
+            let mut module_lock = MODULES_MAP.lock();
+            let (id, module_info_arc) =
+                if let Some(some) = module_lock.get_full(&(file_name.clone(), 0)) {
+                    (some.0, some.2.clone())
                 } else {
-                    unsafe {
-                        U16CStr::from_ptr(vec.as_mut_ptr(), status as usize).unwrap_or_default()
-                    }
-                    .to_string()
-                    .unwrap_or_else(|e| e.to_string())
+                    let module_info_arc = Arc::new(ModuleInfo {
+                        file_name: file_name.clone(),
+                        time_data_stamp: 0,
+                    });
+                    let entry = module_lock
+                        .insert_full((file_name.clone(), 0), module_info_arc.clone());
+                    (entry.0, module_info_arc)
                 };
+            drop(module_lock);
 
-                let mut module_info = MODULEINFO::default();
-                let r = unsafe {
-                    GetModuleInformation(
-                        h_process_out,
-                        module_array[i as usize],
-                        &mut module_info,
-                        mem::size_of::<MODULEINFO>() as u32,
-                    )
-                };
-                if let Err(e) = r {
-                    debug!("Failed to GetModuleInformation: {}", e);
-                }
-                let mut module_lock = MODULES_MAP.lock();
-                let (id, module_info_arc) =
-                    if let Some(some) = module_lock.get_full(&(file_name.clone(), 0)) {
-                        (some.0, some.2.clone())
-                    } else {
-                        let module_info_arc = Arc::new(ModuleInfo {
-                            file_name: file_name.clone(),
-                            time_data_stamp: 0,
-                        });
-                        let entry = module_lock
-                            .insert_full((file_name.clone(), 0), module_info_arc.clone());
-                        (entry.0, module_info_arc)
-                    };
-                drop(module_lock);
-
-                let module_info_running = ModuleInfoRunning {
-                    id: id as u32,
-                    module_info: module_info_arc.clone(),
-                    base_of_dll: module_info.lpBaseOfDll as u64,
-                    size_of_image: module_info.SizeOfImage,
-                    entry_point: module_info.EntryPoint as u64,
-                    start: TimeStamp(0),
-                };
-                let _ = process_module_mutex.lock().1
-                    .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
-            }
-            process_module_mutex.lock().0 = ProcessState::Ready;
+            let module_info_running = ModuleInfoRunning {
+                id: id as u32,
+                module_info: module_info_arc.clone(),
+                base_of_dll: module_info.lpBaseOfDll as u64,
+                size_of_image: module_info.SizeOfImage,
+                entry_point: module_info.EntryPoint as u64,
+                start: TimeStamp(0),
+            };
+            let _ = process_module_mutex.lock().1
+                .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
         }
-        unsafe { ZwClose(h_process_out) };
-    })
-    .detach();
+        process_module_mutex.lock().0 = ProcessState::Ready;
+    }
+    unsafe { ZwClose(h_process_out) };
+
+    };
+
+    if is_delay {
+        smol::spawn(async move {
+            fn_process_modules_init();
+        }).detach();
+    } else {
+        fn_process_modules_init();
+    }
 }
 
-fn process_delete(process_id: u32) {
+fn process_start(process: Process) {
+    process_init(process.process_id, true);
+}
+
+fn process_end(process_id: u32) {
     smol::spawn(async move {
         let period = Duration::from_secs(10);
         smol::Timer::after(period).await;
@@ -406,7 +452,7 @@ mod tests {
     #[test]
     fn store_process_modules() {
         let current_id = unsafe { GetCurrentProcessId() };
-        let _ = super::process_add(current_id);
+        let _ = super::process_init(current_id, false);
         println!("{:#?}", RUNNING_MODULES_MAP);
     }
 
@@ -414,5 +460,10 @@ mod tests {
     fn drive_letter_map_init() {
         super::drive_letter_map_init();
         println!("{:#?}", DRIVE_LETTER_MAP);
+    }
+
+    #[test]
+    fn enum_processes() {
+        super::enum_processes(&vec![]);
     }
 }
