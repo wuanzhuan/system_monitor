@@ -88,7 +88,7 @@ pub fn get_module_offset(process_id: u32, address: u64) -> Option<(/*module_id*/
             let cursor = process_module_lock.1.upper_bound(Bound::Included(&address));
             if let Some(module_info_running) = cursor.value() {
                 if address >= module_info_running.base_of_dll + module_info_running.size_of_image as u64 {
-                    warn!("Cross the border address: {address:#x} the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
+                    warn!("Cross the border address: {address:#x} in the [{process_id}] the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
                     None
                 } else {
                     Some((module_info_running.id,( address - module_info_running.base_of_dll) as u32))
@@ -253,7 +253,7 @@ fn process_init(process_id: u32, is_delay: bool) {
         process_module_mutex.lock().0 = ProcessState::Error(format!("Failed to NtOpenProcess {process_id}: {}", status.0));
         if STATUS_ACCESS_DENIED != status {
             if STATUS_INVALID_CID == status{
-                error!("Failed to NtOpenProcess {process_id}: {} the process may be closed", status.0);
+                warn!("Failed to NtOpenProcess {process_id}: {} the process may be closed", status.0);
             } else {
                 error!("Failed to NtOpenProcess {process_id}: {}", status.0);
             }
@@ -369,7 +369,7 @@ fn process_init(process_id: u32, is_delay: bool) {
 }
 
 fn process_start(process: Process) {
-    process_init(process.process_id, true);
+    process_init(process.process_id, false);
 }
 
 fn process_end(process_id: u32) {
