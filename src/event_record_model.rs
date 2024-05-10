@@ -1,6 +1,6 @@
 use std::sync::{OnceLock, Arc};
 use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
-use super::event_trace::{EventRecordDecoded, StackWalk};
+use super::event_trace::{EventRecordDecoded, PropertyDecoded, StackWalk};
 use crate::StackWalkInfo;
 use crate::filter_expr::{Path, Value};
 use crate::process_modules;
@@ -91,7 +91,7 @@ impl EventRecordModel {
             },
             "process_id" => {
                 if let Value::I64(num) = value {
-                    if *num == self.array.timestamp.0 {
+                    if *num as u32 == self.array.process_id {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -100,7 +100,7 @@ impl EventRecordModel {
             },
             "thread_id" => {
                 if let Value::I64(num) = value {
-                    if *num == self.array.timestamp.0 {
+                    if *num as u32 == self.array.thread_id {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -108,8 +108,8 @@ impl EventRecordModel {
                 return Err(anyhow!("invalid value type"));
             },
             "event_name" => {
-                if let Value::I64(num) = value {
-                    if *num == self.array.timestamp.0 {
+                if let Value::Str(num) = value {
+                    if *num == self.array.event_name {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -117,8 +117,8 @@ impl EventRecordModel {
                 return Err(anyhow!("invalid value type"));
             },
             "opcode_name" => {
-                if let Value::I64(num) = value {
-                    if *num == self.array.timestamp.0 {
+                if let Value::Str(num) = value {
+                    if *num == self.array.opcode_name {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -126,11 +126,25 @@ impl EventRecordModel {
                 return Err(anyhow!("invalid value type"));
             },
             "properties"=> {
-                if let Value::I64(num) = value {
-                    if *num == self.array.timestamp.0 {
-                        return Ok(true);
+                if let Value::Object(obj) = value {
+                    if let Some(ref field) = path.field {
+                        if let PropertyDecoded::Struct(ref properties) = self.array.properties {
+                            if let PropertyDecoded::String(ref property_decoded_str) = properties[field] {
+                                if let Value::Str(ref value_str) = obj[field] {
+                                    if value_str == property_decoded_str {
+                                        return Ok(true);
+                                    }
+                                    return Ok(false);   
+                                } else {
+                                    return Err(anyhow!("The finding properties.{field}'s value's type is not Value::Str"));
+                                }
+                            } else {
+                                return Err(anyhow!("The properties's filed type is not string"));
+                            }
+                        }
+                    } else {
+                        return Err(anyhow!("Not assign filed for properties"));
                     }
-                    return Ok(false);
                 }
                 return Err(anyhow!("invalid value type"));
             },

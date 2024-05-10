@@ -25,7 +25,7 @@ mod event_kernel;
 mod event_config;
 
 pub use event_kernel::EVENTS_DESC;
-pub use event_decoder::EventRecordDecoded;
+pub use event_decoder::{EventRecordDecoded, PropertyDecoded};
 pub use event_kernel::event_property::*;
 
 
