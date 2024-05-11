@@ -112,6 +112,9 @@ pub fn get_module_offset(
 }
 
 pub fn get_process_state(process_id: u32) -> ProcessState {
+    if process_id == 0 || process_id == 4 {
+        return ProcessState::Ready;
+    }
     if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id) {
         process_module_mutex.lock().0.clone()
     } else {
