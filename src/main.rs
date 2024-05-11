@@ -131,7 +131,6 @@ fn main() {
                                     }
                                 }
                                 if process_modules::ProcessState::Initial == process_state {
-                                    process_state = process_modules::ProcessState::Error(format!("No ready for process module init: {}, but is waited for 5s", process_id));
                                     error!("No ready for process module init: {}, but is waited for 5s", process_id);
                                 }
                                 let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
@@ -143,7 +142,7 @@ fn main() {
                             let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                             erm.set_stack_walk(sw.clone());
                         },
-                        process_modules::ProcessState::Error(e) => {
+                        process_modules::ProcessState::Error(_) => {
                             let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                             erm.set_stack_walk(sw.clone());
                         }
