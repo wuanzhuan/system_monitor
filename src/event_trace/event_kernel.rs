@@ -1317,7 +1317,6 @@ pub mod event_property {
 
 	fn i32_from_string(property: &event_decoder::PropertyDecoded) -> Result<i32> {
 		if let event_decoder::PropertyDecoded::String(s) = property {
-			let has_0x = s.starts_with("0x") || s.starts_with("0X");
 			let r = i32::from_str_radix(s, 10);
 			match r {
 				Ok(num) => Ok(num),
