@@ -276,12 +276,14 @@ fn process_init(process_id: u32, is_delay: bool) {
                 NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
             };
             if status.is_err() {
-                process_module_mutex.lock().0 = ProcessState::Error(format!(
-                    "Failed to NtOpenProcess {process_id}: {}",
-                    status.0
-                ));
+                let err = format!(
+                    "Failed to NtOpenProcess {process_id}: {:#x} {}",
+                    status.0,
+                    status.to_hresult().message()
+                );
+                process_module_mutex.lock().0 = ProcessState::Error(err.clone());
                 if STATUS_ACCESS_DENIED != status {
-                    error!("Failed to NtOpenProcess {process_id}: {} {}", status.0, status.to_hresult().message());
+                    error!(err);
                 }
                 return;
             }
@@ -316,9 +318,9 @@ fn process_init(process_id: u32, is_delay: bool) {
                     }
                     Err(e) => {
                         unsafe { ZwClose(h_process_out) };
-                        process_module_mutex.lock().0 =
-                            ProcessState::Error(format!("Failed to EnumProcessModules: {}", e));
-                        error!("Failed to EnumProcessModules: {}", e);
+                        let err = format!("Failed to EnumProcessModules for {process_id}: {}", e);
+                        process_module_mutex.lock().0 = ProcessState::Error(err.clone());
+                        error!(err);
                         return;
                     }
                 }
