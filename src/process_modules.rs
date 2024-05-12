@@ -245,7 +245,7 @@ fn enum_processes(selected_process_ids: &Vec<u32>) {
 fn process_init(process_id: u32, is_delay: bool) {
     if process_id == 0 || process_id == 4 {
         // todo: kernel space
-        let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock().try_insert(
+        let _process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock().try_insert(
             4,
             Arc::new(FairMutex::new((ProcessState::Initial, BTreeMap::new()))),
         ) {
@@ -481,7 +481,7 @@ fn is_kernel_space(address: u64) -> bool {
     }
 }
 
-fn is_kernel_session_space(address: u64) -> bool {
+fn is_kernel_session_space(_address: u64) -> bool {
     // todo:
     false
 }
