@@ -125,7 +125,7 @@ fn main() {
                                             break;
                                         }
                                         process_modules::ProcessState::Error(e) => {
-                                            process_state =process_modules::ProcessState::Error(e);
+                                            process_state = process_modules::ProcessState::Error(e);
                                             break;
                                         }
                                     }

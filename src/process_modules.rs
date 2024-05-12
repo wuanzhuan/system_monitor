@@ -283,7 +283,7 @@ fn process_init(process_id: u32, is_delay: bool) {
                 );
                 process_module_mutex.lock().0 = ProcessState::Error(err.clone());
                 if STATUS_ACCESS_DENIED != status {
-                    error!(err);
+                    error!("{err}");
                 }
                 return;
             }
