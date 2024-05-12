@@ -44,3 +44,41 @@ impl Serialize for TimeStamp {
         serializer.serialize_str(self.to_string_detail().as_str())
     }
 }
+
+pub fn get_path_from_commandline(commandline: &str) -> String {
+    let mut is_in_quotation_mark = false;
+    let mut is_escape_character_prefix = false;
+    let mut string = String::with_capacity(commandline.len());
+    for ch in commandline.chars() {
+        if ch == '\\' {
+            if !is_escape_character_prefix {
+                is_escape_character_prefix = true;
+                continue;
+            }
+        }
+        if is_escape_character_prefix {
+            is_escape_character_prefix = false;
+        }
+        if ch == '"' {
+            is_in_quotation_mark = !is_in_quotation_mark;
+            continue;
+        }
+        if ch == ' ' {
+            if !is_in_quotation_mark {
+                break;
+            }
+        }
+        string.push(ch);
+    }
+    string
+}
+
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn get_path_from_commandline() {
+        let s = super::get_path_from_commandline(r#"\"C:\\Program Files\\Git\\cmd\\git.exe\" show --textconv :src/event_trace/mod.rs"#);
+        assert_eq!(s, String::from(r"C:\Program Files\Git\cmd\git.exe"));
+    }
+}
