@@ -52,7 +52,7 @@ static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
     Lazy::new(|| FairMutex::new(IndexMap::new()));
 
 static RUNNING_MODULES_MAP: Lazy<
-    FairMutex<HashMap<u32, Arc<FairMutex<(BTreeMap<u64, ModuleInfoRunning>)>>>>,
+    FairMutex<HashMap<u32, Arc<FairMutex<BTreeMap<u64, ModuleInfoRunning>>>>>,
 > = Lazy::new(|| FairMutex::new(HashMap::new()));
 
 static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();

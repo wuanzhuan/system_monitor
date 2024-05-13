@@ -3,7 +3,7 @@
 use event_list::Node;
 use linked_hash_map::LinkedHashMap;
 use slint::{LogicalPosition, Model, ModelRc, SharedString, StandardListViewItem, VecModel};
-use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc, time::Duration};
+use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc};
 use tracing::{error, info};
 
 use crate::event_record_model::EventRecordModel;

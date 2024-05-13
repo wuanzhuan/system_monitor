@@ -45,6 +45,7 @@ impl Serialize for TimeStamp {
     }
 }
 
+#[allow(unused)]
 pub fn get_path_from_commandline(commandline: &str) -> String {
     let mut is_in_quotation_mark = false;
     let mut is_escape_character_prefix = false;

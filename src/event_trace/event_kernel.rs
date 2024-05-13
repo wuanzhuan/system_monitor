@@ -1175,6 +1175,7 @@ pub mod event_property {
 	}
 
 	impl Process {
+		#[allow(unused)]
 		pub fn from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Self {
 			if let event_decoder::PropertyDecoded::Struct(ref map) = erd.properties {
 				let unique_process_key = map.get("UniqueProcessKey").map(|property| {
