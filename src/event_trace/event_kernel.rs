@@ -1264,8 +1264,20 @@ pub mod event_property {
 				Self::default()
 			}
 		}
-	}
 
+		pub fn get_process_id_from_event_record_decoded(erd: &event_decoder::EventRecordDecoded) -> Result<u32> {
+			if let event_decoder::PropertyDecoded::Struct(ref map) = erd.properties {
+				if let Some(property) = map.get("ProcessId") {
+					u32_from_string(property)
+				} else {
+					Err(anyhow!("The property no key of ProcessId. {:#?}", erd.properties))
+				}
+			} else {
+				Err(anyhow!("The property's type is not Struct: {:#?}", erd.properties))
+			}
+		}
+
+	}
 
 	fn u64_from_string(property: &event_decoder::PropertyDecoded) -> Result<u64> {
 		if let event_decoder::PropertyDecoded::String(s) = property {
