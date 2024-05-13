@@ -174,11 +174,20 @@ fn drive_letter_map_init() {
 pub fn handle_event_for_module(event_record: &mut EventRecordDecoded) {
     match event_record.provider_id.0 {
         Etw::ProcessGuid => match event_record.opcode_name.as_str() {
-            "Start" => {
-                let process = Process::from_event_record_decoded(event_record);
-                process_start(process);
-            }
-            "End" => process_end(event_record.process_id),
+            "Start" => match Process::get_process_id_from_event_record_decoded(event_record) {
+                Ok(process_id) => process_start(process_id),
+                Err(e) => error!(
+                    "Failed to get the starting process id by process: {}, {e}",
+                    event_record.process_id
+                ),
+            },
+            "End" => match Process::get_process_id_from_event_record_decoded(event_record) {
+                Ok(process_id) => process_end(process_id),
+                Err(e) => error!(
+                    "Failed to get the ending process id by process: {}, {e}",
+                    event_record.process_id
+                ),
+            },
             _ => {}
         },
         Etw::ImageLoadGuid => match event_record.opcode_name.as_str() {
@@ -401,8 +410,12 @@ fn process_init(process_id: u32, is_delay: bool) {
     }
 }
 
-fn process_start(process: Process) {
-    process_init(process.process_id, false);
+fn process_start(process_id: u32) {
+    let process_module_mutex = RUNNING_MODULES_MAP.lock().insert(
+        process_id,
+        Arc::new(FairMutex::new((ProcessState::Ready, BTreeMap::new()))),
+    );
+    assert!(process_module_mutex.is_none());
 }
 
 fn process_end(process_id: u32) {
