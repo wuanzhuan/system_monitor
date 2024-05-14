@@ -51,7 +51,7 @@ pub struct ModuleInfoRunning {
 static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
     Lazy::new(|| FairMutex::new(IndexMap::new()));
 
-static RUNNING_MODULES_MAP: Lazy<
+static RUNNING_PROCESSES_MODULES_MAP: Lazy<
     FairMutex<
         HashMap<
             u32,
@@ -73,7 +73,7 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
     use std::ops::Bound;
 
-    if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
+    if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id).cloned() {
         let process_error_lock = process_module_mutex.0.lock();
         let process_module_lock = process_module_mutex.1.lock();
         for item in stacks.iter_mut() {
@@ -249,7 +249,7 @@ fn enum_processes(selected_process_ids: &Vec<u32>) {
 fn process_init(process_id: u32) {
     if process_id == 0 || process_id == 4 {
         // todo: kernel space
-        let _process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock().try_insert(
+        let _process_module_mutex = if let Ok(ok) = RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
             4,
             Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
         ) {
@@ -258,7 +258,7 @@ fn process_init(process_id: u32) {
             return;
         };
     } else {
-        let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock().try_insert(
+        let process_module_mutex = if let Ok(ok) = RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
             process_id,
             Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
         ) {
@@ -392,7 +392,7 @@ fn process_init(process_id: u32) {
 }
 
 fn process_start(process_id: u32) {
-    let process_module_mutex = RUNNING_MODULES_MAP.lock().insert(
+    let process_module_mutex = RUNNING_PROCESSES_MODULES_MAP.lock().insert(
         process_id,
         Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
     );
@@ -403,7 +403,7 @@ fn process_end(process_id: u32) {
     smol::spawn(async move {
         let period = Duration::from_secs(10);
         smol::Timer::after(period).await;
-        let mut running_modules_lock = RUNNING_MODULES_MAP.lock();
+        let mut running_modules_lock = RUNNING_PROCESSES_MODULES_MAP.lock();
         let _ = running_modules_lock.remove(&process_id);
     })
     .detach();
@@ -411,7 +411,7 @@ fn process_end(process_id: u32) {
 
 fn process_modules_load(image: &Image, timestamp: TimeStamp) {
     let process_module_mutex =
-        if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id) {
+        if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id) {
             process_module_mutex.clone()
         } else {
             return;
@@ -449,7 +449,7 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
 
 fn process_modules_unload(image: &Image) {
     let process_module_mutex =
-        if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id) {
+        if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id) {
             process_module_mutex.clone()
         } else {
             return;
@@ -480,14 +480,14 @@ fn is_kernel_session_space(_address: u64) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::{DRIVE_LETTER_MAP, RUNNING_MODULES_MAP};
+    use super::{DRIVE_LETTER_MAP, RUNNING_PROCESSES_MODULES_MAP};
     use windows::Win32::System::Threading::GetCurrentProcessId;
 
     #[test]
     fn store_process_modules() {
         let current_id = unsafe { GetCurrentProcessId() };
         let _ = super::process_init(current_id);
-        println!("{:#?}", RUNNING_MODULES_MAP);
+        println!("{:#?}", RUNNING_PROCESSES_MODULES_MAP);
     }
 
     #[test]
