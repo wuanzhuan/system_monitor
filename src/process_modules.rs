@@ -11,7 +11,7 @@ use std::{
     sync::{Arc, OnceLock},
     time::Duration,
 };
-use tracing::{debug, error, warn};
+use tracing::{error, warn};
 use widestring::*;
 use windows::{
     Wdk::{
@@ -52,7 +52,15 @@ static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
     Lazy::new(|| FairMutex::new(IndexMap::new()));
 
 static RUNNING_MODULES_MAP: Lazy<
-    FairMutex<HashMap<u32, Arc<FairMutex<BTreeMap<u64, ModuleInfoRunning>>>>>,
+    FairMutex<
+        HashMap<
+            u32,
+            Arc<(
+                /*error*/ FairMutex<Option<String>>,
+                FairMutex<BTreeMap<u64, ModuleInfoRunning>>,
+            )>,
+        >,
+    >,
 > = Lazy::new(|| FairMutex::new(HashMap::new()));
 
 static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
@@ -63,55 +71,48 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 }
 
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
+    use std::ops::Bound;
+
     if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
-        let process_module_lock = process_module_mutex.lock();
+        let process_error_lock = process_module_mutex.0.lock();
+        let process_module_lock = process_module_mutex.1.lock();
         for item in stacks.iter_mut() {
             if item.1.raw == 0 {
                 continue;
             }
-            if let Some(module_offset) = get_module_offset(&process_module_lock, process_id, item.1.raw) {
-                item.1.relative = Some(module_offset);
+            // is in kernel space
+            let address = item.1.raw;
+            if is_kernel_space(address) {
+                if is_kernel_session_space(address) {
+                    // todo:
+                } else {
+                    // todo:
+                }
+            } else {
+                let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+                if let Some(module_info_running) = cursor.value() {
+                    if address
+                        >= module_info_running.base_of_dll
+                            + module_info_running.size_of_image as u64
+                    {
+                        if process_error_lock.is_none() {
+                            warn!("Cross the border address: {address:#x} in the [{process_id}] the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
+                        }
+                    } else {
+                        item.1.relative = Some((
+                            module_info_running.id,
+                            (address - module_info_running.base_of_dll) as u32,
+                        ));
+                    }
+                } else {
+                    if process_error_lock.is_none() {
+                        warn!("{address:#x} is not find in process_id: {process_id}");
+                    }
+                }
             }
         }
     } else {
         warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
-    }
-}
-
-fn get_module_offset(
-    process_module_map: &BTreeMap<u64, ModuleInfoRunning>,
-    process_id: u32,
-    address: u64,
-) -> Option<(/*module_id*/ u32, /*offset*/ u32)> {
-    use std::ops::Bound;
-
-    // is in kernel space
-    if is_kernel_space(address) {
-        if is_kernel_session_space(address) {
-            // todo:
-            None
-        } else {
-            // todo:
-            None
-        }
-    } else {
-        let cursor = process_module_map.upper_bound(Bound::Included(&address));
-        if let Some(module_info_running) = cursor.value() {
-            if address
-                >= module_info_running.base_of_dll + module_info_running.size_of_image as u64
-            {
-                warn!("Cross the border address: {address:#x} in the [{process_id}] the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
-                None
-            } else {
-                Some((
-                    module_info_running.id,
-                    (address - module_info_running.base_of_dll) as u32,
-                ))
-            }
-        } else {
-            warn!("{address:#x} is not find in process_id: {process_id}");
-            None
-        }
     }
 }
 
@@ -244,22 +245,23 @@ fn enum_processes(selected_process_ids: &Vec<u32>) {
     }
 }
 
+// only call before starting event trace
 fn process_init(process_id: u32) {
     if process_id == 0 || process_id == 4 {
         // todo: kernel space
-        let _process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP
-            .lock()
-            .try_insert(4, Arc::new(FairMutex::new(BTreeMap::new())))
-        {
+        let _process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock().try_insert(
+            4,
+            Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
+        ) {
             ok.clone()
         } else {
             return;
         };
     } else {
-        let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP
-            .lock()
-            .try_insert(process_id, Arc::new(FairMutex::new(BTreeMap::new())))
-        {
+        let process_module_mutex = if let Ok(ok) = RUNNING_MODULES_MAP.lock().try_insert(
+            process_id,
+            Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
+        ) {
             ok.clone()
         } else {
             return;
@@ -283,6 +285,7 @@ fn process_init(process_id: u32) {
                 status.0,
                 status.to_hresult().message()
             );
+            *process_module_mutex.0.lock() = Some(err.clone());
             if STATUS_ACCESS_DENIED != status {
                 error!("{err}");
             }
@@ -331,7 +334,7 @@ fn process_init(process_id: u32) {
                     GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
                 };
                 let file_name = if 0 == status {
-                    debug!("Failed to GetModuleFileNameExW: {}", unsafe {
+                    warn!("Failed to GetModuleFileNameExW: {}", unsafe {
                         GetLastError().unwrap_err()
                     });
                     String::new()
@@ -353,7 +356,7 @@ fn process_init(process_id: u32) {
                     )
                 };
                 if let Err(e) = r {
-                    debug!("Failed to GetModuleInformation: {}", e);
+                    warn!("Failed to GetModuleInformation: {}", e);
                 }
                 let mut module_lock = MODULES_MAP.lock();
                 let (id, module_info_arc) =
@@ -379,6 +382,7 @@ fn process_init(process_id: u32) {
                     start: TimeStamp(0),
                 };
                 let _ = process_module_mutex
+                    .1
                     .lock()
                     .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
             }
@@ -388,9 +392,10 @@ fn process_init(process_id: u32) {
 }
 
 fn process_start(process_id: u32) {
-    let process_module_mutex = RUNNING_MODULES_MAP
-        .lock()
-        .insert(process_id, Arc::new(FairMutex::new(BTreeMap::new())));
+    let process_module_mutex = RUNNING_MODULES_MAP.lock().insert(
+        process_id,
+        Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
+    );
     assert!(process_module_mutex.is_none());
 }
 
@@ -430,7 +435,7 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
     };
     drop(module_lock);
 
-    let mut process_module_lock = process_module_mutex.lock();
+    let mut process_module_lock = process_module_mutex.1.lock();
     let module_info_running = ModuleInfoRunning {
         id: id as u32,
         module_info: module_info_arc.clone(),
@@ -453,7 +458,7 @@ fn process_modules_unload(image: &Image) {
     smol::spawn(async move {
         let period = Duration::from_secs(20);
         smol::Timer::after(period).await;
-        let mut process_module_lock = process_module.lock();
+        let mut process_module_lock = process_module.1.lock();
         let _ = process_module_lock.remove(&image_base);
     })
     .detach();
