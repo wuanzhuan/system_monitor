@@ -51,6 +51,9 @@ pub struct ModuleInfoRunning {
 static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
     Lazy::new(|| FairMutex::new(IndexMap::new()));
 
+static RUNNING_KERNEL_MODULES_MAP: Lazy<FairMutex<BTreeMap<u64, ModuleInfoRunning>>> =
+    Lazy::new(|| FairMutex::new(BTreeMap::new()));
+
 static RUNNING_PROCESSES_MODULES_MAP: Lazy<
     FairMutex<
         HashMap<
@@ -73,7 +76,11 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
     use std::ops::Bound;
 
-    if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id).cloned() {
+    if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP
+        .lock()
+        .get(&process_id)
+        .cloned()
+    {
         let process_error_lock = process_module_mutex.0.lock();
         let process_module_lock = process_module_mutex.1.lock();
         for item in stacks.iter_mut() {
@@ -248,147 +255,137 @@ fn enum_processes(selected_process_ids: &Vec<u32>) {
 // only call before starting event trace
 fn process_init(process_id: u32) {
     if process_id == 0 || process_id == 4 {
-        // todo: kernel space
-        let _process_module_mutex = if let Ok(ok) = RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
-            4,
-            Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
-        ) {
-            ok.clone()
-        } else {
-            return;
-        };
+        return;
+    }
+
+    let process_module_mutex = if let Ok(ok) = RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
+        process_id,
+        Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
+    ) {
+        ok.clone()
     } else {
-        let process_module_mutex = if let Ok(ok) = RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
-            process_id,
-            Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
-        ) {
-            ok.clone()
-        } else {
-            return;
-        };
+        return;
+    };
 
-        let mut h_process_out = HANDLE::default();
-        let oa = OBJECT_ATTRIBUTES {
-            Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
-            ..Default::default()
+    let mut h_process_out = HANDLE::default();
+    let oa = OBJECT_ATTRIBUTES {
+        Length: mem::size_of::<OBJECT_ATTRIBUTES>() as u32,
+        ..Default::default()
+    };
+    let status = unsafe {
+        let client_id = CLIENT_ID {
+            UniqueProcess: HANDLE(process_id as isize),
+            UniqueThread: HANDLE::default(),
         };
-        let status = unsafe {
-            let client_id = CLIENT_ID {
-                UniqueProcess: HANDLE(process_id as isize),
-                UniqueThread: HANDLE::default(),
-            };
-            NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
-        };
-        if status.is_err() {
-            let err = format!(
-                "Failed to NtOpenProcess {process_id}: {:#x} {}",
-                status.0,
-                status.to_hresult().message()
-            );
-            *process_module_mutex.0.lock() = Some(err.clone());
-            if STATUS_ACCESS_DENIED != status {
-                error!("{err}");
-            }
-            return;
+        NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
+    };
+    if status.is_err() {
+        let err = format!(
+            "Failed to NtOpenProcess {process_id}: {:#x} {}",
+            status.0,
+            status.to_hresult().message()
+        );
+        *process_module_mutex.0.lock() = Some(err.clone());
+        if STATUS_ACCESS_DENIED != status {
+            error!("{err}");
         }
+        return;
+    }
 
-        const MODULE_COUNT: usize = 1024;
+    const MODULE_COUNT: usize = 1024;
 
-        let mut module_array = Vec::<HMODULE>::with_capacity(MODULE_COUNT);
-        let mut cbneeded = 0u32;
-        loop {
-            let cb = (mem::size_of::<HMODULE>() * module_array.capacity()) as u32;
-            let r = unsafe {
-                EnumProcessModulesEx(
-                    h_process_out,
-                    module_array.as_mut_ptr(),
-                    cb,
-                    &mut cbneeded,
-                    LIST_MODULES_ALL,
-                )
-            };
-            match r {
-                Ok(_) => {
-                    if cbneeded > cb {
-                        module_array = Vec::<HMODULE>::with_capacity(
-                            cbneeded as usize / mem::size_of::<HMODULE>(),
-                        );
-                        continue;
-                    }
-                    unsafe { module_array.set_len(cbneeded as usize / mem::size_of::<HMODULE>()) };
-                    break;
+    let mut module_array = Vec::<HMODULE>::with_capacity(MODULE_COUNT);
+    let mut cbneeded = 0u32;
+    loop {
+        let cb = (mem::size_of::<HMODULE>() * module_array.capacity()) as u32;
+        let r = unsafe {
+            EnumProcessModulesEx(
+                h_process_out,
+                module_array.as_mut_ptr(),
+                cb,
+                &mut cbneeded,
+                LIST_MODULES_ALL,
+            )
+        };
+        match r {
+            Ok(_) => {
+                if cbneeded > cb {
+                    module_array = Vec::<HMODULE>::with_capacity(
+                        cbneeded as usize / mem::size_of::<HMODULE>(),
+                    );
+                    continue;
                 }
-                Err(e) => {
-                    unsafe { ZwClose(h_process_out) };
-                    let err = format!("Failed to EnumProcessModules for {process_id}: {}", e);
-                    error!(err);
-                    return;
-                }
+                unsafe { module_array.set_len(cbneeded as usize / mem::size_of::<HMODULE>()) };
+                break;
+            }
+            Err(e) => {
+                unsafe { ZwClose(h_process_out) };
+                let err = format!("Failed to EnumProcessModules for {process_id}: {}", e);
+                error!(err);
+                return;
             }
         }
-        if !module_array.is_empty() {
-            let mut vec = Vec::<u16>::with_capacity(1024);
-            for i in 0..module_array.len() {
-                let status = unsafe {
-                    let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
-                    GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
-                };
-                let file_name = if 0 == status {
-                    warn!("Failed to GetModuleFileNameExW: {}", unsafe {
-                        GetLastError().unwrap_err()
-                    });
-                    String::new()
-                } else {
-                    unsafe {
-                        U16CStr::from_ptr(vec.as_mut_ptr(), status as usize).unwrap_or_default()
-                    }
+    }
+    if !module_array.is_empty() {
+        let mut vec = Vec::<u16>::with_capacity(1024);
+        for i in 0..module_array.len() {
+            let status = unsafe {
+                let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
+                GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
+            };
+            let file_name = if 0 == status {
+                warn!("Failed to GetModuleFileNameExW: {}", unsafe {
+                    GetLastError().unwrap_err()
+                });
+                String::new()
+            } else {
+                unsafe { U16CStr::from_ptr(vec.as_mut_ptr(), status as usize).unwrap_or_default() }
                     .to_string()
                     .unwrap_or_else(|e| e.to_string())
-                };
+            };
 
-                let mut module_info = MODULEINFO::default();
-                let r = unsafe {
-                    GetModuleInformation(
-                        h_process_out,
-                        module_array[i as usize],
-                        &mut module_info,
-                        mem::size_of::<MODULEINFO>() as u32,
-                    )
-                };
-                if let Err(e) = r {
-                    warn!("Failed to GetModuleInformation: {}", e);
-                }
-                let mut module_lock = MODULES_MAP.lock();
-                let (id, module_info_arc) =
-                    if let Some(some) = module_lock.get_full(&(file_name.clone(), 0)) {
-                        (some.0, some.2.clone())
-                    } else {
-                        let module_info_arc = Arc::new(ModuleInfo {
-                            file_name: file_name.clone(),
-                            time_data_stamp: 0,
-                        });
-                        let entry = module_lock
-                            .insert_full((file_name.clone(), 0), module_info_arc.clone());
-                        (entry.0, module_info_arc)
-                    };
-                drop(module_lock);
-
-                let module_info_running = ModuleInfoRunning {
-                    id: id as u32,
-                    module_info: module_info_arc.clone(),
-                    base_of_dll: module_info.lpBaseOfDll as u64,
-                    size_of_image: module_info.SizeOfImage,
-                    entry_point: module_info.EntryPoint as u64,
-                    start: TimeStamp(0),
-                };
-                let _ = process_module_mutex
-                    .1
-                    .lock()
-                    .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
+            let mut module_info = MODULEINFO::default();
+            let r = unsafe {
+                GetModuleInformation(
+                    h_process_out,
+                    module_array[i as usize],
+                    &mut module_info,
+                    mem::size_of::<MODULEINFO>() as u32,
+                )
+            };
+            if let Err(e) = r {
+                warn!("Failed to GetModuleInformation: {}", e);
             }
+            let mut module_lock = MODULES_MAP.lock();
+            let (id, module_info_arc) =
+                if let Some(some) = module_lock.get_full(&(file_name.clone(), 0)) {
+                    (some.0, some.2.clone())
+                } else {
+                    let module_info_arc = Arc::new(ModuleInfo {
+                        file_name: file_name.clone(),
+                        time_data_stamp: 0,
+                    });
+                    let entry =
+                        module_lock.insert_full((file_name.clone(), 0), module_info_arc.clone());
+                    (entry.0, module_info_arc)
+                };
+            drop(module_lock);
+
+            let module_info_running = ModuleInfoRunning {
+                id: id as u32,
+                module_info: module_info_arc.clone(),
+                base_of_dll: module_info.lpBaseOfDll as u64,
+                size_of_image: module_info.SizeOfImage,
+                entry_point: module_info.EntryPoint as u64,
+                start: TimeStamp(0),
+            };
+            let _ = process_module_mutex
+                .1
+                .lock()
+                .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
         }
-        unsafe { ZwClose(h_process_out) };
     }
+    unsafe { ZwClose(h_process_out) };
 }
 
 fn process_start(process_id: u32) {
@@ -410,12 +407,13 @@ fn process_end(process_id: u32) {
 }
 
 fn process_modules_load(image: &Image, timestamp: TimeStamp) {
-    let process_module_mutex =
-        if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id) {
-            process_module_mutex.clone()
-        } else {
-            return;
-        };
+    let process_module_mutex = if let Some(process_module_mutex) =
+        RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id)
+    {
+        process_module_mutex.clone()
+    } else {
+        return;
+    };
 
     let mut module_lock = MODULES_MAP.lock();
     let (id, module_info_arc) = if let Some(some) =
@@ -448,12 +446,13 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
 }
 
 fn process_modules_unload(image: &Image) {
-    let process_module_mutex =
-        if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id) {
-            process_module_mutex.clone()
-        } else {
-            return;
-        };
+    let process_module_mutex = if let Some(process_module_mutex) =
+        RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id)
+    {
+        process_module_mutex.clone()
+    } else {
+        return;
+    };
     let image_base = image.image_base;
     smol::spawn(async move {
         let period = Duration::from_secs(20);
