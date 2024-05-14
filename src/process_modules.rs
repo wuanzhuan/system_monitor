@@ -448,7 +448,7 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
 }
 
 fn process_modules_unload(image: &Image) {
-    let process_module =
+    let process_module_mutex =
         if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&image.process_id) {
             process_module_mutex.clone()
         } else {
@@ -458,7 +458,7 @@ fn process_modules_unload(image: &Image) {
     smol::spawn(async move {
         let period = Duration::from_secs(20);
         smol::Timer::after(period).await;
-        let mut process_module_lock = process_module.1.lock();
+        let mut process_module_lock = process_module_mutex.1.lock();
         let _ = process_module_lock.remove(&image_base);
     })
     .detach();
