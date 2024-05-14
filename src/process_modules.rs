@@ -70,6 +70,7 @@ static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 
 pub fn init(selected_process_ids: &Vec<u32>) {
     drive_letter_map_init();
+    // todo: enum kernel modules
     enum_processes(selected_process_ids);
 }
 
@@ -407,14 +408,6 @@ fn process_end(process_id: u32) {
 }
 
 fn process_modules_load(image: &Image, timestamp: TimeStamp) {
-    let process_module_mutex = if let Some(process_module_mutex) =
-        RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id)
-    {
-        process_module_mutex.clone()
-    } else {
-        return;
-    };
-
     let mut module_lock = MODULES_MAP.lock();
     let (id, module_info_arc) = if let Some(some) =
         module_lock.get_full(&(image.file_name.clone(), image.time_date_stamp))
@@ -433,7 +426,6 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
     };
     drop(module_lock);
 
-    let mut process_module_lock = process_module_mutex.1.lock();
     let module_info_running = ModuleInfoRunning {
         id: id as u32,
         module_info: module_info_arc.clone(),
@@ -442,23 +434,55 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
         entry_point: image.default_base,
         start: timestamp,
     };
-    let _ = process_module_lock.try_insert(image.image_base, module_info_running);
+
+    if is_kernel_space(image.image_base) {
+        let _ = RUNNING_KERNEL_MODULES_MAP
+            .lock()
+            .try_insert(image.image_base, module_info_running);
+    } else {
+        let process_module_mutex = if let Some(process_module_mutex) =
+            RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id)
+        {
+            process_module_mutex.clone()
+        } else {
+            error!(
+                "the process id: {} is not found when load image: {}",
+                image.process_id, image.file_name
+            );
+            return;
+        };
+        let _ = process_module_mutex
+            .1
+            .lock()
+            .try_insert(image.image_base, module_info_running);
+    }
 }
 
 fn process_modules_unload(image: &Image) {
-    let process_module_mutex = if let Some(process_module_mutex) =
-        RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id)
-    {
-        process_module_mutex.clone()
-    } else {
-        return;
-    };
+    let process_id = image.process_id;
     let image_base = image.image_base;
+    let file_name = image.file_name.clone();
+
     smol::spawn(async move {
-        let period = Duration::from_secs(20);
+        let period = Duration::from_secs(10);
         smol::Timer::after(period).await;
-        let mut process_module_lock = process_module_mutex.1.lock();
-        let _ = process_module_lock.remove(&image_base);
+
+        if is_kernel_space(image_base) {
+            let _ = RUNNING_KERNEL_MODULES_MAP.lock().remove(&image_base);
+        } else {
+            let process_module_mutex = if let Some(process_module_mutex) =
+                RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id)
+            {
+                process_module_mutex.clone()
+            } else {
+                error!(
+                    "the process id: {} is not found when unload image: {}",
+                    process_id, file_name
+                );
+                return;
+            };
+            let _ = process_module_mutex.1.lock().remove(&image_base);
+        }
     })
     .detach();
 }
