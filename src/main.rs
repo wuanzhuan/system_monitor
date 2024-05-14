@@ -126,7 +126,7 @@ fn main() {
         let result = event_trace::Controller::start(move |mut event_record, stack_walk, is_selected | {
             if let Some(mut sw) = stack_walk {
                 if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
-                    sw.convert_to_module_offset(process_modules::get_module_offset);
+                    process_modules::convert_to_module_offset(sw.stack_process, sw.stacks.as_mut_slice());
                     let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
                     erm.set_stack_walk(sw.clone());
                 } else {

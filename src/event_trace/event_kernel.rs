@@ -1070,16 +1070,6 @@ pub mod event_property {
 			}
 		}
 
-		pub fn convert_to_module_offset(&mut self, fn_get_module_offset: impl Fn(/*process_id*/u32, /*address*/u64) -> Option<(/*module_id*/u32, /*offset*/u32)>) {
-			for item in self.stacks.iter_mut() {
-				if item.1.raw == 0 {
-					continue;
-				}
-				if let Some(module_offset) = fn_get_module_offset(self.stack_process, item.1.raw) {
-					item.1.relative = Some(module_offset);
-				}
-			}
-		}
 	}
 
 	#[derive(Debug, Clone, Default)]

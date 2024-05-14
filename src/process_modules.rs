@@ -1,4 +1,4 @@
-use crate::event_trace::{EventRecordDecoded, Image, Process};
+use crate::event_trace::{EventRecordDecoded, Image, Process, StackAddress};
 use crate::third_extend::strings::AsPcwstr;
 use crate::utils::TimeStamp;
 use ascii::AsciiChar;
@@ -62,7 +62,24 @@ pub fn init(selected_process_ids: &Vec<u32>) {
     enum_processes(selected_process_ids);
 }
 
-pub fn get_module_offset(
+pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
+    if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
+        let process_module_lock = process_module_mutex.lock();
+        for item in stacks.iter_mut() {
+            if item.1.raw == 0 {
+                continue;
+            }
+            if let Some(module_offset) = get_module_offset(&process_module_lock, process_id, item.1.raw) {
+                item.1.relative = Some(module_offset);
+            }
+        }
+    } else {
+        warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
+    }
+}
+
+fn get_module_offset(
+    process_module_map: &BTreeMap<u64, ModuleInfoRunning>,
     process_id: u32,
     address: u64,
 ) -> Option<(/*module_id*/ u32, /*offset*/ u32)> {
@@ -78,27 +95,21 @@ pub fn get_module_offset(
             None
         }
     } else {
-        if let Some(process_module_mutex) = RUNNING_MODULES_MAP.lock().get(&process_id).cloned() {
-            let process_module_lock = process_module_mutex.lock();
-            let cursor = process_module_lock.upper_bound(Bound::Included(&address));
-            if let Some(module_info_running) = cursor.value() {
-                if address
-                    >= module_info_running.base_of_dll + module_info_running.size_of_image as u64
-                {
-                    warn!("Cross the border address: {address:#x} in the [{process_id}] the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
-                    None
-                } else {
-                    Some((
-                        module_info_running.id,
-                        (address - module_info_running.base_of_dll) as u32,
-                    ))
-                }
-            } else {
-                warn!("{address:#x} is not find in process_id: {process_id}");
+        let cursor = process_module_map.upper_bound(Bound::Included(&address));
+        if let Some(module_info_running) = cursor.value() {
+            if address
+                >= module_info_running.base_of_dll + module_info_running.size_of_image as u64
+            {
+                warn!("Cross the border address: {address:#x} in the [{process_id}] the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
                 None
+            } else {
+                Some((
+                    module_info_running.id,
+                    (address - module_info_running.base_of_dll) as u32,
+                ))
             }
         } else {
-            warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
+            warn!("{address:#x} is not find in process_id: {process_id}");
             None
         }
     }
