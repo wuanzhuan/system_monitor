@@ -1,5 +1,5 @@
 use crate::event_trace::{EventRecordDecoded, Image, Process, StackAddress};
-use crate::third_extend::strings::AsPcwstr;
+use crate::third_extend::strings::{AsPcwstr, StringEx};
 use crate::utils::TimeStamp;
 use ascii::AsciiChar;
 use indexmap::IndexMap;
@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{
     collections::{BTreeMap, HashMap},
-    mem, slice,
+    mem, slice, ptr,
     sync::{Arc, OnceLock},
     time::Duration,
 };
@@ -23,10 +23,7 @@ use windows::{
         Storage::FileSystem::QueryDosDeviceW,
         System::{
             Diagnostics::Etw,
-            ProcessStatus::{
-                EnumProcessModulesEx, EnumProcesses, GetModuleFileNameExW, GetModuleInformation,
-                LIST_MODULES_ALL, MODULEINFO,
-            },
+            ProcessStatus::*,
             WindowsProgramming::CLIENT_ID,
         },
     },
@@ -71,6 +68,7 @@ static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 pub fn init(selected_process_ids: &Vec<u32>) {
     drive_letter_map_init();
     // todo: enum kernel modules
+    enum_drivers();
     enum_processes(selected_process_ids);
 }
 
@@ -219,6 +217,57 @@ pub fn handle_event_for_module(event_record: &mut EventRecordDecoded) {
     }
 }
 
+fn enum_drivers() {
+    let mut driver_image_bases = vec![ptr::null_mut(); 100];
+    let mut cb_needed = 0u32;
+    loop {
+        let cb = (driver_image_bases.len() * mem::size_of_val(&driver_image_bases[0])) as u32;
+        match unsafe { EnumDeviceDrivers(driver_image_bases.as_mut_ptr(), cb, &mut cb_needed) } {
+            Ok(_) => {
+                if cb_needed >= cb {
+                    driver_image_bases = vec![ptr::null_mut(); driver_image_bases.len() * 2];
+                    continue;
+                }
+                unsafe {
+                    driver_image_bases.set_len(cb_needed as usize / mem::size_of_val(&driver_image_bases[0]));
+                }
+                break;
+            }
+            Err(e) => {
+                error!("Failed to EnumProcesses: {e}");
+                return;
+            }
+        }
+    }
+
+    let system_root = std::env::var("SystemRoot").unwrap_or(String::from("C:\\Windows"));
+    let mut vec = Vec::<u16>::with_capacity(MAX_PATH as usize);
+    for image_base in driver_image_bases.iter() {
+        let slice = unsafe{ slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity()) };
+        let r = unsafe{ GetDeviceDriverFileNameW(*image_base, slice) }; 
+        let file_name = if 0 == r {
+            warn!("Failed to GetDeviceDriverFileNameW: {}", unsafe {
+                GetLastError().unwrap_err()
+            });
+            String::new()
+        } else {
+            unsafe { U16CStr::from_ptr(vec.as_mut_ptr(), r as usize).unwrap_or_default() }
+                .to_string()
+                .unwrap_or_else(|e| e.to_string())
+        };
+        const SYSTEM_ROOT: &str = "\\SystemRoot\\";
+        const PREFIX: &str = "\\??\\";
+        let file_name = if file_name.starts_with_case_insensitive(SYSTEM_ROOT) {
+            format!("{system_root}\\{}", &file_name[SYSTEM_ROOT.len()..])
+        } else if file_name.starts_with(PREFIX) {
+            file_name[PREFIX.len()..].to_string()
+        } else {
+            file_name
+        };
+        println!("{file_name}");
+    }
+}
+
 // all process when filter_processes is empty
 fn enum_processes(selected_process_ids: &Vec<u32>) {
     if !selected_process_ids.is_empty() {
@@ -226,13 +275,13 @@ fn enum_processes(selected_process_ids: &Vec<u32>) {
             process_init(*id);
         }
     } else {
-        let mut process_ids = vec![0u32; 100];
+        let mut process_ids = vec![0u32; 512];
         let mut cb_needed = 0u32;
         loop {
             let cb = (process_ids.len() * mem::size_of::<u32>()) as u32;
             match unsafe { EnumProcesses(process_ids.as_mut_ptr(), cb, &mut cb_needed) } {
                 Ok(_) => {
-                    if cb_needed == cb {
+                    if cb_needed >= cb {
                         process_ids = vec![0u32; process_ids.len() * 2];
                         continue;
                     }
@@ -523,4 +572,10 @@ mod tests {
     fn enum_processes() {
         super::enum_processes(&vec![]);
     }
+
+    #[test]
+    fn enum_drivers() {
+        super::enum_drivers();
+    }
+
 }
