@@ -58,3 +58,41 @@ pub fn slice_to_string_uncheck(slice: &[u8]) -> String {
     }
     unsafe{ String::from_utf8_unchecked(vec) }
 }
+
+
+pub trait StringEx {
+    fn starts_with_case_insensitive(&self, pattern: &str) -> bool;
+}
+
+impl StringEx for String {
+    fn starts_with_case_insensitive(&self, pattern: &str) -> bool {
+        let mut chars_self = self.chars();
+        let chars_pattern = pattern.chars();
+        if self.len() < pattern.len() {
+            return false;
+        }
+        for ch in chars_pattern {
+            if let Some(char_self) = chars_self.next() {
+                if ch.to_ascii_lowercase() != char_self.to_ascii_lowercase() {
+                    return false;
+                }
+            } else {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::third_extend::strings::StringEx;
+
+    #[test]
+    fn starts_with_case_insensitive() {
+        let s = String::from("\\systemRoot\\windows");
+        assert!(s.starts_with_case_insensitive("\\SystemRoot\\"));
+        assert!(s.starts_with_case_insensitive("\\Systemroot\\"));
+        assert!(!s.starts_with_case_insensitive("\\SystemRootx\\"));
+    }
+}
