@@ -12,8 +12,15 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - [x] easy query language
   - [ ] mark result of query at scroll bar of TableView
 - [ ] call stack view
-  - [ ] record original module and monitor change
-  - [ ] translate a address to code location
+  - [x] record original module and monitor change
+  - [x] convert the virtual address to the offset of module
+  - [ ] translate a module offset to the code location
+
+# supported os version
+- [x] windows11 x64
+- [ ] windows11 x32
+- [ ] windows10 x64
+- [ ] windows10 x32
 
 ## monitor events
 ![image](https://github.com/wuanzhuan/system_monitor/assets/11628049/8956c35a-031e-4045-92db-aa4d906a004d)
