@@ -148,15 +148,12 @@ impl<'a, T> EventList<'a, T> {
         let mut _reader_guard = self.reader_lock.read();
         let list_len = self.list_len.load(Ordering::Acquire);
         let list = unsafe{ &*self.list.get() };
-        let mut index = 0i32;
         let mut vec = vec![];
-        for item in list.iter() {
+        for (index, item) in list.iter().enumerate() {
             let is_find = cb(&item.value)?;
             if is_find {
-                vec.push(index);
-                break;
+                vec.push(index as i32);
             }
-            index += 1;
             if index as usize >= list_len {
                 break;
             }
