@@ -1,13 +1,16 @@
 use crate::event_trace::{EventRecordDecoded, Image, Process, StackAddress};
 use crate::third_extend::strings::{AsPcwstr, StringEx};
 use crate::utils::TimeStamp;
+use anyhow::{anyhow, Result};
 use ascii::AsciiChar;
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{
     collections::{BTreeMap, HashMap},
-    mem, slice, ptr,
+    fs::File,
+    io::{Read, Seek, SeekFrom},
+    mem, ptr, slice,
     sync::{Arc, OnceLock},
     time::Duration,
 };
@@ -22,8 +25,9 @@ use windows::{
         Foundation::*,
         Storage::FileSystem::QueryDosDeviceW,
         System::{
-            Diagnostics::Etw,
+            Diagnostics::{Debug::*, Etw},
             ProcessStatus::*,
+            SystemServices::*,
             WindowsProgramming::CLIENT_ID,
         },
     },
@@ -75,34 +79,60 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
     use std::ops::Bound;
 
-    if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP
-        .lock()
-        .get(&process_id)
-        .cloned()
-    {
-        let process_error_lock = process_module_mutex.0.lock();
-        let process_module_lock = process_module_mutex.1.lock();
-        for item in stacks.iter_mut() {
-            if item.1.raw == 0 {
-                continue;
-            }
-            // is in kernel space
-            let address = item.1.raw;
-            if is_kernel_space(address) {
-                if is_kernel_session_space(address) {
-                    // todo:
-                } else {
-                    // todo:
-                }
+    let process_module_mutex_option =
+        if process_id != 0 && process_id != 4 {
+            if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id) {
+                Some(process_module_mutex.clone())
             } else {
-                let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+                warn!("Don't find process_id: {process_id} in RUNNING_PROCESSES_MODULES_MAP");
+                None
+            }
+        } else {
+            None
+        };
+
+    let kernel_module_lock = RUNNING_KERNEL_MODULES_MAP.lock();
+    for item in stacks.iter_mut() {
+        if item.1.raw == 0 {
+            continue;
+        }
+        // is in kernel space
+        let address = item.1.raw;
+        if is_kernel_space(address) {
+            if is_kernel_session_space(address) {
+                // todo:
+            } else {
+                let cursor = kernel_module_lock.upper_bound(Bound::Included(&address));
                 if let Some(module_info_running) = cursor.value() {
                     if address
                         >= module_info_running.base_of_dll
                             + module_info_running.size_of_image as u64
                     {
+                        warn!("Cross the border address: {address:#x} in the kernel. the module start: {:#x} size: {:#x} {}", 
+                            module_info_running.base_of_dll, module_info_running.size_of_image, module_info_running.module_info.file_name);
+                    } else {
+                        item.1.relative = Some((
+                            module_info_running.id,
+                            (address - module_info_running.base_of_dll) as u32,
+                        ));
+                    }
+                } else {
+                    warn!("{address:#x} is not find in kernel space");
+                }
+            }
+        } else {
+            if let Some(ref process_module_mutex) = process_module_mutex_option {
+                let process_error_lock = process_module_mutex.0.lock();
+                let process_module_lock = process_module_mutex.1.lock();
+    
+                let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+                if let Some(module_info_running) = cursor.value() {
+                    if address
+                        >= module_info_running.base_of_dll + module_info_running.size_of_image as u64
+                    {
                         if process_error_lock.is_none() {
-                            warn!("Cross the border address: {address:#x} in the [{process_id}] the module start: {:#x} size: {:#x}", module_info_running.base_of_dll, module_info_running.size_of_image);
+                            warn!("Cross the border address: {address:#x} in the [{process_id}]. the module start: {:#x} size: {:#x} {}",
+                                module_info_running.base_of_dll, module_info_running.size_of_image, module_info_running.module_info.file_name);
                         }
                     } else {
                         item.1.relative = Some((
@@ -117,8 +147,6 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                 }
             }
         }
-    } else {
-        warn!("Don't find process_id: {process_id} in RUNNING_MODULES_MAP");
     }
 }
 
@@ -229,7 +257,8 @@ fn enum_drivers() {
                     continue;
                 }
                 unsafe {
-                    driver_image_bases.set_len(cb_needed as usize / mem::size_of_val(&driver_image_bases[0]));
+                    driver_image_bases
+                        .set_len(cb_needed as usize / mem::size_of_val(&driver_image_bases[0]));
                 }
                 break;
             }
@@ -243,13 +272,13 @@ fn enum_drivers() {
     let system_root = std::env::var("SystemRoot").unwrap_or(String::from("C:\\Windows"));
     let mut vec = Vec::<u16>::with_capacity(MAX_PATH as usize);
     for image_base in driver_image_bases.iter() {
-        let slice = unsafe{ slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity()) };
-        let r = unsafe{ GetDeviceDriverFileNameW(*image_base, slice) }; 
+        let slice = unsafe { slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity()) };
+        let r = unsafe { GetDeviceDriverFileNameW(*image_base, slice) };
         let file_name = if 0 == r {
             warn!("Failed to GetDeviceDriverFileNameW: {}", unsafe {
                 GetLastError().unwrap_err()
             });
-            String::new()
+            continue;
         } else {
             unsafe { U16CStr::from_ptr(vec.as_mut_ptr(), r as usize).unwrap_or_default() }
                 .to_string()
@@ -264,7 +293,80 @@ fn enum_drivers() {
         } else {
             file_name
         };
-        println!("{file_name}");
+        let (image_size, time_date_stamp) = match get_image_info_from_file(file_name.as_str()) {
+            Err(e) => {
+                warn!("Failed to get_image_info_from_file: {file_name} {e}");
+                continue;
+            }
+            Ok(info) => info,
+        };
+
+        let (id, module_info_arc) = module_map_insert(file_name, time_date_stamp);
+        let module_info_running = ModuleInfoRunning {
+            id: id as u32,
+            module_info: module_info_arc.clone(),
+            base_of_dll: *image_base as u64,
+            size_of_image: image_size,
+            entry_point: 0,
+            start: TimeStamp(0),
+        };
+        let _ = RUNNING_KERNEL_MODULES_MAP
+            .lock()
+            .try_insert(*image_base as u64, module_info_running);
+    }
+}
+
+fn get_image_info_from_file(
+    file_name: &str,
+) -> Result<(/*image_size*/ u32, /*time_data_stamp*/ u32)> {
+    let mut file = match File::open(file_name) {
+        Err(e) => {
+            return Err(anyhow!("Failed to open file: {file_name} {e}"));
+        }
+        Ok(file) => file,
+    };
+    let mut data = vec![0u8; mem::size_of::<IMAGE_DOS_HEADER>()];
+    let nt_header_offset = match file.read(&mut data) {
+        Err(e) => {
+            return Err(anyhow!("Faile to read file: {file_name} {e}"));
+        }
+        Ok(size) => {
+            if size != mem::size_of::<IMAGE_DOS_HEADER>() {
+                return Err(anyhow!(
+                    "The return size: {size} is not equal mem::size_of::<IMAGE_DOS_HEADER>()"
+                ));
+            }
+            let dos_header: &IMAGE_DOS_HEADER = unsafe { mem::transmute(data.as_ptr()) };
+            dos_header.e_lfanew
+        }
+    };
+
+    let mut data = vec![0u8; mem::size_of::<IMAGE_NT_HEADERS64>()];
+    if let Err(e) = file.seek(SeekFrom::Start(nt_header_offset as u64)) {
+        return Err(anyhow!("Failed to seek file: {file_name} {e}"));
+    }
+    match file.read(&mut data) {
+        Err(e) => {
+            return Err(anyhow!("Faile to read file: {file_name} {e}"));
+        }
+        Ok(size) => {
+            if size != mem::size_of::<IMAGE_NT_HEADERS64>() {
+                return Err(anyhow!(
+                    "The return size: {size} is not equal mem::size_of::<IMAGE_NT_HEADERS64>()"
+                ));
+            }
+            let nt_header: &IMAGE_NT_HEADERS64 = unsafe { mem::transmute(data.as_ptr()) };
+            let time_data_stamp = nt_header.FileHeader.TimeDateStamp;
+            let image_size = if nt_header.FileHeader.SizeOfOptionalHeader
+                == mem::size_of::<IMAGE_NT_HEADERS64>() as u16
+            {
+                nt_header.OptionalHeader.SizeOfImage
+            } else {
+                let nt_header: &IMAGE_NT_HEADERS32 = unsafe { mem::transmute(data.as_ptr()) };
+                nt_header.OptionalHeader.SizeOfImage
+            };
+            Ok((image_size, time_data_stamp))
+        }
     }
 }
 
@@ -299,6 +401,26 @@ fn enum_processes(selected_process_ids: &Vec<u32>) {
         for id in process_ids.iter() {
             process_init(*id);
         }
+    }
+}
+
+fn module_map_insert(
+    file_name: String,
+    time_date_stamp: u32,
+) -> (/*id*/ usize, /*id*/ Arc<ModuleInfo>) {
+    let mut module_lock = MODULES_MAP.lock();
+    if let Some(some) = module_lock.get_full(&(file_name.clone(), time_date_stamp)) {
+        (some.0, some.2.clone())
+    } else {
+        let module_info_arc = Arc::new(ModuleInfo {
+            file_name: file_name.clone(),
+            time_data_stamp: time_date_stamp,
+        });
+        let entry = module_lock.insert_full(
+            (file_name.clone(), time_date_stamp),
+            module_info_arc.clone(),
+        );
+        (entry.0, module_info_arc)
     }
 }
 
@@ -577,5 +699,4 @@ mod tests {
     fn enum_drivers() {
         super::enum_drivers();
     }
-
 }
