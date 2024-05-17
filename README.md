@@ -18,7 +18,6 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 
 # supported os version
 - [x] windows11 x64
-- [ ] windows11 x32
 - [ ] windows10 x64
 - [ ] windows10 x32
 
