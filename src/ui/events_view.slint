@@ -31,30 +31,80 @@ export component EventsView inherits VerticalBox {
     
     HorizontalBox {
         alignment: space-between;
-        spacing: 5rem;
         text-element := Text {
-            height: 2rem;
             text: @tr("Events View");
-            font-size: 1.5rem;
+            font-size: 5mm;
             horizontal-alignment: left;
+            vertical-alignment: center;
         }
-        LineEdit {
-            width: 50rem;
-            height: 2rem;
-            placeholder-text: "find items i.e. process_id = 1 && properties.xxx = 1";
-
-            private property <{result: bool, indexes: [int], error: string}> row-find-info;
-
-            accepted(text) => {
-                self.row-find-info = EventsViewData.row-find(text);
-                if self.row-find-info.result {
-                    if self.row-find-info.indexes.length != 0 {
-                        table_view.set-current-row(self.row-find-info.indexes[0]);
-                    } else {
-                        debug("no row is find");
+        Rectangle {
+            border-width: 1px;
+            border-color: Palette.foreground.darker(5.0);
+            width: self.preferred-width;
+            HorizontalBox {
+                spacing: 2px;
+                private property <{result: bool, indexes: [int], error: string}> row-find-info;
+                private property <string> find-status;
+                private property <int> current-row-index;
+                LineEdit {
+                    width: 22rem;
+                    height: 7mm;
+                    placeholder-text: "i.e. process_id = 1 && properties.xxx = 1";
+        
+                    accepted(text) => {
+                        row-find-info = EventsViewData.row-find(text);
+                        if row-find-info.result {
+                            current-row-index = 0;
+                            table_view.set-current-row(row-find-info.indexes[current-row-index])
+                        }
                     }
-                } else {
-                    debug(self.row-find-info.error);
+                }
+                Text {
+                    width: 8rem;
+                    height: 7mm;
+                    vertical-alignment: center;
+                    text: row-find-info.error;
+                    color: row-find-info.result ? Palette.foreground : #ec5353;
+                }
+                Rectangle {
+                    width: 6mm;
+                    height: 6mm;
+                    border-width: ta_up.pressed ? 1px : 0px;
+                    border-color: Palette.accent-background;
+                    Path {
+                        width: 12px;
+                        height: 12px;
+                        commands: "M6 10.5 C6.27614 10.5 6.5 10.2761 6.5 10 V3.20711 L9.14645 5.85355 C9.34171 6.04882 9.65829 6.04882 9.85355 5.85355 C10.0488 5.65829 10.0488 5.34171 9.85355 5.14645 L6.35355 1.64645 C6.15829 1.45118 5.84171 1.45118 5.64645 1.64645 L2.14645 5.14645 C1.95118 5.34171 1.95118 5.65829 2.14645 5.85355 C2.34171 6.04882 2.65829 6.04882 2.85355 5.85355 L5.5 3.20711 V10 C5.5 10.2761 5.72386 10.5 6 10.5 Z";
+                        fill: Palette.foreground.darker(0.5);
+                    }
+                    ta_up := TouchArea {
+                        clicked => {
+                            if current-row-index - 1 >= 0 {
+                                current-row-index =  current-row-index - 1;
+                                table_view.set-current-row(row-find-info.indexes[current-row-index])
+                            }
+                        }
+                    }
+                }
+                Rectangle {
+                    width: 6mm;
+                    height: 6mm;
+                    border-width: ta_down.pressed ? 1px : 0px;
+                    border-color: Palette.accent-background;
+                    Path {
+                        width: 12px;
+                        height: 12px;
+                        commands: "M6 1.5 C6.27614 1.5 6.5 1.72386 6.5 2 V8.79289 L9.14645 6.14645 C9.34171 5.95118 9.65829 5.95118 9.85355 6.14645 C10.0488 6.34171 10.0488 6.65829 9.85355 6.85355 L6.35355 10.3536 C6.15829 10.5488 5.84171 10.5488 5.64645 10.3536 L2.14645 6.85355 C1.95118 6.65829 1.95118 6.34171 2.14645 6.14645 C2.34171 5.95118 2.65829 5.95118 2.85355 6.14645 L5.5 8.79289 V2 C5.5 1.72386 5.72386 1.5 6 1.5 Z";
+                        fill: Palette.foreground.darker(0.5);
+                    }
+                    ta_down := TouchArea {
+                        clicked => {
+                            if current-row-index + 1 < row-find-info.indexes.length {
+                                current-row-index =  current-row-index + 1;
+                                table_view.set-current-row(row-find-info.indexes[current-row-index])
+                            }
+                        }
+                    }
                 }
             }
         }
