@@ -1,7 +1,7 @@
 // Copyright © SixtyFPS GmbH <info@slint.dev>
 // SPDX-License-Identifier: MIT
 
-import { HorizontalBox, VerticalBox, ListView, StandardListView, CheckBox, Button, LineEdit } from "std-widgets.slint";
+import { HorizontalBox, VerticalBox, ListView, StandardListView, CheckBox, Button, LineEdit, Palette } from "std-widgets.slint";
 
 export struct EventDesc {
     name: string,
@@ -19,16 +19,31 @@ export component EventsEnables inherits VerticalBox {
     width: 25rem;
 
     Text {
-        height: self.font-size + 2px;
         text: @tr("Events Enables");
-        font-size: 1.5rem;
+        font-size: 5mm;
         horizontal-alignment: left;
+        vertical-alignment: center;
     }
     HorizontalBox {
-        is_expand := Button {
-            height: 2rem;
-            text: self.checked ? "-" : "+";
-            checkable: true;
+        is_expand := Rectangle {
+            out property <bool> checked: false;
+
+            width: 6mm;
+            height: 6mm;
+            border-width: ta.pressed ? 1px : 0px;
+            border-color: Palette.accent-background;
+            border-radius: 4px;
+
+            Text {
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                text: checked ? "-" : "+";
+            }
+            ta := TouchArea {
+                clicked => {
+                    checked = !checked;
+                }
+            }
         }
         LineEdit {
             height: 2rem;
