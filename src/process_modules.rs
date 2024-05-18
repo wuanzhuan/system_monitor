@@ -528,20 +528,14 @@ fn process_init(process_id: u32) {
             if let Err(e) = r {
                 warn!("Failed to GetModuleInformation: {}", e);
             }
-            let mut module_lock = MODULES_MAP.lock();
-            let (id, module_info_arc) =
-                if let Some(some) = module_lock.get_full(&(file_name.clone(), 0)) {
-                    (some.0, some.2.clone())
-                } else {
-                    let module_info_arc = Arc::new(ModuleInfo {
-                        file_name: file_name.clone(),
-                        time_data_stamp: 0,
-                    });
-                    let entry =
-                        module_lock.insert_full((file_name.clone(), 0), module_info_arc.clone());
-                    (entry.0, module_info_arc)
-                };
-            drop(module_lock);
+            let (_, time_date_stamp) = match get_image_info_from_file(file_name.as_str()) {
+                Ok(info) => info,
+                Err(e) => {
+                    warn!("Failed to get_image_info_from_file: {e}");
+                    (0, 0)
+                }
+            };
+            let (id, module_info_arc) = module_map_insert(file_name.clone(), time_date_stamp);
 
             let module_info_running = ModuleInfoRunning {
                 id: id as u32,
@@ -579,24 +573,7 @@ fn process_end(process_id: u32) {
 }
 
 fn process_modules_load(image: &Image, timestamp: TimeStamp) {
-    let mut module_lock = MODULES_MAP.lock();
-    let (id, module_info_arc) = if let Some(some) =
-        module_lock.get_full(&(image.file_name.clone(), image.time_date_stamp))
-    {
-        (some.0, some.2.clone())
-    } else {
-        let module_info_arc = Arc::new(ModuleInfo {
-            file_name: image.file_name.clone(),
-            time_data_stamp: 0,
-        });
-        let entry = module_lock.insert_full(
-            (image.file_name.clone(), image.time_date_stamp),
-            module_info_arc.clone(),
-        );
-        (entry.0, module_info_arc)
-    };
-    drop(module_lock);
-
+    let (id, module_info_arc) = module_map_insert(image.file_name.clone(), image.time_date_stamp);
     let module_info_running = ModuleInfoRunning {
         id: id as u32,
         module_info: module_info_arc.clone(),
