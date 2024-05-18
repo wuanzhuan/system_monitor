@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import { HorizontalBox, VerticalBox, ListView, StandardListView, CheckBox, Button, LineEdit, Palette } from "std-widgets.slint";
+import { FindBar } from "find_bar.slint";
 
 export struct EventDesc {
     name: string,
@@ -12,11 +13,32 @@ export global EnablesData {
     in property <[EventDesc]> event_descs;
     callback toggled_major(int, bool);
     callback toggled_minor(int, int, bool);
+    callback row-find(/*event_name*/string) -> {result: bool, indexes: [int], error: string};
 }
 
 export component EventsEnables inherits VerticalBox {
     spacing: 2mm;
     width: 25rem;
+
+    private property <int> current-row: -1;
+    private property <length> item-height: list-view.viewport-height / EnablesData.event_descs.length;
+    private property <length> current-item-y: list-view.viewport-y + current-row * item-height;
+
+    function set-current-row(index: int) {
+        if (index < 0 || index >= EnablesData.event_descs.length) {
+            return;
+        }
+
+        current-row = index;
+
+        if (current-item-y < 0) {
+            list-view.viewport-y += 0 - current-item-y;
+        }
+
+        if (current-item-y + item-height > list-view.visible-height) {
+            list-view.viewport-y -= current-item-y + item-height - list-view.visible-height;
+        }
+    }
 
     HorizontalBox {
         spacing: 2mm;
@@ -47,23 +69,37 @@ export component EventsEnables inherits VerticalBox {
             }
         }
     }
-    LineEdit {
-        height: 2rem;
+    FindBar {
+        input-length: 12rem;
         placeholder-text: "i.e. thread";
+
+        row-find(filter_expr) => {
+            return EnablesData.row-find(filter_expr);
+        }
+        set-current-row(index) => {
+            set-current-row(index);
+        }
     }
-    ListView {
-        for major[index_major] in EnablesData.event_descs: HorizontalBox {
-            major_cb := CheckBox {
-                text: major.name;
-                toggled => {EnablesData.toggled_major(index_major, self.checked)}
-            }
-            if is_expand.checked : VerticalBox {
-                for minor[index_minor] in major.minors : HorizontalBox {
-                    minor_cb := CheckBox {
-                        text: minor;
-                        toggled => {
-                            if (self.checked) {major_cb.checked = true}
-                            EnablesData.toggled_minor(index_major, index_minor, self.checked)
+    list-view := ListView {
+        for major[index_major] in EnablesData.event_descs: Rectangle {
+            private property <bool> selected: index_major == current-row;
+
+            border-color: selected ? Palette.selection-background : transparent;
+            border-width: selected ? 1px : 0px;
+
+            HorizontalBox {
+                major_cb := CheckBox {
+                    text: major.name;
+                    toggled => {EnablesData.toggled_major(index_major, self.checked)}
+                }
+                if is_expand.checked : VerticalBox {
+                    for minor[index_minor] in major.minors : HorizontalBox {
+                        minor_cb := CheckBox {
+                            text: minor;
+                            toggled => {
+                                if (self.checked) {major_cb.checked = true}
+                                EnablesData.toggled_minor(index_major, index_minor, self.checked)
+                            }
                         }
                     }
                 }
