@@ -15,16 +15,17 @@ export global EnablesData {
 }
 
 export component EventsEnables inherits VerticalBox {
-    spacing: 1rem;
+    spacing: 2mm;
     width: 25rem;
 
-    Text {
-        text: @tr("Events Enables");
-        font-size: 5mm;
-        horizontal-alignment: left;
-        vertical-alignment: center;
-    }
     HorizontalBox {
+        spacing: 2mm;
+        Text {
+            text: @tr("Events Enables");
+            font-size: 5mm;
+            horizontal-alignment: left;
+            vertical-alignment: center;
+        }
         is_expand := Rectangle {
             out property <bool> checked: false;
 
@@ -45,10 +46,10 @@ export component EventsEnables inherits VerticalBox {
                 }
             }
         }
-        LineEdit {
-            height: 2rem;
-            placeholder-text: "please query events";
-        }
+    }
+    LineEdit {
+        height: 2rem;
+        placeholder-text: "i.e. thread";
     }
     ListView {
         for major[index_major] in EnablesData.event_descs: HorizontalBox {
