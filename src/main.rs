@@ -116,7 +116,7 @@ fn main() {
         });
     let event_descs_1 = event_descs.clone();
     app.global::<EnablesData>().on_row_find(move |event_name| {
-        let mut vec = vec![0i32];
+        let mut vec = vec![];
         for (index, event_desc) in event_descs_1.iter().enumerate() {
             if event_desc.name.to_ascii_lowercase().contains(event_name.to_ascii_lowercase().as_str()) {
                 vec.push(index as i32);
