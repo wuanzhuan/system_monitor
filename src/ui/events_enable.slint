@@ -16,16 +16,19 @@ export global EnablesData {
     callback row-find(/*event_name*/string) -> {result: bool, indexes: [int], error: string};
 }
 
-export component EventsEnables inherits VerticalBox {
-    spacing: 2mm;
-    width: 25rem;
-
+export component EventsEnables {
     private property <int> current-row: -1;
     private property <length> item-height: list-view.viewport-height / EnablesData.event_descs.length;
     private property <length> current-item-y: list-view.viewport-y + current-row * item-height;
 
+    forward-focus: i-focus-scope;
+
     function set-current-row(index: int) {
         if (index < 0 || index >= EnablesData.event_descs.length) {
+            return;
+        }
+
+        if index == current-row {
             return;
         }
 
@@ -39,71 +42,98 @@ export component EventsEnables inherits VerticalBox {
             list-view.viewport-y -= current-item-y + item-height - list-view.visible-height;
         }
     }
-
-    HorizontalBox {
+    
+    VerticalBox {
         spacing: 2mm;
-        Text {
-            text: @tr("Events Enables");
-            font-size: 5mm;
-            horizontal-alignment: left;
-            vertical-alignment: center;
-        }
-        is_expand := Rectangle {
-            out property <bool> checked: false;
+        width: 25rem;
 
-            width: 6mm;
-            height: 6mm;
-            border-width: ta.pressed ? 1px : 0px;
-            border-color: Palette.accent-background;
-            border-radius: 4px;
-
+        HorizontalBox {
+            spacing: 2mm;
             Text {
-                horizontal-alignment: center;
+                text: @tr("Events Enables");
+                font-size: 5mm;
+                horizontal-alignment: left;
                 vertical-alignment: center;
-                text: checked ? "-" : "+";
             }
-            ta := TouchArea {
-                clicked => {
-                    checked = !checked;
+            is_expand := Rectangle {
+                out property <bool> checked: false;
+    
+                width: 6mm;
+                height: 6mm;
+                border-width: ta.pressed ? 1px : 0px;
+                border-color: Palette.accent-background;
+                border-radius: 4px;
+    
+                Text {
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    text: checked ? "-" : "+";
+                }
+                ta := TouchArea {
+                    clicked => {
+                        checked = !checked;
+                    }
                 }
             }
         }
-    }
-    FindBar {
-        input-length: 12rem;
-        placeholder-text: "i.e. thread";
-
-        row-find(filter_expr) => {
-            return EnablesData.row-find(filter_expr);
+        FindBar {
+            input-length: 12rem;
+            placeholder-text: "i.e. thread";
+    
+            row-find(event-name) => {
+                return EnablesData.row-find(event-name);
+            }
+            set-current-row(index) => {
+                set-current-row(index);
+            }
         }
-        set-current-row(index) => {
-            set-current-row(index);
-        }
-    }
-    list-view := ListView {
-        for major[index_major] in EnablesData.event_descs: Rectangle {
-            private property <bool> selected: index_major == current-row;
-
-            border-color: selected ? Palette.selection-background : transparent;
-            border-width: selected ? 1px : 0px;
-
-            HorizontalBox {
-                major_cb := CheckBox {
-                    text: major.name;
-                    toggled => {EnablesData.toggled_major(index_major, self.checked)}
-                }
-                if is_expand.checked : VerticalBox {
-                    for minor[index_minor] in major.minors : HorizontalBox {
-                        minor_cb := CheckBox {
-                            text: minor;
-                            toggled => {
-                                if (self.checked) {major_cb.checked = true}
-                                EnablesData.toggled_minor(index_major, index_minor, self.checked)
+        list-view := ListView {
+            for major[index_major] in EnablesData.event_descs: Rectangle {
+                private property <bool> selected: index_major == current-row;
+    
+                border-color: selected ? Palette.selection-background : transparent;
+                border-width: selected ? 1px : 0px;
+    
+                HorizontalBox {
+                    major_cb := CheckBox {
+                        text: major.name;
+                        toggled => {
+                            EnablesData.toggled_major(index_major, self.checked);
+                            set-current-row(index_major);
+                            root.focus();
+                        }
+                    }
+                    if is_expand.checked : VerticalBox {
+                        for minor[index_minor] in major.minors : HorizontalBox {
+                            minor_cb := CheckBox {
+                                text: minor;
+                                toggled => {
+                                    if (self.checked) {major_cb.checked = true}
+                                    EnablesData.toggled_minor(index_major, index_minor, self.checked);
+                                    set-current-row(index_major);
+                                    root.focus();
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    i-focus-scope := FocusScope {
+        x: 0;
+        width: 0; // Do not react on clicks
+
+        key-pressed(event) => {
+            if (event.text == Key.UpArrow) {
+                root.set-current-row(root.current-row - 1);
+                return accept;
+            } else if (event.text == Key.DownArrow) {
+                root.set-current-row(root.current-row + 1);
+                return accept;
+            }
+            reject
         }
     }
 }
