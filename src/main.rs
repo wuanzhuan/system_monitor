@@ -118,7 +118,7 @@ fn main() {
     app.global::<EnablesData>().on_row_find(move |event_name| {
         let mut vec = vec![0i32];
         for (index, event_desc) in event_descs_1.iter().enumerate() {
-            if event_desc.name.contains(event_name.as_str()) {
+            if event_desc.name.to_ascii_lowercase().contains(event_name.to_ascii_lowercase().as_str()) {
                 vec.push(index as i32);
             }
         }
