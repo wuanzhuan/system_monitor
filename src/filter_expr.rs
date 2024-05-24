@@ -21,11 +21,18 @@ pub struct Path{pub key: String, pub field: Option<String>}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FilterExpr {
-    KvPair{key: Path, value: Value},
+    KeyWords,
     Parentheses(Box<FilterExpr>),
+    Non(Box<FilterExpr>),
     And(Box<FilterExpr>, Box<FilterExpr>),
     Or(Box<FilterExpr>, Box<FilterExpr>),
-    Non(Box<FilterExpr>)
+    KvPair{key: Path, value: Value},
+    FindValue(Value),
+}
+
+// start with #
+pub enum KeyWords {
+    HandlePair
 }
 
 pub fn parse(src: &str) -> Result<FilterExpr> {
