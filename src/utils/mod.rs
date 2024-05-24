@@ -7,7 +7,7 @@ use std::ops::Sub;
 pub struct TimeStamp(pub i64);
 
 impl TimeStamp {
-    pub fn to_datetime_local(&self) -> DateTime::<Local> {
+    pub fn to_datetime_local(&self) -> DateTime<Local> {
         let duration = Utc.ymd(1970, 1, 1) - Utc.ymd(1601, 1, 1);
         let dt_utc = Utc.timestamp_millis(self.0 / 10 / 1000 - duration.num_milliseconds());
         DateTime::<Local>::from(dt_utc)
@@ -39,8 +39,9 @@ impl Sub for TimeStamp {
 
 impl Serialize for TimeStamp {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer {
+    where
+        S: Serializer,
+    {
         serializer.serialize_str(self.to_string_detail().as_str())
     }
 }
@@ -74,12 +75,13 @@ pub fn get_path_from_commandline(commandline: &str) -> String {
     string
 }
 
-
 #[cfg(test)]
 mod tests {
     #[test]
     fn get_path_from_commandline() {
-        let s = super::get_path_from_commandline(r#"\"C:\\Program Files\\Git\\cmd\\git.exe\" show --textconv :src/event_trace/mod.rs"#);
+        let s = super::get_path_from_commandline(
+            r#"\"C:\\Program Files\\Git\\cmd\\git.exe\" show --textconv :src/event_trace/mod.rs"#,
+        );
         assert_eq!(s, String::from(r"C:\Program Files\Git\cmd\git.exe"));
     }
 }

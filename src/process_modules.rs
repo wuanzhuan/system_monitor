@@ -79,17 +79,16 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
     use std::ops::Bound;
 
-    let process_module_mutex_option =
-        if process_id != 0 && process_id != 4 {
-            if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id) {
-                Some(process_module_mutex.clone())
-            } else {
-                warn!("Don't find process_id: {process_id} in RUNNING_PROCESSES_MODULES_MAP");
-                None
-            }
+    let process_module_mutex_option = if process_id != 0 && process_id != 4 {
+        if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id) {
+            Some(process_module_mutex.clone())
         } else {
+            warn!("Don't find process_id: {process_id} in RUNNING_PROCESSES_MODULES_MAP");
             None
-        };
+        }
+    } else {
+        None
+    };
 
     let kernel_module_lock = RUNNING_KERNEL_MODULES_MAP.lock();
     for item in stacks.iter_mut() {
@@ -124,11 +123,12 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
             if let Some(ref process_module_mutex) = process_module_mutex_option {
                 let process_error_lock = process_module_mutex.0.lock();
                 let process_module_lock = process_module_mutex.1.lock();
-    
+
                 let cursor = process_module_lock.upper_bound(Bound::Included(&address));
                 if let Some(module_info_running) = cursor.value() {
                     if address
-                        >= module_info_running.base_of_dll + module_info_running.size_of_image as u64
+                        >= module_info_running.base_of_dll
+                            + module_info_running.size_of_image as u64
                     {
                         if process_error_lock.is_none() {
                             warn!("Cross the border address: {address:#x} in the [{process_id}]. the module start: {:#x} size: {:#x} {}",

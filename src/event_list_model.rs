@@ -1,11 +1,10 @@
-use slint::{Model, ModelRc, StandardListViewItem, ModelNotify, ModelTracker};
-use std::sync::Arc;
 use crate::event_list::EventList;
 use crate::event_list::Node;
 use crate::event_record_model::EventRecordModel;
 use crate::filter_expr::FilterExpr;
-use anyhow::{Result, anyhow};
-
+use anyhow::{anyhow, Result};
+use slint::{Model, ModelNotify, ModelRc, ModelTracker, StandardListViewItem};
+use std::sync::Arc;
 
 pub struct ListModel<'a: 'static> {
     // the backing data, access by cursor
@@ -25,13 +24,12 @@ impl<'a> Model for ListModel<'a> {
         if row >= self.list.len() {
             return None;
         }
-        self.list.get_by_index(row).map(|some| {
-            ModelRc::new(some.value.clone())
-        })
+        self.list
+            .get_by_index(row)
+            .map(|some| ModelRc::new(some.value.clone()))
     }
 
-    fn set_row_data(&self, #[allow(unused)] row: usize, #[allow(unused)] data: Self::Data) {
-    }
+    fn set_row_data(&self, #[allow(unused)] row: usize, #[allow(unused)] data: Self::Data) {}
 
     fn model_tracker(&self) -> &dyn ModelTracker {
         &self.notify
@@ -47,7 +45,10 @@ impl<'a> Model for ListModel<'a> {
 // the ModelNotify
 impl<'a> ListModel<'a> {
     pub fn new(list: Arc<EventList<EventRecordModel>>) -> Self {
-        Self { list, notify: Default::default()}
+        Self {
+            list,
+            notify: Default::default(),
+        }
     }
 
     /// Add a row at the end of the model
@@ -70,12 +71,11 @@ impl<'a> ListModel<'a> {
 
     pub fn row_find(&self, filter_expr: FilterExpr) -> Result<Vec<i32>> {
         if let FilterExpr::KvPair { key, value } = filter_expr.clone() {
-            return self.list.traversal(|item| {
-                item.find_by_path_value(&key, &value)
-            });
+            return self
+                .list
+                .traversal(|item| item.find_by_path_value(&key, &value));
         } else {
             return Err(anyhow!("This is not KvPair expr"));
         }
     }
-
 }

@@ -1,20 +1,15 @@
+use crate::third_extend::strings::slice_to_string_uncheck;
 use crate::third_extend::strings::*;
-use std::{mem, slice, convert::TryFrom};
+use crate::third_extend::Guid;
+use crate::utils::TimeStamp;
+use linked_hash_map::LinkedHashMap;
+use serde::{ser::SerializeStruct, Serialize, Serializer};
+use std::{convert::TryFrom, mem, slice};
 use tracing::warn;
 use widestring::*;
-use windows::{
-    core::*,
-    Win32::Foundation::*, 
-    Win32::System::Diagnostics::Etw::*,
-};
-use serde::{Serialize, Serializer, ser::SerializeStruct};
-use linked_hash_map::LinkedHashMap;
-use crate::utils::TimeStamp;
-use crate::third_extend::Guid;
-use crate::third_extend::strings::slice_to_string_uncheck;
+use windows::{core::*, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*};
 
-
-pub struct Decoder<'a>{
+pub struct Decoder<'a> {
     event_record: &'a EVENT_RECORD,
     _event_info_vec: Vec<u8>,
     event_info: &'a TRACE_EVENT_INFO,
@@ -22,7 +17,7 @@ pub struct Decoder<'a>{
     property_info_array: &'a [EVENT_PROPERTY_INFO],
     user_data: &'a [u8],
     int_values: Vec<u16>,
-    pointer_size: u32
+    pointer_size: u32,
 }
 
 impl<'a> Decoder<'a> {
@@ -35,7 +30,8 @@ impl<'a> Decoder<'a> {
 
         let mut buffer_size = 4096u32;
         let mut event_info_vec = Vec::<u8>::with_capacity(buffer_size as usize);
-        let mut event_info: &mut TRACE_EVENT_INFO = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
+        let mut event_info: &mut TRACE_EVENT_INFO =
+            unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
         loop {
             let status = unsafe {
                 TdhGetEventInformation(
@@ -53,19 +49,43 @@ impl<'a> Decoder<'a> {
                 event_info = unsafe { mem::transmute(event_info_vec.as_mut_ptr()) };
                 continue;
             }
-            return Err(Error::new(WIN32_ERROR(status).to_hresult(), format!("Failded to TdhGetEventInformation: {} at: {}:{}", status, file!(), line!())));
+            return Err(Error::new(
+                WIN32_ERROR(status).to_hresult(),
+                format!(
+                    "Failded to TdhGetEventInformation: {} at: {}:{}",
+                    status,
+                    file!(),
+                    line!()
+                ),
+            ));
         }
 
         if event_info.TopLevelPropertyCount > event_info.PropertyCount {
-            return Err(Error::new(E_FAIL, format!("Too larget TopLevelPropertyCount: {} > PropertyCount: {} at: {}:{}", event_info.TopLevelPropertyCount, event_info.PropertyCount, file!(), line!())));
+            return Err(Error::new(
+                E_FAIL,
+                format!(
+                    "Too larget TopLevelPropertyCount: {} > PropertyCount: {} at: {}:{}",
+                    event_info.TopLevelPropertyCount,
+                    event_info.PropertyCount,
+                    file!(),
+                    line!()
+                ),
+            ));
         }
 
-        let event_info_slice = unsafe {slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize)};
+        let event_info_slice =
+            unsafe { slice::from_raw_parts(event_info_vec.as_ptr(), buffer_size as usize) };
         let property_info_array = unsafe {
-            slice::from_raw_parts(event_info.EventPropertyInfoArray.as_ptr(), event_info.PropertyCount as usize)
+            slice::from_raw_parts(
+                event_info.EventPropertyInfoArray.as_ptr(),
+                event_info.PropertyCount as usize,
+            )
         };
         let user_data = unsafe {
-            slice::from_raw_parts(event_record.UserData as *const u8, event_record.UserDataLength as usize)
+            slice::from_raw_parts(
+                event_record.UserData as *const u8,
+                event_record.UserDataLength as usize,
+            )
         };
         let int_values = vec![0u16; event_info.PropertyCount as usize];
         let pointer_size = if (header.Flags as u32 & EVENT_HEADER_FLAG_32_BIT_HEADER) != 0 {
@@ -75,7 +95,7 @@ impl<'a> Decoder<'a> {
         } else {
             mem::size_of::<*const u8>() as u32
         };
-        Ok(Self{
+        Ok(Self {
             event_record,
             _event_info_vec: event_info_vec,
             event_info,
@@ -83,55 +103,95 @@ impl<'a> Decoder<'a> {
             property_info_array,
             user_data,
             int_values,
-            pointer_size
+            pointer_size,
         })
     }
-    pub fn decode(&mut self) -> Result<EventRecordDecoded>{
+    pub fn decode(&mut self) -> Result<EventRecordDecoded> {
         let header = &self.event_record.EventHeader;
         let provider_id = Guid(header.ProviderId);
-        let event_guid= Guid(self.event_info.EventGuid);
+        let event_guid = Guid(self.event_info.EventGuid);
         let event_descriptor = EventDescriptor(self.event_info.EventDescriptor);
-        let decoding_source = DecodingSource::try_from(self.event_info.DecodingSource.0).unwrap_or_else(|e| {
-            warn!("{}", e);
-            DecodingSource::DecodingSourceMax
-        });
-        let provider_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderNameOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
-        let level_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.LevelNameOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
-        let channel_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ChannelNameOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
-        let keywords_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.KeywordsNameOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
+        let decoding_source = DecodingSource::try_from(self.event_info.DecodingSource.0)
+            .unwrap_or_else(|e| {
+                warn!("{}", e);
+                DecodingSource::DecodingSourceMax
+            });
+        let provider_name = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.ProviderNameOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
+        let level_name = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.LevelNameOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
+        let channel_name = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.ChannelNameOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
+        let keywords_name = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.KeywordsNameOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
         let event_name = {
             let event_name_offset = unsafe { self.event_info.Anonymous1.EventNameOffset };
             if event_name_offset != 0 {
                 u16cstr_from_bytes_truncate_offset(self.event_info_slice, event_name_offset)
-                    .unwrap_or_default().to_string().unwrap_or_default()
+                    .unwrap_or_default()
+                    .to_string()
+                    .unwrap_or_default()
             } else {
-                u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.TaskNameOffset)
-                    .unwrap_or_default().to_string().unwrap_or_default()
+                u16cstr_from_bytes_truncate_offset(
+                    self.event_info_slice,
+                    self.event_info.TaskNameOffset,
+                )
+                .unwrap_or_default()
+                .to_string()
+                .unwrap_or_default()
             }
         };
-        let opcode_name =
-            u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.OpcodeNameOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
-        let event_message =
-            u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.EventMessageOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
-        let provider_message =
-            u16cstr_from_bytes_truncate_offset(self.event_info_slice, self.event_info.ProviderMessageOffset)
-                .unwrap_or_default().to_string().unwrap_or_default();
+        let opcode_name = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.OpcodeNameOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
+        let event_message = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.EventMessageOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
+        let provider_message = u16cstr_from_bytes_truncate_offset(
+            self.event_info_slice,
+            self.event_info.ProviderMessageOffset,
+        )
+        .unwrap_or_default()
+        .to_string()
+        .unwrap_or_default();
 
         let properties = if is_string_event(header.Flags) {
-            let s = 
-            unsafe {
+            let s = unsafe {
                 U16CStr::from_ptr_truncate(
                     self.user_data.as_ptr() as *const u16,
                     (self.user_data.len() / 2) as usize,
                 )
                 .unwrap_or_default()
-                .to_string().unwrap_or_default()
+                .to_string()
+                .unwrap_or_default()
             };
             PropertyDecoded::String(s)
         } else {
@@ -139,12 +199,13 @@ impl<'a> Decoder<'a> {
             let r = self.decode_properties(
                 0,
                 self.event_info.TopLevelPropertyCount as u16,
-                &mut user_data_index
+                &mut user_data_index,
             );
             match r {
                 Ok(map) => PropertyDecoded::Struct(map),
                 Err(e) => {
-                    let is_stack_walk = self.event_record.EventHeader.ProviderId == super::event_kernel::STACK_WALK_GUID;
+                    let is_stack_walk = self.event_record.EventHeader.ProviderId
+                        == super::event_kernel::STACK_WALK_GUID;
                     if is_stack_walk {
                         return Err(e);
                     }
@@ -153,7 +214,7 @@ impl<'a> Decoder<'a> {
                 }
             }
         };
-        Ok(EventRecordDecoded{
+        Ok(EventRecordDecoded {
             provider_id,
             event_guid,
             event_descriptor,
@@ -169,7 +230,7 @@ impl<'a> Decoder<'a> {
             process_id: header.ProcessId,
             thread_id: header.ThreadId,
             timestamp: TimeStamp(header.TimeStamp),
-            properties
+            properties,
         })
     }
 
@@ -200,13 +261,15 @@ impl<'a> Decoder<'a> {
             // is needed for a subsequent property's length or count.
             if 0 == (property_info.Flags.0 & (PropertyStruct.0 | PropertyParamCount.0))
                 && unsafe { property_info.Anonymous2.count } == 1
-                && 0 == (property_info.Flags.0 & PropertyParamFixedCount.0) // if the event is compile by wdk earlier than wdk10, the PropertyParamFixedCount always is 0.so it is right too. 
+                && 0 == (property_info.Flags.0 & PropertyParamFixedCount.0)
+            // if the event is compile by wdk earlier than wdk10, the PropertyParamFixedCount always is 0.so it is right too.
             {
                 let in_type = unsafe { property_info.Anonymous1.nonStructType.InType } as i32;
                 if in_type == TDH_INTYPE_INT8.0 || in_type == TDH_INTYPE_UINT8.0 {
                     if self.user_data.len() - *user_data_index as usize >= 1 {
                         self.int_values[property_index as usize] = u8::from_le_bytes(
-                            self.user_data[*user_data_index as usize..*user_data_index as usize + 1]
+                            self.user_data
+                                [*user_data_index as usize..*user_data_index as usize + 1]
                                 .try_into()
                                 .unwrap(),
                         ) as u16;
@@ -214,7 +277,8 @@ impl<'a> Decoder<'a> {
                 } else if in_type == TDH_INTYPE_INT16.0 || in_type == TDH_INTYPE_UINT16.0 {
                     if self.user_data.len() - *user_data_index as usize >= 2 {
                         self.int_values[property_index as usize] = u16::from_le_bytes(
-                            self.user_data[*user_data_index as usize..*user_data_index as usize + 2]
+                            self.user_data
+                                [*user_data_index as usize..*user_data_index as usize + 2]
                                 .try_into()
                                 .unwrap(),
                         );
@@ -225,7 +289,8 @@ impl<'a> Decoder<'a> {
                 {
                     if self.user_data.len() - *user_data_index as usize >= 4 {
                         let v = u32::from_le_bytes(
-                            self.user_data[*user_data_index as usize..*user_data_index as usize + 4]
+                            self.user_data
+                                [*user_data_index as usize..*user_data_index as usize + 4]
                                 .try_into()
                                 .unwrap(),
                         );
@@ -234,11 +299,11 @@ impl<'a> Decoder<'a> {
                     }
                 }
             }
-    
+
             let in_type = unsafe { property_info.Anonymous1.nonStructType.InType };
             let out_type = unsafe { property_info.Anonymous1.nonStructType.OutType };
             let length = unsafe { property_info.Anonymous3.length };
-            let length_property_index = unsafe{ property_info.Anonymous3.lengthPropertyIndex };
+            let length_property_index = unsafe { property_info.Anonymous3.lengthPropertyIndex };
             let prop_length = if out_type == TDH_OUTTYPE_IPV6.0 as u16
                 && in_type == TDH_INTYPE_BINARY.0 as u16
                 && length == 0
@@ -256,7 +321,7 @@ impl<'a> Decoder<'a> {
             } else {
                 length
             };
-    
+
             let (array_count, is_array) = if (property_info.Flags.0 & PropertyParamCount.0) != 0 {
                 let count_property_index = unsafe { property_info.Anonymous2.countPropertyIndex };
                 if count_property_index >= property_index as u16 {
@@ -280,13 +345,15 @@ impl<'a> Decoder<'a> {
             if is_struct {
                 // If this property is a struct, recurse and print the child
                 // properties.
-                let struct_start_index = unsafe { property_info.Anonymous1.structType.StructStartIndex };
-                let num_of_struct_members = unsafe { property_info.Anonymous1.structType.NumOfStructMembers };
+                let struct_start_index =
+                    unsafe { property_info.Anonymous1.structType.StructStartIndex };
+                let num_of_struct_members =
+                    unsafe { property_info.Anonymous1.structType.NumOfStructMembers };
                 let struct_index_end = struct_start_index as u32 + num_of_struct_members as u32;
                 let r = self.decode_properties(
                     struct_start_index,
                     struct_index_end as u16,
-                    user_data_index
+                    user_data_index,
                 )?;
                 properties_object.insert(property_name, PropertyDecoded::Struct(r));
             } else {
@@ -295,30 +362,39 @@ impl<'a> Decoder<'a> {
                 let mut array_index = 0;
                 while array_index < array_count {
                     if (*user_data_index as usize) >= self.user_data.len() {
-                        // it is a empty string when user_data is 
-                        properties_array.append(&mut vec![String::from(""); (array_count - array_index) as usize]);
+                        // it is a empty string when user_data is
+                        properties_array.append(&mut vec![
+                            String::from("");
+                            (array_count - array_index) as usize
+                        ]);
                         array_index = array_count;
                         continue;
                     }
                     // If the property has an associated map (i.e. an enumerated type),
                     // try to look up the map data. (If this is an array, we only need
                     // to do the lookup on the first iteration.)
-                    let map_name_offset = unsafe { property_info.Anonymous1.nonStructType.MapNameOffset };
+                    let map_name_offset =
+                        unsafe { property_info.Anonymous1.nonStructType.MapNameOffset };
                     let mut _buffer_vec = Vec::<u8>::new();
                     let mut map_info: Option<*const EVENT_MAP_INFO> = None;
                     if map_name_offset != 0 && array_index == 0 {
                         if in_type == TDH_INTYPE_UINT8.0 as u16
-                           || in_type == TDH_INTYPE_UINT16.0 as u16
-                           || in_type == TDH_INTYPE_UINT32.0 as u16
-                           || in_type == TDH_INTYPE_HEXINT32.0 as u16
+                            || in_type == TDH_INTYPE_UINT16.0 as u16
+                            || in_type == TDH_INTYPE_UINT32.0 as u16
+                            || in_type == TDH_INTYPE_HEXINT32.0 as u16
                         {
-                            let map_name = u16cstr_from_bytes_truncate_offset(self.event_info_slice, map_name_offset);
+                            let map_name = u16cstr_from_bytes_truncate_offset(
+                                self.event_info_slice,
+                                map_name_offset,
+                            );
                             if let Some(map_name) = map_name {
                                 if !map_name.is_empty() {
                                     let mut buffer_size = 1024u32;
                                     loop {
-                                        _buffer_vec = Vec::<u8>::with_capacity(buffer_size as usize);
-                                        let _map_info: &mut EVENT_MAP_INFO = unsafe { mem::transmute(_buffer_vec.as_ptr()) };
+                                        _buffer_vec =
+                                            Vec::<u8>::with_capacity(buffer_size as usize);
+                                        let _map_info: &mut EVENT_MAP_INFO =
+                                            unsafe { mem::transmute(_buffer_vec.as_ptr()) };
                                         map_info = Some(_map_info);
                                         let status = unsafe {
                                             TdhGetEventMapInformation(
@@ -342,9 +418,9 @@ impl<'a> Decoder<'a> {
                             }
                         }
                     }
-    
+
                     let mut prop_buffer = Vec::<u16>::new();
-                    
+
                     if 0 == prop_length && in_type == TDH_INTYPE_NULL.0 as u16 {
                         // TdhFormatProperty doesn't handle INTYPE_NULL.
                         prop_buffer.push(0);
@@ -361,7 +437,7 @@ impl<'a> Decoder<'a> {
                         } else {
                             out_type
                         };
-    
+
                         let mut buffer_size = 1024u32;
                         prop_buffer.resize((buffer_size / 2) as usize, 0);
                         let mut userdataconsumed = 0u16;
@@ -393,19 +469,23 @@ impl<'a> Decoder<'a> {
                             return Err(Error::new(WIN32_ERROR(status).to_hresult(), format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} thread_id: {} timestamp: {}", self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp)));
                         }
                     }
-    
+
                     let s = U16CStr::from_slice(prop_buffer.as_slice())
                         .unwrap_or_default()
                         .to_string()
                         .unwrap_or_default();
                     properties_array.push(s);
-    
+
                     array_index += 1;
                 }
                 if is_array {
-                    properties_object.insert(property_name, PropertyDecoded::Array(properties_array));
+                    properties_object
+                        .insert(property_name, PropertyDecoded::Array(properties_array));
                 } else {
-                    properties_object.insert(property_name, PropertyDecoded::String(properties_array[0].clone()));
+                    properties_object.insert(
+                        property_name,
+                        PropertyDecoded::String(properties_array[0].clone()),
+                    );
                 }
             }
             property_index += 1;
@@ -419,16 +499,26 @@ pub fn is_string_event(flag: u16) -> bool {
     (flag & EVENT_HEADER_FLAG_STRING_ONLY as u16) != 0
 }
 
-pub fn decode_kernel_event(event_record: &EVENT_RECORD, event_name: &str, opcode_name: &str) -> EventRecordDecoded {
+pub fn decode_kernel_event(
+    event_record: &EVENT_RECORD,
+    event_name: &str,
+    opcode_name: &str,
+) -> EventRecordDecoded {
     let provider_id = Guid(event_record.EventHeader.ProviderId);
-    let event_guid= Guid(event_record.EventHeader.ProviderId);
+    let event_guid = Guid(event_record.EventHeader.ProviderId);
     let event_descriptor = EventDescriptor(event_record.EventHeader.EventDescriptor);
-    let decoding_source = DecodingSource::from_event_header(event_record.EventHeader.Flags, event_record.EventHeader.EventProperty);
+    let decoding_source = DecodingSource::from_event_header(
+        event_record.EventHeader.Flags,
+        event_record.EventHeader.EventProperty,
+    );
     let user_data = unsafe {
-        slice::from_raw_parts(event_record.UserData as *const u8, event_record.UserDataLength as usize)
+        slice::from_raw_parts(
+            event_record.UserData as *const u8,
+            event_record.UserDataLength as usize,
+        )
     };
     let properties = PropertyDecoded::String(slice_to_string_uncheck(user_data));
-    EventRecordDecoded{
+    EventRecordDecoded {
         provider_id,
         event_guid,
         event_descriptor,
@@ -444,7 +534,7 @@ pub fn decode_kernel_event(event_record: &EVENT_RECORD, event_name: &str, opcode
         process_id: event_record.EventHeader.ProcessId,
         thread_id: event_record.EventHeader.ThreadId,
         timestamp: TimeStamp(event_record.EventHeader.TimeStamp),
-        properties
+        properties,
     }
 }
 
@@ -462,12 +552,12 @@ pub struct EventRecordDecoded {
     pub opcode_name: String,
     pub event_message: String,
     pub provider_message: String,
-    #[serde(with="serde_custom_u32")]
+    #[serde(with = "serde_custom_u32")]
     pub process_id: u32,
-    #[serde(with="serde_custom_u32")]
+    #[serde(with = "serde_custom_u32")]
     pub thread_id: u32,
     pub timestamp: TimeStamp,
-    pub properties: PropertyDecoded
+    pub properties: PropertyDecoded,
 }
 
 #[derive(Debug, Serialize)]
@@ -506,7 +596,7 @@ pub enum DecodingSource {
     DecodingSourceWbem = DecodingSourceWbem.0 as u8,
     DecodingSourceWPP = DecodingSourceWPP.0 as u8,
     DecodingSourceTlg = DecodingSourceTlg.0 as u8,
-    DecodingSourceMax = DecodingSourceMax.0 as u8
+    DecodingSourceMax = DecodingSourceMax.0 as u8,
 }
 
 impl DecodingSource {
@@ -518,7 +608,7 @@ impl DecodingSource {
             EVENT_HEADER_PROPERTY_XML => Self::DecodingSourceXMLFile,
             EVENT_HEADER_PROPERTY_FORWARDED_XML => Self::DecodingSourceTlg,
             EVENT_HEADER_PROPERTY_LEGACY_EVENTLOG => Self::DecodingSourceWbem,
-            _ => Self::DecodingSourceMax
+            _ => Self::DecodingSourceMax,
         }
     }
 }
@@ -529,9 +619,13 @@ impl TryFrom<i32> for DecodingSource {
     fn try_from(v: i32) -> core::result::Result<Self, Self::Error> {
         let v = v as u8;
         if v > DecodingSource::DecodingSourceMax as u8 {
-            return Err(format!("the value: {v} is invalid for DecodingSource at: {}:{}", file!(), line!()));
+            return Err(format!(
+                "the value: {v} is invalid for DecodingSource at: {}:{}",
+                file!(),
+                line!()
+            ));
         }
-        let ds: DecodingSource = unsafe{ mem::transmute(v) };
+        let ds: DecodingSource = unsafe { mem::transmute(v) };
         Ok(ds)
     }
 }

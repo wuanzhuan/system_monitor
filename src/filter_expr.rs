@@ -1,8 +1,7 @@
-use chumsky::prelude::*;
+use anyhow::{Error, Result};
 use ariadne::{Color, Label, Report, ReportKind, Source};
+use chumsky::prelude::*;
 use std::collections::HashMap;
-use anyhow::{Result, Error};
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
@@ -17,7 +16,10 @@ pub enum Value {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Path{pub key: String, pub field: Option<String>}
+pub struct Path {
+    pub key: String,
+    pub field: Option<String>,
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FilterExpr {
@@ -26,42 +28,45 @@ pub enum FilterExpr {
     Non(Box<FilterExpr>),
     And(Box<FilterExpr>, Box<FilterExpr>),
     Or(Box<FilterExpr>, Box<FilterExpr>),
-    KvPair{key: Path, value: Value},
+    KvPair { key: Path, value: Value },
     FindValue(Value),
 }
 
 // start with #
 pub enum KeyWords {
-    HandlePair
+    HandlePair,
 }
 
 pub fn parse(src: &str) -> Result<FilterExpr> {
-    parse_filter_expr().parse(src.trim()).into_result().map_err(|e| {
-        let mut s = String::with_capacity(100);
-        e.into_iter().for_each(|e| {
-            let report = Report::build(ReportKind::Error, (), e.span().start)
-                .with_message(e.to_string())
-                .with_label(
-                    Label::new(e.span().into_range())
-                        .with_message(e.reason().to_string())
-                        .with_color(Color::Red),
-                )
-                .finish();
+    parse_filter_expr()
+        .parse(src.trim())
+        .into_result()
+        .map_err(|e| {
+            let mut s = String::with_capacity(100);
+            e.into_iter().for_each(|e| {
+                let report = Report::build(ReportKind::Error, (), e.span().start)
+                    .with_message(e.to_string())
+                    .with_label(
+                        Label::new(e.span().into_range())
+                            .with_message(e.reason().to_string())
+                            .with_color(Color::Red),
+                    )
+                    .finish();
                 let mut vec = Vec::new();
                 report.write(Source::from(&src), &mut vec).unwrap();
                 s.push_str(format!("{}\n", String::from_utf8(vec).unwrap()).as_str());
-        });
-        Error::msg(s)
-    })
+            });
+            Error::msg(s)
+        })
 }
 
 fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Rich<'a, char>>> {
     recursive(|expr| {
         let value = recursive(|value| {
             let digits = text::digits(10).to_slice();
-    
+
             let frac = just('.').then(digits);
-    
+
             let exp = just('e')
                 .or(just('E'))
                 .then(one_of("+-").or_not())
@@ -73,7 +78,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                 .to_slice()
                 .map(|s: &str| s.parse().unwrap())
                 .boxed();
-    
+
             let number = just('-')
                 .or_not()
                 .then(text::int(10))
@@ -82,7 +87,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                 .to_slice()
                 .map(|s: &str| s.parse().unwrap())
                 .boxed();
-    
+
             let escape = just('\\')
                 .then(choice((
                     just('\\'),
@@ -97,7 +102,8 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                         |digits, e, emitter| {
                             char::from_u32(u32::from_str_radix(digits, 16).unwrap()).unwrap_or_else(
                                 || {
-                                    emitter.emit(Rich::custom(e.span(), "invalid unicode character"));
+                                    emitter
+                                        .emit(Rich::custom(e.span(), "invalid unicode character"));
                                     '\u{FFFD}' // unicode replacement character
                                 },
                             )
@@ -106,7 +112,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                 )))
                 .ignored()
                 .boxed();
-    
+
             let string = none_of("\\\"")
                 .ignored()
                 .or(escape)
@@ -115,7 +121,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                 .map(ToString::to_string)
                 .delimited_by(just('"'), just('"'))
                 .boxed();
-    
+
             let array = value
                 .clone()
                 .separated_by(just(',').padded().recover_with(skip_then_retry_until(
@@ -133,7 +139,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                         .recover_with(skip_then_retry_until(any().ignored(), end())),
                 )
                 .boxed();
-    
+
             let member = string.clone().then_ignore(just(':').padded()).then(value);
             let object = member
                 .clone()
@@ -151,7 +157,7 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
                         .recover_with(skip_then_retry_until(any().ignored(), end())),
                 )
                 .boxed();
-    
+
             choice((
                 just("null").to(Value::Null),
                 just("true").to(Value::Bool(true)),
@@ -181,22 +187,38 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
             .padded()
         });
 
-        let path = text::ident().then(just(".").ignore_then(text::ident()).or_not()).map(|(key, field): (&str, Option<&str>)| Path{key: key.to_string() , field: field.map(|s|String::from(s))});
-        let kv_pair = path.then_ignore(just("=").padded()).then(value).map(|(key, value)| FilterExpr::KvPair { key, value }).boxed();
-        let parentheses =  just("(").padded().ignore_then(expr.clone()).then_ignore(just(")").padded()).map(|expr| FilterExpr::Parentheses(Box::new(expr))).boxed();
-        let op_non = just("!").padded().ignore_then(expr.clone()).map(|expr| FilterExpr::Non(Box::new(expr))).boxed();
-        let start = choice((
-            parentheses,
-            op_non,
-            kv_pair,
+        let path = text::ident()
+            .then(just(".").ignore_then(text::ident()).or_not())
+            .map(|(key, field): (&str, Option<&str>)| Path {
+                key: key.to_string(),
+                field: field.map(|s| String::from(s)),
+            });
+        let kv_pair = path
+            .then_ignore(just("=").padded())
+            .then(value)
+            .map(|(key, value)| FilterExpr::KvPair { key, value })
+            .boxed();
+        let parentheses = just("(")
+            .padded()
+            .ignore_then(expr.clone())
+            .then_ignore(just(")").padded())
+            .map(|expr| FilterExpr::Parentheses(Box::new(expr)))
+            .boxed();
+        let op_non = just("!")
+            .padded()
+            .ignore_then(expr.clone())
+            .map(|expr| FilterExpr::Non(Box::new(expr)))
+            .boxed();
+        let start = choice((parentheses, op_non, kv_pair));
+
+        let op = choice((
+            just("&&").padded().to(FilterExpr::And as fn(_, _) -> _),
+            just("||").padded().to(FilterExpr::Or as fn(_, _) -> _),
         ));
 
-        let op = choice((just("&&").padded().to(FilterExpr::And as fn(_, _) -> _),
-                                                                     just("||").padded().to(FilterExpr::Or as fn(_, _) -> _)
-                                                                   ));
-
-        start.foldl(op.then(expr.clone()).repeated(), |a, (op, rhs)| op(Box::new(a), Box::new(rhs)))
-
+        start.foldl(op.then(expr.clone()).repeated(), |a, (op, rhs)| {
+            op(Box::new(a), Box::new(rhs))
+        })
     })
     .then_ignore(end())
 }
@@ -209,31 +231,25 @@ mod tests {
         let src = r#"(key1.field = 1.556) && key2 = 2.55"#;
         //let (json, errs) = parse_test().parse(src.trim()).into_output_errors();
         let r = super::parse(src.trim());
-        assert_eq!(r.unwrap(), FilterExpr::And(
-            Box::new(FilterExpr::Parentheses(
-                Box::new(FilterExpr::KvPair {
+        assert_eq!(
+            r.unwrap(),
+            FilterExpr::And(
+                Box::new(FilterExpr::Parentheses(Box::new(FilterExpr::KvPair {
                     key: Path {
                         key: "key1".to_string(),
-                        field: Some(
-                            "field".to_string(),
-                        ),
+                        field: Some("field".to_string(),),
                     },
-                    value: Value::Num(
-                        1.556,
-                    ),
+                    value: Value::Num(1.556,),
+                }),)),
+                Box::new(FilterExpr::KvPair {
+                    key: Path {
+                        key: "key2".to_string(),
+                        field: None,
+                    },
+                    value: Value::Num(2.55,),
                 }),
-            )),
-            Box::new(FilterExpr::KvPair {
-                key: Path {
-                    key: "key2".to_string(),
-                    field: None,
-                },
-                value: Value::Num(
-                    2.55,
-                ),
-            }),
-        ),
-    );
+            ),
+        );
     }
 
     #[test]
@@ -248,15 +264,15 @@ mod tests {
     fn value_i64() {
         let src = r#"key = 2555555554421"#;
         let r = super::parse(src.trim()).unwrap();
-        assert_eq!(r, FilterExpr::KvPair {
-            key: Path {
-                key: "key".to_string(),
-                field: None,
-            },
-            value: Value::I64(
-                2555555554421,
-            ),
-        });
+        assert_eq!(
+            r,
+            FilterExpr::KvPair {
+                key: Path {
+                    key: "key".to_string(),
+                    field: None,
+                },
+                value: Value::I64(2555555554421,),
+            }
+        );
     }
-
 }

@@ -118,14 +118,26 @@ fn main() {
     app.global::<EnablesData>().on_row_find(move |event_name| {
         let mut vec = vec![];
         for (index, event_desc) in event_descs_1.iter().enumerate() {
-            if event_desc.name.to_ascii_lowercase().contains(event_name.to_ascii_lowercase().as_str()) {
+            if event_desc
+                .name
+                .to_ascii_lowercase()
+                .contains(event_name.to_ascii_lowercase().as_str())
+            {
                 vec.push(index as i32);
             }
         }
         if vec.is_empty() {
-            (SharedString::from("No event is found"), ModelRc::default(), false)
+            (
+                SharedString::from("No event is found"),
+                ModelRc::default(),
+                false,
+            )
         } else {
-            (SharedString::default(), ModelRc::new(VecModel::from(vec)), true)
+            (
+                SharedString::default(),
+                ModelRc::new(VecModel::from(vec)),
+                true,
+            )
         }
     });
 

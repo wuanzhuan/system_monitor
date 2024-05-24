@@ -1,14 +1,14 @@
-use std::{
-    cell::SyncUnsafeCell, sync::{
-        atomic::{
-            AtomicUsize, Ordering
-        }, Arc
-    }
-};
+use anyhow::{anyhow, Result};
 use intrusive_collections::intrusive_adapter;
-use intrusive_collections::{LinkedList, LinkedListLink, linked_list::Cursor};
+use intrusive_collections::{linked_list::Cursor, LinkedList, LinkedListLink};
 use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
-use anyhow::{Result, anyhow};
+use std::{
+    cell::SyncUnsafeCell,
+    sync::{
+        atomic::{AtomicUsize, Ordering},
+        Arc,
+    },
+};
 
 pub struct Node<T> {
     link: LinkedListLink,
@@ -21,16 +21,16 @@ impl<T> Node<T> {
     pub fn new(value: T) -> Self {
         Self {
             link: LinkedListLink::new(),
-            value
+            value,
         }
     }
 }
 
 intrusive_adapter!(NodeAdapter<T> = Arc<Node<T>>: Node<T> { link: LinkedListLink });
 
-struct CursorSync<'a, T>{
+struct CursorSync<'a, T> {
     pub inner: Cursor<'a, NodeAdapter<T>>,
-    pub index: usize
+    pub index: usize,
 }
 unsafe impl<'a, T> Send for CursorSync<'a, T> {}
 unsafe impl<'a, T> Sync for CursorSync<'a, T> {}
@@ -49,16 +49,24 @@ impl<'a, T> EventList<'a, T> {
     pub fn new() -> Self {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
-        let reader_lock = RwLock::new(CursorSync{inner: unsafe{ &mut *list.get() }.cursor(), index: 0});
+        let reader_lock = RwLock::new(CursorSync {
+            inner: unsafe { &mut *list.get() }.cursor(),
+            index: 0,
+        });
         let push_back_lock = FairMutex::new(());
-        Self { list, list_len, reader_lock, push_back_lock }
+        Self {
+            list,
+            list_len,
+            reader_lock,
+            push_back_lock,
+        }
     }
 
     pub fn len(&self) -> usize {
         self.list_len.load(Ordering::Acquire)
     }
 
-    pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>>{
+    pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>> {
         let mut reader_guard = self.reader_lock.write();
 
         let list_len = self.list_len.load(Ordering::Acquire);
@@ -66,7 +74,7 @@ impl<'a, T> EventList<'a, T> {
             return None;
         }
 
-        let cursor_index =  if !reader_guard.inner.is_null() {
+        let cursor_index = if !reader_guard.inner.is_null() {
             reader_guard.index
         } else {
             list_len
@@ -80,7 +88,10 @@ impl<'a, T> EventList<'a, T> {
             } else {
                 let _push_back_guard = self.push_back_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                *reader_guard = CursorSync{inner: unsafe{&*self.list.get()}.front(), index: 0};
+                *reader_guard = CursorSync {
+                    inner: unsafe { &*self.list.get() }.front(),
+                    index: 0,
+                };
                 move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
             }
         } else {
@@ -89,13 +100,20 @@ impl<'a, T> EventList<'a, T> {
             } else {
                 let _push_back_guard = self.push_back_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                *reader_guard = CursorSync{inner: unsafe{&*self.list.get()}.back(), index: list_len - 1};
+                *reader_guard = CursorSync {
+                    inner: unsafe { &*self.list.get() }.back(),
+                    index: list_len - 1,
+                };
                 move_next_to_uncheck(&mut reader_guard, index_to, list_len);
             }
         }
         return reader_guard.inner.clone_pointer();
 
-        fn move_next_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>, index_to: usize, list_len: usize) {
+        fn move_next_to_uncheck<'a, T>(
+            reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
+            index_to: usize,
+            list_len: usize,
+        ) {
             assert!(list_len > 0);
             loop {
                 let prev_is_null = reader_guard.inner.is_null();
@@ -116,10 +134,14 @@ impl<'a, T> EventList<'a, T> {
                         break;
                     }
                 }
-            };
+            }
         }
-    
-        fn move_prev_to_uncheck<'a, T>(reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>, index_to: usize, list_len: usize) {
+
+        fn move_prev_to_uncheck<'a, T>(
+            reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
+            index_to: usize,
+            list_len: usize,
+        ) {
             assert!(list_len > 0);
             loop {
                 let prev_is_null = reader_guard.inner.is_null();
@@ -140,14 +162,14 @@ impl<'a, T> EventList<'a, T> {
                         break;
                     }
                 }
-            };
+            }
         }
     }
 
     pub fn traversal(&self, mut cb: impl FnMut(&T) -> Result<bool>) -> Result<Vec<i32>> {
         let mut _reader_guard = self.reader_lock.read();
         let list_len = self.list_len.load(Ordering::Acquire);
-        let list = unsafe{ &*self.list.get() };
+        let list = unsafe { &*self.list.get() };
         let mut vec = vec![];
         for (index, item) in list.iter().enumerate() {
             let is_find = cb(&item.value)?;
@@ -167,7 +189,7 @@ impl<'a, T> EventList<'a, T> {
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {
         let mut _push_back_guard = self.push_back_lock.lock();
-        unsafe{ &mut *self.list.get() }.push_back(value);
+        unsafe { &mut *self.list.get() }.push_back(value);
         let index = self.list_len.fetch_add(1, Ordering::Release);
         index
     }
@@ -175,7 +197,7 @@ impl<'a, T> EventList<'a, T> {
     /// Remove the row at the given index from the model
     #[allow(unused)]
     pub fn remove(&self, node_arc: Arc<Node<T>>) {
-        let mut cursor = unsafe{ (&mut *self.list.get()).cursor_mut_from_ptr(node_arc.as_ref()) };
+        let mut cursor = unsafe { (&mut *self.list.get()).cursor_mut_from_ptr(node_arc.as_ref()) };
         if cursor.remove().is_some() {
             self.list_len.fetch_sub(1, Ordering::Release);
         }
