@@ -140,29 +140,32 @@ impl EventRecordModel {
                 return Err(anyhow!("invalid value type"));
             }
             "properties" => {
-                if let Value::Object(obj) = value {
-                    if let Some(ref field) = path.field {
+                if let Some(ref field) = path.field {
+                    if let Value::Str(ref value_str) = value {
                         if let PropertyDecoded::Struct(ref properties) = self.array.properties {
-                            if let PropertyDecoded::String(ref property_decoded_str) =
+                            if let PropertyDecoded::String(ref property_field_str) =
                                 properties[field]
                             {
-                                if let Value::Str(ref value_str) = obj[field] {
-                                    if value_str == property_decoded_str {
-                                        return Ok(true);
-                                    }
-                                    return Ok(false);
-                                } else {
-                                    return Err(anyhow!("The finding properties.{field}'s value's type is not Value::Str"));
-                                }
+                                return Ok(value_str.to_ascii_lowercase()
+                                    == property_field_str.to_ascii_lowercase());
                             } else {
-                                return Err(anyhow!("The properties's filed type is not string"));
+                                return Err(anyhow!("The properties's {field} type is not string"));
                             }
+                        } else {
+                            return Err(anyhow!(
+                                "The properties of {}-{} is not a struct!",
+                                self.array.event_name,
+                                self.array.opcode_name
+                            ));
                         }
                     } else {
-                        return Err(anyhow!("Not assign filed for properties"));
+                        return Err(anyhow!(
+                            "The finding properties.{field}'s value's type is not Value::Str"
+                        ));
                     }
+                } else {
+                    return Err(anyhow!("Not assign field for properties"));
                 }
-                return Err(anyhow!("invalid value type"));
             }
             _ => Err(anyhow!("no this column name")),
         }
