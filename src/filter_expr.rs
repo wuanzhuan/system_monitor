@@ -23,7 +23,7 @@ pub struct Path {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FilterExpr {
-    KeyWords,
+    KeyWords(KeyWords),
     Parentheses(Box<FilterExpr>),
     Non(Box<FilterExpr>),
     And(Box<FilterExpr>, Box<FilterExpr>),
@@ -33,6 +33,7 @@ pub enum FilterExpr {
 }
 
 // start with #
+#[derive(Clone, Debug, PartialEq)]
 pub enum KeyWords {
     HandlePair,
 }
@@ -187,17 +188,17 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
             .padded()
         });
 
+        let keywords = just("#")
+            .ignore_then(choice((
+                just("handle_pair").to(FilterExpr::KeyWords(KeyWords::HandlePair)),
+            )))
+            .padded();
         let path = text::ident()
             .then(just(".").ignore_then(text::ident()).or_not())
             .map(|(key, field): (&str, Option<&str>)| Path {
                 key: key.to_string(),
                 field: field.map(|s| String::from(s)),
             });
-        let kv_pair = path
-            .then_ignore(just("=").padded())
-            .then(value)
-            .map(|(key, value)| FilterExpr::KvPair { key, value })
-            .boxed();
         let parentheses = just("(")
             .padded()
             .ignore_then(expr.clone())
@@ -209,14 +210,20 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
             .ignore_then(expr.clone())
             .map(|expr| FilterExpr::Non(Box::new(expr)))
             .boxed();
-        let start = choice((parentheses, op_non, kv_pair));
+        let kv_pair = path
+            .then_ignore(just("=").padded())
+            .then(value.clone())
+            .map(|(key, value)| FilterExpr::KvPair { key, value })
+            .boxed();
+        let find_value = value.map(FilterExpr::FindValue);
 
-        let op = choice((
+        let op_logic = choice((
             just("&&").padded().to(FilterExpr::And as fn(_, _) -> _),
             just("||").padded().to(FilterExpr::Or as fn(_, _) -> _),
         ));
+        let start = choice((keywords, parentheses, op_non, kv_pair, find_value));
 
-        start.foldl(op.then(expr.clone()).repeated(), |a, (op, rhs)| {
+        start.foldl(op_logic.then(expr.clone()).repeated(), |a, (op, rhs)| {
             op(Box::new(a), Box::new(rhs))
         })
     })
@@ -225,7 +232,8 @@ fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Ri
 
 #[cfg(test)]
 mod tests {
-    use super::{FilterExpr, Path, Value};
+    use super::{FilterExpr, KeyWords, Path, Value};
+
     #[test]
     fn success() {
         let src = r#"(key1.field = 1.556) && key2 = 2.55"#;
@@ -274,5 +282,12 @@ mod tests {
                 value: Value::I64(2555555554421,),
             }
         );
+    }
+
+    #[test]
+    fn keywords_handlepair() {
+        let src = r"#handle_pair";
+        let r = super::parse(src.trim()).unwrap();
+        assert_eq!(r, FilterExpr::KeyWords(KeyWords::HandlePair));
     }
 }
