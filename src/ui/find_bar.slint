@@ -3,7 +3,7 @@ import {HorizontalBox, Palette, LineEdit} from "std-widgets.slint";
 export component FindBar {
     in property <length> input-length: 22rem;
     in property <length> result-length: 8rem;
-    in property <string> placeholder-text: "i.e. ";
+    in property <string> placeholder-text: @tr("i.e. ");
 
     callback row-find(/*filter_expr*/string) -> {result: bool, indexes: [int], error: string};
     callback set-current-row(int);
@@ -12,13 +12,15 @@ export component FindBar {
         border-width: 1px;
         border-color: Palette.foreground.darker(5.0);
         width: self.preferred-width;
-        clip: true;
 
         HorizontalBox {
             spacing: 2px;
+            padding: 1mm;
+
             private property <{result: bool, indexes: [int], error: string}> row-find-info;
             private property <string> find-status;
             private property <int> current-row-index;
+
             LineEdit {
                 width: input-length;
                 height: 7mm;
