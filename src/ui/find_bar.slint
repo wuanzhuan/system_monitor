@@ -37,7 +37,7 @@ export component FindBar {
                             status_text.text = @tr("No results")
                         }
                     } else {
-                        status_text.text = row-find-info.error;
+                        status_text.text = @tr("Error happens. Hover me");
                     }
                 }
             }
@@ -111,7 +111,7 @@ export component FindBar {
                     background: Palette.background;
                     HorizontalBox {
                         Text {
-                            text: status_text.text;
+                            text: row-find-info.error;
                             color: row-find-info.result ? Palette.foreground : #ec5353;
                         }
                     }
