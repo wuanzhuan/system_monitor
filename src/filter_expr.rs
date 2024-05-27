@@ -1,5 +1,4 @@
 use anyhow::{Error, Result};
-use ariadne::{Color, Label, Report, ReportKind, Source};
 use chumsky::prelude::*;
 use std::collections::HashMap;
 
@@ -45,17 +44,7 @@ pub fn parse(src: &str) -> Result<FilterExpr> {
         .map_err(|e| {
             let mut s = String::with_capacity(100);
             e.into_iter().for_each(|e| {
-                let report = Report::build(ReportKind::Error, (), e.span().start)
-                    .with_message(e.to_string())
-                    .with_label(
-                        Label::new(e.span().into_range())
-                            .with_message(e.reason().to_string())
-                            .with_color(Color::Red),
-                    )
-                    .finish();
-                let mut vec = Vec::new();
-                report.write(Source::from(&src), &mut vec).unwrap();
-                s.push_str(format!("{}\n", String::from_utf8(vec).unwrap()).as_str());
+                s.push_str(format!("Error happens at the {}th letter: {}\n", e.span().start, e.to_string()).as_str());
             });
             Error::msg(s)
         })

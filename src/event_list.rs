@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{linked_list::Cursor, LinkedList, LinkedListLink};
 use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
@@ -180,11 +180,7 @@ impl<'a, T> EventList<'a, T> {
                 break;
             }
         }
-        if vec.is_empty() {
-            Err(anyhow!("No item is find"))
-        } else {
-            Ok(vec)
-        }
+        Ok(vec)
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {

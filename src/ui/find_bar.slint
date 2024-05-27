@@ -14,10 +14,10 @@ export component FindBar {
         width: self.preferred-width;
 
         HorizontalBox {
-            spacing: 2px;
+            spacing: 1mm;
             padding: 1mm;
 
-            private property <{result: bool, indexes: [int], error: string}> row-find-info;
+            private property <{result: bool, indexes: [int], error: string}> row-find-info: {result: true};
             private property <string> find-status;
             private property <int> current-row-index;
 
@@ -29,17 +29,36 @@ export component FindBar {
                 accepted(text) => {
                     row-find-info = row-find(text);
                     if row-find-info.result {
-                        current-row-index = 0;
-                        set-current-row(row-find-info.indexes[current-row-index])
+                        if row-find-info.indexes.length > 0 {
+                            status_text.text = "";
+                            current-row-index = 0;
+                            set-current-row(row-find-info.indexes[current-row-index])
+                        } else {
+                            status_text.text = @tr("No results")
+                        }
+                    } else {
+                        status_text.text = row-find-info.error;
                     }
                 }
             }
-            Text {
+            Rectangle {
                 width: result-length;
-                height: 7mm;
-                vertical-alignment: center;
-                text: row-find-info.error;
-                color: row-find-info.result ? Palette.foreground : #ec5353;
+                status_text := Text {
+                    width: result-length;
+                    height: 7mm;
+                    vertical-alignment: center;
+                    color: row-find-info.result ? Palette.foreground : #ec5353;
+                    wrap: no-wrap;
+                }
+                ta_status := TouchArea {
+                    pointer-event(ev) => {
+                        if (ev.kind == PointerEventKind.move) {
+                            if !row-find-info.result {
+                                popup.show();
+                            }
+                        }
+                    }
+                }
             }
             Rectangle {
                 width: 6mm;
@@ -79,6 +98,21 @@ export component FindBar {
                         if current-row-index + 1 < row-find-info.indexes.length {
                             current-row-index =  current-row-index + 1;
                             set-current-row(row-find-info.indexes[current-row-index])
+                        }
+                    }
+                }
+            }
+            popup := PopupWindow {
+                y: parent.preferred-height + 1mm;
+
+                Rectangle {
+                    border-color: Palette.border;
+                    border-width: 1px;
+                    background: Palette.background;
+                    HorizontalBox {
+                        Text {
+                            text: status_text.text;
+                            color: row-find-info.result ? Palette.foreground : #ec5353;
                         }
                     }
                 }

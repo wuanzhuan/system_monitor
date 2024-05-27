@@ -74,6 +74,9 @@ fn main() {
             StackWalkInfo::default()
         });
     app.global::<EventsViewData>().on_row_find(move |text| {
+        if text.is_empty() {
+            return (SharedString::default(), ModelRc::default(), true);
+        }
         let r = filter_expr::parse(text.as_str());
         let fe = match r {
             Ok(fe) => fe,
@@ -116,6 +119,9 @@ fn main() {
         });
     let event_descs_1 = event_descs.clone();
     app.global::<EnablesData>().on_row_find(move |event_name| {
+        if event_name.is_empty() {
+            return (SharedString::default(), ModelRc::default(), true);
+        }
         let mut vec = vec![];
         for (index, event_desc) in event_descs_1.iter().enumerate() {
             if event_desc
@@ -126,19 +132,7 @@ fn main() {
                 vec.push(index as i32);
             }
         }
-        if vec.is_empty() {
-            (
-                SharedString::from("No event is found"),
-                ModelRc::default(),
-                false,
-            )
-        } else {
-            (
-                SharedString::default(),
-                ModelRc::new(VecModel::from(vec)),
-                true,
-            )
-        }
+        (SharedString::default(), ModelRc::new(VecModel::from(vec)), true)
     });
 
     let app_weak = app.as_weak();
