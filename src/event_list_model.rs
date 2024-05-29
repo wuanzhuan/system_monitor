@@ -69,9 +69,9 @@ impl<'a> ListModel<'a> {
         self.list.get_by_index(row)
     }
 
-    pub fn row_find(&self, filter_expr: FilterExpr) -> Result<Vec<i32>> {
+    pub fn row_find(&self, filter_expr: &FilterExpr) -> Result<Vec<i32>> {
         self.list.traversal(|item| {
-            evaluate(&filter_expr, |path, value| {
+            evaluate(filter_expr, |path, value| {
                 item.find_by_path_value(path, value)
             }, |value| {
                 item.find_by_value(value)

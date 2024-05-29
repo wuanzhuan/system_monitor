@@ -82,7 +82,7 @@ fn main() {
             Ok(fe) => fe,
             Err(e) => return (SharedString::from(e.to_string()), ModelRc::default(), false),
         };
-        match event_list_model_rc_3.row_find(fe) {
+        match event_list_model_rc_3.row_find(&fe) {
             Ok(vec) => (
                 SharedString::default(),
                 ModelRc::new(VecModel::from(vec)),
