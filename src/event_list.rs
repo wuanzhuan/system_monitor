@@ -166,7 +166,7 @@ impl<'a, T> EventList<'a, T> {
         }
     }
 
-    pub fn traversal(&self, mut cb: impl FnMut(&T) -> Result<bool>) -> Result<Vec<i32>> {
+    pub fn traversal(&self, cb: impl Fn(&T) -> Result<bool>) -> Result<Vec<i32>> {
         let mut _reader_guard = self.reader_lock.read();
         let list_len = self.list_len.load(Ordering::Acquire);
         let list = unsafe { &*self.list.get() };

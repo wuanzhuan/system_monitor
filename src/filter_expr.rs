@@ -1,4 +1,4 @@
-use anyhow::{Error, Result};
+use anyhow::{Result, anyhow};
 use chumsky::prelude::*;
 use std::collections::HashMap;
 
@@ -44,10 +44,41 @@ pub fn parse(src: &str) -> Result<FilterExpr> {
         .map_err(|e| {
             let mut s = String::with_capacity(100);
             e.into_iter().for_each(|e| {
-                s.push_str(format!("Error happens at the {}th letter: {}\n", e.span().start, e.to_string()).as_str());
+                s.push_str(
+                    format!(
+                        "Error happens at the {}th letter: {}\n",
+                        e.span().start,
+                        e.to_string()
+                    )
+                    .as_str(),
+                );
             });
-            Error::msg(s)
+            anyhow!(s)
         })
+}
+
+pub fn evaluate(
+    expr: &FilterExpr,
+    fn_path_value: impl Fn(/*path*/ &Path, /*value*/ &Value) -> Result<bool> + Clone,
+    fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone,
+) -> Result<bool> {
+    match expr {
+        FilterExpr::KeyWords(_key_words) => { return Err(anyhow!("Not supported key words find now"))}
+        FilterExpr::Parentheses(expr) => { return evaluate(expr, fn_path_value, fn_value) }
+        FilterExpr::Non(expr) => { return evaluate(expr, fn_path_value, fn_value).map(| ok| !ok) }
+        FilterExpr::And(expr_left, expr_right) => {
+            return Ok(evaluate(expr_left, fn_path_value.clone(), fn_value.clone())? && evaluate(expr_right, fn_path_value, fn_value)?);
+        }
+        FilterExpr::Or(expr_left, expr_right) => {
+            return Ok(evaluate(expr_left, fn_path_value.clone(), fn_value.clone())? || evaluate(expr_right, fn_path_value, fn_value)?);
+        }
+        FilterExpr::KvPair{key, value} => {
+            return fn_path_value(key, value);
+        }
+        FilterExpr::FindValue(value) => {
+            return fn_value(value);
+        }
+    }
 }
 
 fn parse_filter_expr<'a>() -> impl Parser<'a, &'a str, FilterExpr, extra::Err<Rich<'a, char>>> {

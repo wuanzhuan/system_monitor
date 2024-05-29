@@ -1,8 +1,8 @@
 use crate::event_list::EventList;
 use crate::event_list::Node;
 use crate::event_record_model::EventRecordModel;
-use crate::filter_expr::FilterExpr;
-use anyhow::{anyhow, Result};
+use crate::filter_expr::{FilterExpr, evaluate};
+use anyhow::Result;
 use slint::{Model, ModelNotify, ModelRc, ModelTracker, StandardListViewItem};
 use std::sync::Arc;
 
@@ -70,12 +70,12 @@ impl<'a> ListModel<'a> {
     }
 
     pub fn row_find(&self, filter_expr: FilterExpr) -> Result<Vec<i32>> {
-        if let FilterExpr::KvPair { key, value } = filter_expr.clone() {
-            return self
-                .list
-                .traversal(|item| item.find_by_path_value(&key, &value));
-        } else {
-            return Err(anyhow!("This is not KvPair expr"));
-        }
+        self.list.traversal(|item| {
+            evaluate(&filter_expr, |path, value| {
+                item.find_by_path_value(path, value)
+            }, |value| {
+                item.find_by_value(value)
+            })
+        })
     }
 }
