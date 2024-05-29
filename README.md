@@ -15,6 +15,9 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - [x] record original module and monitor change
   - [x] convert the virtual address to the offset of module
   - [ ] translate a module offset to the code location
+- easy of use
+  - [ ] syntax highlight for filter expression
+  - [ ] tips
 
 # supported os version
 - [x] windows11 x64
