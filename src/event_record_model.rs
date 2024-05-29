@@ -170,6 +170,94 @@ impl EventRecordModel {
             _ => Err(anyhow!("no this column name")),
         }
     }
+
+    pub fn find_by_value(&self, value: &Value) -> Result<bool> {
+        match value {
+            Value::Str(v) => {
+                if self
+                    .array
+                    .event_name
+                    .to_ascii_lowercase()
+                    .contains(v.to_ascii_lowercase().as_str())
+                {
+                    return Ok(true);
+                }
+                if self
+                    .array
+                    .opcode_name
+                    .to_ascii_lowercase()
+                    .contains(v.to_ascii_lowercase().as_str())
+                {
+                    return Ok(true);
+                }
+                if let PropertyDecoded::Struct(ref properties) = self.array.properties {
+                    for (key, value) in properties.iter() {
+                        if key
+                            .to_ascii_lowercase()
+                            .contains(v.to_ascii_lowercase().as_str())
+                        {
+                            return Ok(true);
+                        }
+                        if let PropertyDecoded::String(ref value_str) = value {
+                            if value_str
+                                .to_ascii_lowercase()
+                                .contains(v.to_ascii_lowercase().as_str())
+                            {
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+                Ok(false)
+            }
+            Value::I64(v) => {
+                if *v == self.array.timestamp.0 {
+                    return Ok(true);
+                }
+                if *v == self.array.process_id as i64 {
+                    return Ok(true);
+                }
+                if let PropertyDecoded::Struct(ref properties) = self.array.properties {
+                    for (key, value) in properties.iter() {
+                        if key.to_ascii_lowercase().contains(v.to_string().as_str()) {
+                            return Ok(true);
+                        }
+                        if let PropertyDecoded::String(ref value_str) = value {
+                            if value_str
+                                .to_ascii_lowercase()
+                                .contains(v.to_string().as_str())
+                            {
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+                Ok(false)
+            }
+            Value::Num(v) => {
+                if *v == self.array.process_id as f64 {
+                    return Ok(true);
+                }
+                if let PropertyDecoded::Struct(ref properties) = self.array.properties {
+                    for (key, value) in properties.iter() {
+                        if key.to_ascii_lowercase().contains(v.to_string().as_str()) {
+                            return Ok(true);
+                        }
+                        if let PropertyDecoded::String(ref value_str) = value {
+                            if value_str
+                                .to_ascii_lowercase()
+                                .contains(v.to_string().as_str())
+                            {
+                                return Ok(true);
+                            }
+                        }
+                    }
+                }
+                Ok(false)
+            }
+            _ => Err(anyhow!("Not supported value type")),
+        }
+    }
 }
 
 impl Model for EventRecordModel {
