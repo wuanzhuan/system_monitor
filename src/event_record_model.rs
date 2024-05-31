@@ -1,5 +1,5 @@
 use super::event_trace::{EventRecordDecoded, PropertyDecoded, StackWalk};
-use crate::filter_expr::{Path, Value};
+use crate::filter::{Path, Value};
 use crate::process_modules;
 use crate::StackWalkInfo;
 use anyhow::{anyhow, Result};

@@ -1,7 +1,7 @@
 use crate::event_list::EventList;
 use crate::event_list::Node;
 use crate::event_record_model::EventRecordModel;
-use crate::filter_expr::{FilterExpr, evaluate};
+use crate::filter::{FilterExpr, evaluate};
 use anyhow::Result;
 use slint::{Model, ModelNotify, ModelRc, ModelTracker, StandardListViewItem};
 use std::sync::Arc;

@@ -13,7 +13,7 @@ mod event_list;
 mod event_list_model;
 mod event_record_model;
 mod event_trace;
-mod filter_expr;
+mod filter;
 mod process_modules;
 mod third_extend;
 mod utils;
@@ -77,7 +77,7 @@ fn main() {
         if text.is_empty() {
             return (SharedString::default(), ModelRc::default(), true);
         }
-        let r = filter_expr::parse(text.as_str());
+        let r = filter::parse(text.as_str());
         let fe = match r {
             Ok(fe) => fe,
             Err(e) => return (SharedString::from(e.to_string()), ModelRc::default(), false),
