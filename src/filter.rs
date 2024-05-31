@@ -2,6 +2,17 @@ use anyhow::{Result, anyhow};
 use chumsky::prelude::*;
 use std::collections::HashMap;
 
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum ExpressionForOne {
+    Parentheses(Box<ExpressionForOne>),
+    Non(Box<ExpressionForOne>),
+    And(Box<ExpressionForOne>, Box<ExpressionForOne>),
+    Or(Box<ExpressionForOne>, Box<ExpressionForOne>),
+    KvPair { key: Path, value: Value },
+    FindValue(Value),
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum Value {
     Invalid,
@@ -18,16 +29,6 @@ pub enum Value {
 pub struct Path {
     pub key: String,
     pub field: Option<String>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub enum ExpressionForOne {
-    Parentheses(Box<ExpressionForOne>),
-    Non(Box<ExpressionForOne>),
-    And(Box<ExpressionForOne>, Box<ExpressionForOne>),
-    Or(Box<ExpressionForOne>, Box<ExpressionForOne>),
-    KvPair { key: Path, value: Value },
-    FindValue(Value),
 }
 
 impl ExpressionForOne {
