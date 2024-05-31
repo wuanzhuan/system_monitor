@@ -243,9 +243,46 @@ impl ExpressionForOne {
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForPair {
     Handle,
+    Memory,
+    Or(Box<ExpressionForPair>, Box<ExpressionForPair>),
 }
 
 impl ExpressionForPair {
+    pub fn parse(src: &str) -> Result<ExpressionForPair> {
+        Self::build_parser()
+            .parse(src.trim())
+            .into_result()
+            .map_err(|e| {
+                let mut s = String::with_capacity(100);
+                e.into_iter().for_each(|e| {
+                    s.push_str(
+                        format!(
+                            "Error happens at the {}th letter: {}\n",
+                            e.span().start,
+                            e.to_string()
+                        )
+                        .as_str(),
+                    );
+                });
+                anyhow!(s)
+            })
+    }
+
+    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForPair, extra::Err<Rich<'a, char>>> {
+        recursive(|expr| {
+            let op_or = just("||").padded().to(ExpressionForPair::Or);
+            let start = choice((
+                just("handle").to(ExpressionForPair::Handle),
+                just("memory").to(ExpressionForPair::Memory),
+            ));
+    
+            start.foldl(op_or.then(expr.clone()).repeated(), |a, (op, rhs)| {
+                op(Box::new(a), Box::new(rhs))
+            })
+        })
+        .then_ignore(end())
+    }
+    
 }
 
 #[cfg(test)]
@@ -299,6 +336,16 @@ mod tests {
                 },
                 value: Value::I64(2555555554421,),
             }
+        );
+    }
+
+    #[test]
+    fn expression_for_pair_succuss() {
+        let src = r#"handle || memory"#;
+        let r = ExpressionForPair::parse(src.trim()).unwrap();
+        assert_eq!(
+            r,
+            ExpressionForPair::Or(Box::new(ExpressionForPair::Handle), Box::new(ExpressionForPair::Memory))
         );
     }
 
