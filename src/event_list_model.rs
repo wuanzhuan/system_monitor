@@ -1,7 +1,7 @@
 use crate::event_list::EventList;
 use crate::event_list::Node;
 use crate::event_record_model::EventRecordModel;
-use crate::filter::{FilterExpr, evaluate};
+use crate::filter::ExpressionForOne;
 use anyhow::Result;
 use slint::{Model, ModelNotify, ModelRc, ModelTracker, StandardListViewItem};
 use std::sync::Arc;
@@ -69,9 +69,9 @@ impl<'a> ListModel<'a> {
         self.list.get_by_index(row)
     }
 
-    pub fn row_find(&self, filter_expr: &FilterExpr) -> Result<Vec<i32>> {
+    pub fn row_find(&self, filter_expr: &ExpressionForOne) -> Result<Vec<i32>> {
         self.list.traversal(|item| {
-            evaluate(filter_expr, |path, value| {
+            ExpressionForOne::evaluate(filter_expr, |path, value| {
                 item.find_by_path_value(path, value)
             }, |value| {
                 item.find_by_value(value)

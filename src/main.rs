@@ -77,7 +77,7 @@ fn main() {
         if text.is_empty() {
             return (SharedString::default(), ModelRc::default(), true);
         }
-        let r = filter::parse(text.as_str());
+        let r = filter::ExpressionForOne::parse(text.as_str());
         let fe = match r {
             Ok(fe) => fe,
             Err(e) => return (SharedString::from(e.to_string()), ModelRc::default(), false),
