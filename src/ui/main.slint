@@ -1,4 +1,4 @@
-import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch, StandardButton, Button } from "std-widgets.slint";
+import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch, StandardButton, Button, Palette } from "std-widgets.slint";
 import { EventsEnables, EnablesData, EventDesc } from "events_enable.slint";
 import { EventsView, EventsViewData,StackWalkInfo } from "events_view.slint";
 
@@ -13,6 +13,7 @@ export component App inherits Window {
 
     callback start() -> {ok: bool, message: string};
     callback stop();
+    callback set_filter_expression_for_one(string) -> {result: bool, message: string};
 
     out property <length> rem: self.default-font-size;
     private property <{ok: bool, message: string}> result_start;
@@ -41,6 +42,7 @@ export component App inherits Window {
 
     VerticalBox{
         start-stop := HorizontalBox {
+            spacing: 1cm;
             Switch {
                 text: @tr("On/Off");
                 checked: false;
@@ -56,8 +58,46 @@ export component App inherits Window {
                     }
                 }
             }
-            LineEdit {
-                height: 2rem;
+            HorizontalBox {
+                spacing: 2mm;
+                padding: 0px;
+                height: 7mm;
+
+                private property <{result: bool, message: string}> result_for_one;
+
+                LineEdit {
+                    placeholder-text: @tr("filter one");
+
+                    accepted(text) => {
+                        result_for_one = set_filter_expression_for_one(text);
+                        if !result_for_one.result {
+                            popup-for-one.show();
+                        }
+                    }
+                }
+                popup-for-one := PopupWindow {
+                    y: parent.preferred-height + 1mm;
+    
+                    Rectangle {
+                        border-color: Palette.border;
+                        border-width: 1px;
+                        background: Palette.background;
+                        HorizontalBox {
+                            Text {
+                                text: result_for_one.message;
+                                color: #ec5353;
+                            }
+                        }
+                    }
+                }
+                Text {
+                    vertical-alignment: center;
+                    text: "&&";
+                    color: Palette.accent-background;
+                }
+                LineEdit {
+                    placeholder-text: @tr("filter pair");
+                }
             }
         }
         main := HorizontalBox {

@@ -1,7 +1,31 @@
 use anyhow::{Result, anyhow};
 use chumsky::prelude::*;
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    sync::Arc
+};
+use parking_lot::FairMutex;
+use once_cell::sync::Lazy;
 
+
+static FILTER_EXPRESSION: Lazy<FairMutex<(Arc<Option<ExpressionForOne>>, Arc<Option<ExpressionForPair>>)>> = Lazy::new(|| {
+    FairMutex::new((Arc::new(None), Arc::new(None)))
+});
+
+pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
+    let mut lock = FILTER_EXPRESSION.lock();
+    lock.0 = Arc::new(expression);
+}
+
+pub fn filter_expression_for_pair_set(expression: Option<ExpressionForPair>) {
+    let mut lock = FILTER_EXPRESSION.lock();
+    lock.1 = Arc::new(expression);
+}
+
+pub fn filter_expression_get() -> (Arc<Option<ExpressionForOne>>, Arc<Option<ExpressionForPair>>) {
+    let lock = FILTER_EXPRESSION.lock();
+    (lock.0.clone(), lock.1.clone())
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForOne {

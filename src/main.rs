@@ -135,20 +135,36 @@ fn main() {
         (SharedString::default(), ModelRc::new(VecModel::from(vec)), true)
     });
 
+    app.on_set_filter_expression_for_one(|text| {
+        if text.is_empty() {
+            filter::filter_expression_for_one_set(None);
+            return (SharedString::new(), true);
+        }
+        match filter::ExpressionForOne::parse(text.as_str()) {
+            Err(e) => (SharedString::from(e.to_string()), false),
+            Ok(ok) => {
+                filter::filter_expression_for_one_set(Some(ok));
+                (SharedString::new(), true)
+            }
+        }
+    });
+
     let app_weak = app.as_weak();
     app.on_start(move || {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
-        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Arc<Node<EventRecordModel>>>::with_capacity(50));
+        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Option<Arc<Node<EventRecordModel>>>>::with_capacity(50));
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
         let result = event_trace::Controller::start(move |mut event_record, stack_walk, is_selected | {
             if let Some(mut sw) = stack_walk {
-                if let Some(row_rc) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
-                    process_modules::convert_to_module_offset(sw.stack_process, sw.stacks.as_mut_slice());
-                    let erm = row_rc.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
-                    erm.set_stack_walk(sw.clone());
+                if let Some(some_row) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
+                    if let Some(some_node) = some_row {
+                        process_modules::convert_to_module_offset(sw.stack_process, sw.stacks.as_mut_slice());
+                        let erm = some_node.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
+                        erm.set_stack_walk(sw.clone());
+                    }
                 } else {
                     let process_id = event_record.process_id as i32;
                     let thread_id = event_record.thread_id as i32;
@@ -157,14 +173,35 @@ fn main() {
                 }
             } else {
                 process_modules::handle_event_for_module(&mut event_record);
+
                 if is_selected {
                     let thread_id = event_record.thread_id;
                     let timestamp = event_record.timestamp.0;
                     let er = event_record_model::EventRecordModel::new(event_record);
-                    let row_arc = Arc::new(event_list::Node::new(er));
-                    stack_walk_map.get_mut().insert((thread_id, timestamp), row_arc.clone());
-                    let index = event_list_arc_1.push(row_arc);
-                    delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
+
+                    let mut is_matched = false;
+                    let (filter_expression_for_one, filter_expression_for_pair) = filter::filter_expression_get();
+                    if let Some(ref expression_for_one) = *filter_expression_for_one {
+                        match filter::ExpressionForOne::evaluate(expression_for_one, |path, value| {
+                                er.find_by_path_value(path, value)
+                            }, |value| {
+                                er.find_by_value(value)
+                            }) {
+                            Err(e) => {error!("Failed to evaluate: {e}")},
+                            Ok(ok) => is_matched = ok
+                        }
+                    }
+                    if is_matched {
+                        if let Some(ref _expression_for_pair) = *filter_expression_for_pair {
+                            // todo: 
+                        }
+                        let row_arc = Arc::new(event_list::Node::new(er));
+                        stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));
+                        let index = event_list_arc_1.push(row_arc);
+                        delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
+                    } else {
+                        stack_walk_map.get_mut().insert((thread_id, timestamp), None);
+                    }
                 }
             }
         }, |ret| {
