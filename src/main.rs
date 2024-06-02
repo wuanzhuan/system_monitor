@@ -1,4 +1,5 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
+#![windows_subsystem = "windows"]
 
 use event_list::Node;
 use linked_hash_map::LinkedHashMap;
