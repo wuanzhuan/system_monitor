@@ -3,7 +3,7 @@
 
 use event_list::Node;
 use linked_hash_map::LinkedHashMap;
-use slint::{PhysicalPosition, PhysicalSize, Model, ModelRc, SharedString, StandardListViewItem, VecModel};
+use slint::{PhysicalPosition, Model, ModelRc, SharedString, StandardListViewItem, VecModel};
 use i_slint_backend_winit::WinitWindowAccessor;
 use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc};
 use tracing::{error, info};
