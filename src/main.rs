@@ -3,7 +3,8 @@
 
 use event_list::Node;
 use linked_hash_map::LinkedHashMap;
-use slint::{LogicalPosition, Model, ModelRc, SharedString, StandardListViewItem, VecModel};
+use slint::{PhysicalPosition, PhysicalSize, Model, ModelRc, SharedString, StandardListViewItem, VecModel};
+use i_slint_backend_winit::WinitWindowAccessor;
 use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc};
 use tracing::{error, info};
 
@@ -34,7 +35,22 @@ fn main() {
 
     let app = App::new().unwrap();
     let window = app.window();
-    window.set_position(LogicalPosition::new(1000.0, 500.0));
+    if let Some(current_monitor_size) = window.with_winit_window(|wininit_windows| {
+        wininit_windows.current_monitor().map(|current_monitor| {
+            current_monitor.size()
+        })
+    }).unwrap_or(None) {
+        let width = current_monitor_size.width as f32  * 0.6;
+        let height = current_monitor_size.height as f32 * 0.6;
+        let x = (current_monitor_size.width - width as u32) / 2;
+        let y = (current_monitor_size.height - height as u32) / 2;
+        app.set_size((height, width));
+        window.set_position(PhysicalPosition::new(x as i32, y as i32));
+    } else {
+        let width = 800.0;
+        let height = 600.0;
+        app.set_size((height, width));
+    }
 
     let event_list_arc =
         Arc::new(event_list::EventList::<event_record_model::EventRecordModel>::new());

@@ -5,8 +5,10 @@ import { EventsView, EventsViewData,StackWalkInfo } from "events_view.slint";
 export { EventsEnables, EnablesData, EventDesc, EventsViewData, StackWalkInfo }
 
 export component App inherits Window {
-    preferred-width: 1000px;
-    preferred-height: 600px;
+    in property <{width: physical_length, height: physical_length}> size;
+
+    width: size.width;
+    height: size.height;
     title: @tr("kernel events trace");
     icon: @image-url("./logo/slint-logo-small-light.png");
     default-font-family: "Noto Sans";

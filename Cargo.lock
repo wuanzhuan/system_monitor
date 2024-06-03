@@ -3747,6 +3747,7 @@ dependencies = [
  "bytemuck",
  "chrono",
  "chumsky",
+ "i-slint-backend-winit",
  "indexmap",
  "intrusive-collections",
  "lazy_static",
