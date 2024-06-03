@@ -71,11 +71,11 @@ impl<'a> ListModel<'a> {
 
     pub fn row_find(&self, filter_expr: &ExpressionForOne) -> Result<Vec<i32>> {
         self.list.traversal(|item| {
-            ExpressionForOne::evaluate(filter_expr, |path, value| {
-                item.find_by_path_value(path, value)
-            }, |value| {
-                item.find_by_value(value)
-            })
+            ExpressionForOne::evaluate(
+                filter_expr,
+                |path, value| item.find_by_path_value(path, value),
+                |value| item.find_by_value(value),
+            )
         })
     }
 }

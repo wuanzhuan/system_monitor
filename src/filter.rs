@@ -1,16 +1,15 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
 use chumsky::prelude::*;
-use std::{
-    collections::HashMap,
-    sync::Arc
-};
-use parking_lot::FairMutex;
 use once_cell::sync::Lazy;
+use parking_lot::FairMutex;
+use std::{collections::HashMap, sync::Arc};
 
-
-static FILTER_EXPRESSION: Lazy<FairMutex<(Arc<Option<ExpressionForOne>>, Arc<Option<ExpressionForPair>>)>> = Lazy::new(|| {
-    FairMutex::new((Arc::new(None), Arc::new(None)))
-});
+static FILTER_EXPRESSION: Lazy<
+    FairMutex<(
+        Arc<Option<ExpressionForOne>>,
+        Arc<Option<ExpressionForPair>>,
+    )>,
+> = Lazy::new(|| FairMutex::new((Arc::new(None), Arc::new(None))));
 
 pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
     let mut lock = FILTER_EXPRESSION.lock();
@@ -22,7 +21,10 @@ pub fn filter_expression_for_pair_set(expression: Option<ExpressionForPair>) {
     lock.1 = Arc::new(expression);
 }
 
-pub fn filter_expression_get() -> (Arc<Option<ExpressionForOne>>, Arc<Option<ExpressionForPair>>) {
+pub fn filter_expression_get() -> (
+    Arc<Option<ExpressionForOne>>,
+    Arc<Option<ExpressionForPair>>,
+) {
     let lock = FILTER_EXPRESSION.lock();
     (lock.0.clone(), lock.1.clone())
 }
@@ -81,15 +83,27 @@ impl ExpressionForOne {
         fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone,
     ) -> Result<bool> {
         match expr {
-            ExpressionForOne::Parentheses(expr) => { return ExpressionForOne::evaluate(expr, fn_path_value, fn_value) }
-            ExpressionForOne::Non(expr) => { return ExpressionForOne::evaluate(expr, fn_path_value, fn_value).map(| ok| !ok) }
+            ExpressionForOne::Parentheses(expr) => {
+                return ExpressionForOne::evaluate(expr, fn_path_value, fn_value)
+            }
+            ExpressionForOne::Non(expr) => {
+                return ExpressionForOne::evaluate(expr, fn_path_value, fn_value).map(|ok| !ok)
+            }
             ExpressionForOne::And(expr_left, expr_right) => {
-                return Ok(ExpressionForOne::evaluate(expr_left, fn_path_value.clone(), fn_value.clone())? && ExpressionForOne::evaluate(expr_right, fn_path_value, fn_value)?);
+                return Ok(ExpressionForOne::evaluate(
+                    expr_left,
+                    fn_path_value.clone(),
+                    fn_value.clone(),
+                )? && ExpressionForOne::evaluate(expr_right, fn_path_value, fn_value)?);
             }
             ExpressionForOne::Or(expr_left, expr_right) => {
-                return Ok(ExpressionForOne::evaluate(expr_left, fn_path_value.clone(), fn_value.clone())? || ExpressionForOne::evaluate(expr_right, fn_path_value, fn_value)?);
+                return Ok(ExpressionForOne::evaluate(
+                    expr_left,
+                    fn_path_value.clone(),
+                    fn_value.clone(),
+                )? || ExpressionForOne::evaluate(expr_right, fn_path_value, fn_value)?);
             }
-            ExpressionForOne::KvPair{key, value} => {
+            ExpressionForOne::KvPair { key, value } => {
                 return fn_path_value(key, value);
             }
             ExpressionForOne::FindValue(value) => {
@@ -98,25 +112,26 @@ impl ExpressionForOne {
         }
     }
 
-    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForOne, extra::Err<Rich<'a, char>>> {
+    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForOne, extra::Err<Rich<'a, char>>>
+    {
         recursive(|expr| {
             let value = recursive(|value| {
                 let digits = text::digits(10).to_slice();
-    
+
                 let frac = just('.').then(digits);
-    
+
                 let exp = just('e')
                     .or(just('E'))
                     .then(one_of("+-").or_not())
                     .then(digits);
-    
+
                 let number_i64 = just('-')
                     .or_not()
                     .then(text::int(10))
                     .to_slice()
                     .map(|s: &str| s.parse().unwrap())
                     .boxed();
-    
+
                 let number = just('-')
                     .or_not()
                     .then(text::int(10))
@@ -125,7 +140,7 @@ impl ExpressionForOne {
                     .to_slice()
                     .map(|s: &str| s.parse().unwrap())
                     .boxed();
-    
+
                 let escape = just('\\')
                     .then(choice((
                         just('\\'),
@@ -138,19 +153,20 @@ impl ExpressionForOne {
                         just('t').to('\t'),
                         just('u').ignore_then(text::digits(16).exactly(4).to_slice().validate(
                             |digits, e, emitter| {
-                                char::from_u32(u32::from_str_radix(digits, 16).unwrap()).unwrap_or_else(
-                                    || {
-                                        emitter
-                                            .emit(Rich::custom(e.span(), "invalid unicode character"));
+                                char::from_u32(u32::from_str_radix(digits, 16).unwrap())
+                                    .unwrap_or_else(|| {
+                                        emitter.emit(Rich::custom(
+                                            e.span(),
+                                            "invalid unicode character",
+                                        ));
                                         '\u{FFFD}' // unicode replacement character
-                                    },
-                                )
+                                    })
                             },
                         )),
                     )))
                     .ignored()
                     .boxed();
-    
+
                 let string = none_of("\\\"")
                     .ignored()
                     .or(escape)
@@ -159,7 +175,7 @@ impl ExpressionForOne {
                     .map(ToString::to_string)
                     .delimited_by(just('"'), just('"'))
                     .boxed();
-    
+
                 let array = value
                     .clone()
                     .separated_by(just(',').padded().recover_with(skip_then_retry_until(
@@ -177,7 +193,7 @@ impl ExpressionForOne {
                             .recover_with(skip_then_retry_until(any().ignored(), end())),
                     )
                     .boxed();
-    
+
                 let member = string.clone().then_ignore(just(':').padded()).then(value);
                 let object = member
                     .clone()
@@ -195,7 +211,7 @@ impl ExpressionForOne {
                             .recover_with(skip_then_retry_until(any().ignored(), end())),
                     )
                     .boxed();
-    
+
                 choice((
                     just("null").to(Value::Null),
                     just("true").to(Value::Bool(true)),
@@ -224,7 +240,7 @@ impl ExpressionForOne {
                 ))
                 .padded()
             });
-    
+
             let path = text::ident()
                 .then(just(".").ignore_then(text::ident()).or_not())
                 .map(|(key, field): (&str, Option<&str>)| Path {
@@ -248,20 +264,23 @@ impl ExpressionForOne {
                 .map(|(key, value)| ExpressionForOne::KvPair { key, value })
                 .boxed();
             let find_value = value.map(ExpressionForOne::FindValue);
-    
+
             let op_logic = choice((
-                just("&&").padded().to(ExpressionForOne::And as fn(_, _) -> _),
-                just("||").padded().to(ExpressionForOne::Or as fn(_, _) -> _),
+                just("&&")
+                    .padded()
+                    .to(ExpressionForOne::And as fn(_, _) -> _),
+                just("||")
+                    .padded()
+                    .to(ExpressionForOne::Or as fn(_, _) -> _),
             ));
             let start = choice((parentheses, op_non, kv_pair, find_value));
-    
+
             start.foldl(op_logic.then(expr.clone()).repeated(), |a, (op, rhs)| {
                 op(Box::new(a), Box::new(rhs))
             })
         })
         .then_ignore(end())
     }
-    
 }
 
 // start with #
@@ -293,21 +312,21 @@ impl ExpressionForPair {
             })
     }
 
-    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForPair, extra::Err<Rich<'a, char>>> {
+    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForPair, extra::Err<Rich<'a, char>>>
+    {
         recursive(|expr| {
             let op_or = just("||").padded().to(ExpressionForPair::Or);
             let start = choice((
                 just("handle").to(ExpressionForPair::Handle),
                 just("memory").to(ExpressionForPair::Memory),
             ));
-    
+
             start.foldl(op_or.then(expr.clone()).repeated(), |a, (op, rhs)| {
                 op(Box::new(a), Box::new(rhs))
             })
         })
         .then_ignore(end())
     }
-    
 }
 
 #[cfg(test)]
@@ -322,13 +341,15 @@ mod tests {
         assert_eq!(
             r.unwrap(),
             ExpressionForOne::And(
-                Box::new(ExpressionForOne::Parentheses(Box::new(ExpressionForOne::KvPair {
-                    key: Path {
-                        key: "key1".to_string(),
-                        field: Some("field".to_string(),),
-                    },
-                    value: Value::Num(1.556,),
-                }),)),
+                Box::new(ExpressionForOne::Parentheses(Box::new(
+                    ExpressionForOne::KvPair {
+                        key: Path {
+                            key: "key1".to_string(),
+                            field: Some("field".to_string(),),
+                        },
+                        value: Value::Num(1.556,),
+                    }
+                ),)),
                 Box::new(ExpressionForOne::KvPair {
                     key: Path {
                         key: "key2".to_string(),
@@ -370,8 +391,10 @@ mod tests {
         let r = ExpressionForPair::parse(src.trim()).unwrap();
         assert_eq!(
             r,
-            ExpressionForPair::Or(Box::new(ExpressionForPair::Handle), Box::new(ExpressionForPair::Memory))
+            ExpressionForPair::Or(
+                Box::new(ExpressionForPair::Handle),
+                Box::new(ExpressionForPair::Memory)
+            )
         );
     }
-
 }
