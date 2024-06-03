@@ -39,7 +39,7 @@ export component EventsView inherits VerticalBox {
             vertical-alignment: center;
         }
         FindBar {
-            placeholder-text: "i.e. process_id = 1 && properties.xxx = 1 || xxx";
+            placeholder-text: "process_id = 1 && properties.xxx = 1 || xxx";
     
             row-find(filter_expr) => {
                 return EventsViewData.row-find(filter_expr);

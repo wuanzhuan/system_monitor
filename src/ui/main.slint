@@ -1,6 +1,7 @@
 import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch, StandardButton, Button, Palette } from "std-widgets.slint";
 import { EventsEnables, EnablesData, EventDesc } from "events_enable.slint";
 import { EventsView, EventsViewData,StackWalkInfo } from "events_view.slint";
+import { FilterInput } from "filter_input.slint";
 
 export { EventsEnables, EnablesData, EventDesc, EventsViewData, StackWalkInfo }
 
@@ -16,6 +17,7 @@ export component App inherits Window {
     callback start() -> {ok: bool, message: string};
     callback stop();
     callback set_filter_expression_for_one(string) -> {result: bool, message: string};
+    callback set_filter_expression_for_pair(string) -> {result: bool, message: string};
 
     out property <length> rem: self.default-font-size;
     private property <{ok: bool, message: string}> result_start;
@@ -65,31 +67,10 @@ export component App inherits Window {
                 padding: 0px;
                 height: 7mm;
 
-                private property <{result: bool, message: string}> result_for_one;
-
-                LineEdit {
+                FilterInput {
                     placeholder-text: @tr("filter one");
-
-                    accepted(text) => {
-                        result_for_one = set_filter_expression_for_one(text);
-                        if !result_for_one.result {
-                            popup-for-one.show();
-                        }
-                    }
-                }
-                popup-for-one := PopupWindow {
-                    y: parent.preferred-height + 1mm;
-    
-                    Rectangle {
-                        border-color: Palette.border;
-                        border-width: 1px;
-                        background: Palette.background;
-                        HorizontalBox {
-                            Text {
-                                text: result_for_one.message;
-                                color: #ec5353;
-                            }
-                        }
+                    set_filter_expression(text) => {
+                        set_filter_expression_for_one(text)
                     }
                 }
                 Text {
@@ -97,8 +78,11 @@ export component App inherits Window {
                     text: "&&";
                     color: Palette.accent-background;
                 }
-                LineEdit {
+                FilterInput {
                     placeholder-text: @tr("filter pair");
+                    set_filter_expression(text) => {
+                        set_filter_expression_for_pair(text)
+                    }
                 }
             }
         }

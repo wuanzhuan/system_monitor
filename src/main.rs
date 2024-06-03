@@ -172,6 +172,19 @@ fn main() {
             }
         }
     });
+    app.on_set_filter_expression_for_pair(|text| {
+        if text.is_empty() {
+            filter::filter_expression_for_pair_set(None);
+            return (SharedString::new(), true);
+        }
+        match filter::ExpressionForPair::parse(text.as_str()) {
+            Err(e) => (SharedString::from(e.to_string()), false),
+            Ok(ok) => {
+                filter::filter_expression_for_pair_set(Some(ok));
+                (SharedString::new(), true)
+            }
+        }
+    });
 
     let app_weak = app.as_weak();
     app.on_start(move || {

@@ -1,0 +1,40 @@
+import { HorizontalBox, LineEdit, Palette } from "std-widgets.slint";
+
+
+export component FilterInput {
+    in property <string> placeholder-text;
+    callback set_filter_expression(string) -> {result: bool, message: string};
+    
+    HorizontalBox {
+        padding: 0px;
+        height: 7mm;
+
+        private property <{result: bool, message: string}> result_for_one;
+
+        LineEdit {
+            placeholder-text: placeholder-text;
+
+            accepted(text) => {
+                result_for_one = set_filter_expression(text);
+                if !result_for_one.result {
+                    popup-for-one.show();
+                }
+            }
+        }
+        popup-for-one := PopupWindow {
+            y: parent.preferred-height + 1mm;
+
+            Rectangle {
+                border-color: Palette.border;
+                border-width: 1px;
+                background: Palette.background;
+                HorizontalBox {
+                    Text {
+                        text: result_for_one.message;
+                        color: #ec5353;
+                    }
+                }
+            }
+        }
+    }
+}
