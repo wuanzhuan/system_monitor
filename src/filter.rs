@@ -429,6 +429,6 @@ mod tests {
     fn expression_for_pair_custom_succuss() {
         let src = r#"handle || memory || custom(handle, CreateHandle, CloseHandle, process_id, properties.xx)"#;
         let r = ExpressionForPair::parse(src.trim()).unwrap();
-        println!("xxx: {r:?}");
+        println!("xxx: {r:#?}");
     }
 }
