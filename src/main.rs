@@ -1,5 +1,5 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
-#![windows_subsystem = "windows"]
+//#![windows_subsystem = "windows"]
 
 use event_list::Node;
 use i_slint_backend_winit::WinitWindowAccessor;
@@ -174,13 +174,13 @@ fn main() {
     });
     app.on_set_filter_expression_for_pair(|text| {
         if text.is_empty() {
-            filter::filter_expression_for_pair_set(None);
+            filter::filter_expression_for_pair_set(vec![]);
             return (SharedString::new(), true);
         }
         match filter::ExpressionForPair::parse(text.as_str()) {
             Err(e) => (SharedString::from(e.to_string()), false),
             Ok(ok) => {
-                filter::filter_expression_for_pair_set(Some(ok));
+                filter::filter_expression_for_pair_set(ok);
                 (SharedString::new(), true)
             }
         }
@@ -229,8 +229,12 @@ fn main() {
                         }
                     }
                     if is_matched {
-                        if let Some(ref _expression_for_pair) = *filter_expression_for_pair {
-                            // todo: 
+                       for expression_for_pair in filter_expression_for_pair.iter() {
+                            match expression_for_pair {
+                                filter::ExpressionForPair::Handle => {},
+                                filter::ExpressionForPair::Memory => {},
+                                filter::ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, fields_for_match } => {}
+                            }
                         }
                         let row_arc = Arc::new(event_list::Node::new(er));
                         stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));

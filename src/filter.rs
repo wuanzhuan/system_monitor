@@ -7,23 +7,23 @@ use std::{collections::HashMap, sync::Arc};
 static FILTER_EXPRESSION: Lazy<
     FairMutex<(
         Arc<Option<ExpressionForOne>>,
-        Arc<Option<ExpressionForPair>>,
+        Arc<Vec<ExpressionForPair>>,
     )>,
-> = Lazy::new(|| FairMutex::new((Arc::new(None), Arc::new(None))));
+> = Lazy::new(|| FairMutex::new((Arc::new(None), Arc::new(vec![]))));
 
 pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
     let mut lock = FILTER_EXPRESSION.lock();
     lock.0 = Arc::new(expression);
 }
 
-pub fn filter_expression_for_pair_set(expression: Option<ExpressionForPair>) {
+pub fn filter_expression_for_pair_set(expressions: Vec<ExpressionForPair>) {
     let mut lock = FILTER_EXPRESSION.lock();
-    lock.1 = Arc::new(expression);
+    lock.1 = Arc::new(expressions);
 }
 
 pub fn filter_expression_get() -> (
     Arc<Option<ExpressionForOne>>,
-    Arc<Option<ExpressionForPair>>,
+    Arc<Vec<ExpressionForPair>>,
 ) {
     let lock = FILTER_EXPRESSION.lock();
     (lock.0.clone(), lock.1.clone())
@@ -112,7 +112,8 @@ impl ExpressionForOne {
         }
     }
 
-    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForOne, extra::Err<Rich<'a, char>>> {
+    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForOne, extra::Err<Rich<'a, char>>>
+    {
         recursive(|expr| {
             let value = recursive(|value| {
                 let digits = text::digits(10).to_slice();
@@ -293,11 +294,10 @@ pub enum ExpressionForPair {
         opcode_name_second: String,
         fields_for_match: Vec<Path>,
     },
-    Or(Box<ExpressionForPair>, Box<ExpressionForPair>),
 }
 
 impl ExpressionForPair {
-    pub fn parse(src: &str) -> Result<ExpressionForPair> {
+    pub fn parse(src: &str) -> Result<Vec<ExpressionForPair>> {
         Self::build_parser()
             .parse(src.trim())
             .into_result()
@@ -317,39 +317,45 @@ impl ExpressionForPair {
             })
     }
 
-    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForPair, extra::Err<Rich<'a, char>>>
-    {
-        recursive(|expr| {
-            let path = text::ident()
-                .then(just(".").ignore_then(text::ident()).or_not())
-                .map(|(key, field): (&str, Option<&str>)| Path {
-                    key: key.to_string(),
-                    field: field.map(|s| String::from(s)),
-                });
-            let event_opcode_names = text::ascii::ident().map(|s: &str| s.to_string()).then_ignore(just(",").padded()).repeated().exactly(3).collect::<Vec::<String>>();
-            let fields_for_match = path.separated_by(just(",").padded()).at_least(1).collect::<Vec::<Path>>();
-            let custom_parameters = just("(").padded()
-                .ignore_then(event_opcode_names.then(fields_for_match))
-                .then_ignore(just(")").padded());
-            let op_or = just("||").padded().to(ExpressionForPair::Or);
-            let start = choice((
-                just("handle").to(ExpressionForPair::Handle),
-                just("memory").to(ExpressionForPair::Memory),
-                just("custom").ignore_then(custom_parameters).map(
-                    |(event_opcode_names, fields_for_match)| ExpressionForPair::Custom {
-                        event_name: event_opcode_names[0].clone(),
-                        opcode_name_first: event_opcode_names[1].clone(),
-                        opcode_name_second: event_opcode_names[2].clone(),
-                        fields_for_match: fields_for_match,
-                    },
-                ),
-            ));
+    fn build_parser<'a>(
+    ) -> impl Parser<'a, &'a str, Vec<ExpressionForPair>, extra::Err<Rich<'a, char>>> {
+        let path = text::ident()
+            .then(just(".").ignore_then(text::ident()).or_not())
+            .map(|(key, field): (&str, Option<&str>)| Path {
+                key: key.to_string(),
+                field: field.map(|s| String::from(s)),
+            });
+        let event_opcode_names = text::ascii::ident()
+            .map(|s: &str| s.to_string())
+            .then_ignore(just(",").padded())
+            .repeated()
+            .exactly(3)
+            .collect::<Vec<String>>();
+        let fields_for_match = path
+            .separated_by(just(",").padded())
+            .at_least(1)
+            .collect::<Vec<Path>>();
+        let custom_parameters = just("(")
+            .padded()
+            .ignore_then(event_opcode_names.then(fields_for_match))
+            .then_ignore(just(")").padded());
+        let expression_for_pair = choice((
+            just("handle").to(ExpressionForPair::Handle),
+            just("memory").to(ExpressionForPair::Memory),
+            just("custom").ignore_then(custom_parameters).map(
+                |(event_opcode_names, fields_for_match)| ExpressionForPair::Custom {
+                    event_name: event_opcode_names[0].clone(),
+                    opcode_name_first: event_opcode_names[1].clone(),
+                    opcode_name_second: event_opcode_names[2].clone(),
+                    fields_for_match: fields_for_match,
+                },
+            ),
+        ));
 
-            start.foldl(op_or.then(expr.clone()).repeated(), |a, (op, rhs)| {
-                op(Box::new(a), Box::new(rhs))
-            })
-        })
-        .then_ignore(end())
+        expression_for_pair
+            .separated_by(just("||").padded())
+            .collect::<Vec<ExpressionForPair>>()
+            .then_ignore(end())
     }
 }
 
@@ -415,10 +421,7 @@ mod tests {
         let r = ExpressionForPair::parse(src.trim()).unwrap();
         assert_eq!(
             r,
-            ExpressionForPair::Or(
-                Box::new(ExpressionForPair::Handle),
-                Box::new(ExpressionForPair::Memory)
-            )
+            vec![ExpressionForPair::Handle, ExpressionForPair::Memory]
         );
     }
 
