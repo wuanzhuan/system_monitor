@@ -112,8 +112,7 @@ impl ExpressionForOne {
         }
     }
 
-    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForOne, extra::Err<Rich<'a, char>>>
-    {
+    fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForOne, extra::Err<Rich<'a, char>>> {
         recursive(|expr| {
             let value = recursive(|value| {
                 let digits = text::digits(10).to_slice();
@@ -288,6 +287,12 @@ impl ExpressionForOne {
 pub enum ExpressionForPair {
     Handle,
     Memory,
+    Custom {
+        event_name: String,
+        opcode_name_first: String,
+        opcode_name_second: String,
+        fields_for_match: Vec<Path>,
+    },
     Or(Box<ExpressionForPair>, Box<ExpressionForPair>),
 }
 
@@ -315,10 +320,29 @@ impl ExpressionForPair {
     fn build_parser<'a>() -> impl Parser<'a, &'a str, ExpressionForPair, extra::Err<Rich<'a, char>>>
     {
         recursive(|expr| {
+            let path = text::ident()
+                .then(just(".").ignore_then(text::ident()).or_not())
+                .map(|(key, field): (&str, Option<&str>)| Path {
+                    key: key.to_string(),
+                    field: field.map(|s| String::from(s)),
+                });
+            let event_opcode_names = text::ascii::ident().map(|s: &str| s.to_string()).then_ignore(just(",").padded()).repeated().exactly(3).collect::<Vec::<String>>();
+            let fields_for_match = path.separated_by(just(",").padded()).at_least(1).collect::<Vec::<Path>>();
+            let custom_parameters = just("(").padded()
+                .ignore_then(event_opcode_names.then(fields_for_match))
+                .then_ignore(just(")").padded());
             let op_or = just("||").padded().to(ExpressionForPair::Or);
             let start = choice((
                 just("handle").to(ExpressionForPair::Handle),
                 just("memory").to(ExpressionForPair::Memory),
+                just("custom").ignore_then(custom_parameters).map(
+                    |(event_opcode_names, fields_for_match)| ExpressionForPair::Custom {
+                        event_name: event_opcode_names[0].clone(),
+                        opcode_name_first: event_opcode_names[1].clone(),
+                        opcode_name_second: event_opcode_names[2].clone(),
+                        fields_for_match: fields_for_match,
+                    },
+                ),
             ));
 
             start.foldl(op_or.then(expr.clone()).repeated(), |a, (op, rhs)| {
@@ -396,5 +420,12 @@ mod tests {
                 Box::new(ExpressionForPair::Memory)
             )
         );
+    }
+
+    #[test]
+    fn expression_for_pair_custom_succuss() {
+        let src = r#"handle || memory || custom(handle, CreateHandle, CloseHandle, process_id, properties.xx)"#;
+        let r = ExpressionForPair::parse(src.trim()).unwrap();
+        println!("xxx: {r:?}");
     }
 }
