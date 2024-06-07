@@ -11,7 +11,7 @@ use std::{
 };
 
 use crate::third_extend::strings::*;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use linked_hash_map::LinkedHashMap;
 use parking_lot::{FairMutex, FairMutexGuard};
 use tracing::{error, warn};
@@ -43,9 +43,9 @@ const INVALID_PROCESSTRACE_HANDLE: u64 = if cfg!(target_pointer_width = "64") {
 // {ADA6BC38-93C9-00D1-7462-11D6841904AA}
 const DUMMY_GUID: GUID = GUID::from_u128(0xADA6BC38_93C9_00D1_7462_11D6841904AA);
 
-lazy_static! {
-    static ref CONTEXT: Arc::<FairMutex<Controller>> = Arc::new(FairMutex::new(Controller::new()));
-}
+static CONTEXT: Lazy<Arc::<FairMutex<Controller>>> = Lazy::new(|| {
+    Arc::new(FairMutex::new(Controller::new()))
+});
 
 #[repr(C)]
 struct EtwPropertiesBuf(EVENT_TRACE_PROPERTIES, [u8]);

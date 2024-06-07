@@ -3750,7 +3750,6 @@ dependencies = [
  "i-slint-backend-winit",
  "indexmap",
  "intrusive-collections",
- "lazy_static",
  "linked-hash-map",
  "once_cell",
  "parking_lot",
