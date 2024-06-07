@@ -2,10 +2,7 @@ use std::{
     cell::{RefCell, UnsafeCell},
     ffi, fmt, mem, ptr,
     rc::Rc,
-    sync::{
-        mpsc::{self, RecvTimeoutError},
-        Arc,
-    },
+    sync::mpsc::{self, RecvTimeoutError},
     thread,
     time::Duration,
 };
@@ -43,8 +40,8 @@ const INVALID_PROCESSTRACE_HANDLE: u64 = if cfg!(target_pointer_width = "64") {
 // {ADA6BC38-93C9-00D1-7462-11D6841904AA}
 const DUMMY_GUID: GUID = GUID::from_u128(0xADA6BC38_93C9_00D1_7462_11D6841904AA);
 
-static CONTEXT: Lazy<Arc::<FairMutex<Controller>>> = Lazy::new(|| {
-    Arc::new(FairMutex::new(Controller::new()))
+static CONTEXT: Lazy<FairMutex<Controller>> = Lazy::new(|| {
+    FairMutex::new(Controller::new())
 });
 
 #[repr(C)]
@@ -97,8 +94,7 @@ impl Controller {
             + 'static,
         fn_completion: impl FnOnce(Result<()>) + Send + 'static,
     ) -> Result<()> {
-        let context_arc = CONTEXT.clone();
-        let mut context_mg = context_arc.lock();
+        let mut context_mg = CONTEXT.lock();
         let mut h_trace = CONTROLTRACE_HANDLE::default();
         let session_name: &U16CStr = if context_mg.is_win8_or_greater {
             SESSION_NAME_SYSMON
@@ -182,8 +178,7 @@ impl Controller {
                         return;
                     }
                 }
-                let context_arc = CONTEXT.clone();
-                let mut context_mg = context_arc.lock();
+                let mut context_mg = CONTEXT.lock();
                 context_mg.h_consumer_thread = None;
                 fn_completion(r_pt);
             });
@@ -212,8 +207,7 @@ impl Controller {
     }
 
     pub fn stop(mg: Option<FairMutexGuard<Controller>>) -> Result<()> {
-        let context_arc = CONTEXT.clone();
-        let mut context_mg = mg.unwrap_or(context_arc.lock());
+        let mut context_mg = mg.unwrap_or(CONTEXT.lock());
 
         if 0 != context_mg.h_trace_session.Value {
             let session_name: &U16CStr = if context_mg.is_win8_or_greater {
@@ -249,7 +243,7 @@ impl Controller {
             let h = context_mg.h_consumer_thread.take().unwrap();
             mem::drop(context_mg);
             let _ = h.join();
-            context_mg = context_arc.lock();
+            context_mg = CONTEXT.lock();
         }
 
         // clear other
@@ -260,8 +254,7 @@ impl Controller {
     }
 
     pub fn set_config_enables(index_major: usize, index_minor: Option<usize>, checked: bool) {
-        let context_arc = CONTEXT.clone();
-        let mut context_mg = context_arc.lock();
+        let mut context_mg = CONTEXT.lock();
         let mut is_change = false;
         if let Some(index) = index_minor {
             if context_mg.config.events_enables[index_major].minors[index] != checked {
@@ -308,8 +301,7 @@ impl Controller {
             }
         };
 
-        let context_arc = CONTEXT.clone();
-        let context_mg = context_arc.lock();
+        let context_mg = CONTEXT.lock();
         if is_stack_walk {
             let sw = StackWalk::from_event_record_decoded(&event_record_decoded);
             if context_mg
@@ -386,8 +378,7 @@ impl Controller {
             if let Some(context_mg) = context_mg_op {
                 context_mg.unstored_events_map.borrow_mut().insert(key, ());
             } else {
-                let context_arc = CONTEXT.clone();
-                let context_mg = context_arc.lock();
+                let context_mg = CONTEXT.lock();
                 context_mg.unstored_events_map.borrow_mut().insert(key, ());
             }
         }
@@ -415,8 +406,7 @@ impl Controller {
             er: &EVENT_RECORD,
             is_stack_walk: bool,
         ) -> Option<EventRecordDecoded> {
-            let context_arc = CONTEXT.clone();
-            let context_mg = context_arc.lock();
+            let context_mg = CONTEXT.lock();
             if let Some(indexs) = context_mg.config.events_opcode_map.get(&(
                 er.EventHeader.ProviderId,
                 er.EventHeader.EventDescriptor.Opcode as u32,
