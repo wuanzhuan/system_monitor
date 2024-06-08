@@ -12,6 +12,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Process",
+            display_name: None,
             flag: Major::Process as u32,
         },
         minors: &[
@@ -45,6 +46,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Thread",
+            display_name: None,
             flag: Major::Thread as u32,
         },
         minors: &[
@@ -74,6 +76,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Image",
+            display_name: None,
             flag: Major::ImageLoad as u32,
         },
         minors: &[
@@ -107,6 +110,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ProcessCounters",
+            display_name: None,
             flag: Major::ProcessCounters as u32,
         },
         minors: &[
@@ -124,6 +128,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DiskIo",
+            display_name: None,
             flag: Major::DiskIo as u32,
         },
         minors: &[
@@ -145,6 +150,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FileIoName",
+            display_name: None,
             flag: Major::FileIoName as u32,
         },
         minors: &[
@@ -182,6 +188,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DiskIoInit",
+            display_name: None,
             flag: Major::DiskIoInit as u32,
         },
         minors: &[
@@ -203,6 +210,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "MemoryPageFaults",
+            display_name: None,
             flag: Major::MemoryPageFaults as u32,
         },
         minors: &[
@@ -236,6 +244,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "MemoryHardFaults",
+            display_name: None,
             flag: Major::MemoryHardFaults as u32,
         },
         minors: &[MinorDescribe {
@@ -247,6 +256,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "VaMap",
+            display_name: None,
             flag: Major::VaMap as u32,
         },
         minors: &[],
@@ -255,6 +265,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "TcpIp",
+            display_name: None,
             flag: Major::Network as u32,
         },
         minors: &[
@@ -332,6 +343,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "UdpIp",
+            display_name: None,
             flag: Major::Network as u32,
         },
         minors: &[
@@ -361,6 +373,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Registry",
+            display_name: None,
             flag: Major::Registry as u32,
         },
         minors: &[
@@ -442,6 +455,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DebugPrint",
+            display_name: None,
             flag: Major::DbgPrint as u32,
         },
         minors: &[MinorDescribe {
@@ -453,6 +467,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Job",
+            display_name: None,
             flag: Major::Job as u32,
         },
         minors: &[
@@ -490,6 +505,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Alpc",
+            display_name: None,
             flag: Major::Alpc as u32,
         },
         minors: &[
@@ -519,6 +535,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SplitIo",
+            display_name: None,
             flag: Major::SplitIo as u32,
         },
         minors: &[MinorDescribe {
@@ -530,6 +547,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DebugEvents",
+            display_name: None,
             flag: Major::DebugEvents as u32,
         },
         minors: &[],
@@ -538,6 +556,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FileIo",
+            display_name: None,
             flag: Major::FileIo as u32,
         },
         minors: &[MinorDescribe {
@@ -549,6 +568,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FileIoInit",
+            display_name: None,
             flag: Major::FileIoInit as u32,
         },
         minors: &[
@@ -618,6 +638,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Memory",
+            display_name: None,
             flag: Major::Memory as u32,
         },
         minors: &[],
@@ -626,6 +647,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Profile",
+            display_name: None,
             flag: Major::Profile as u32,
         },
         minors: &[MinorDescribe {
@@ -637,6 +659,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ContextSwitch",
+            display_name: None,
             flag: Major::ContextSwitch as u32,
         },
         minors: &[MinorDescribe {
@@ -648,6 +671,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FootPrint",
+            display_name: None,
             flag: Major::FootPrint as u32,
         },
         minors: &[],
@@ -656,6 +680,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DiskIoDriver",
+            display_name: None,
             flag: Major::Driver as u32,
         },
         minors: &[
@@ -685,6 +710,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Refset",
+            display_name: None,
             flag: Major::Refset as u32,
         },
         minors: &[],
@@ -693,6 +719,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Pool",
+            display_name: None,
             flag: Major::Pool as u32,
         },
         minors: &[
@@ -734,6 +761,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PoolTrace",
+            display_name: None,
             flag: Major::PoolTrace as u32,
         },
         minors: &[],
@@ -742,6 +770,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Dpc",
+            display_name: None,
             flag: Major::Dpc as u32,
         },
         minors: &[
@@ -763,6 +792,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "CompactContextSwitch",
+            display_name: None,
             flag: Major::CompactCSwitch as u32,
         },
         minors: &[],
@@ -771,6 +801,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Dispatcher",
+            display_name: None,
             flag: Major::Dispatcher as u32,
         },
         minors: &[MinorDescribe {
@@ -782,6 +813,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PmcProfile",
+            display_name: None,
             flag: Major::PmcProfile as u32,
         },
         minors: &[],
@@ -790,6 +822,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ProFiling",
+            display_name: None,
             flag: Major::ProFiling as u32,
         },
         minors: &[],
@@ -798,6 +831,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ProcessInSwap",
+            display_name: None,
             flag: Major::ProcessInSwap as u32,
         },
         minors: &[],
@@ -806,6 +840,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Affinity",
+            display_name: None,
             flag: Major::Affinity as u32,
         },
         minors: &[],
@@ -814,6 +849,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Priority",
+            display_name: None,
             flag: Major::Priority as u32,
         },
         minors: &[],
@@ -822,6 +858,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Interrupt",
+            display_name: None,
             flag: Major::Interrupt as u32,
         },
         minors: &[MinorDescribe {
@@ -833,6 +870,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "VirtualAlloc",
+            display_name: None,
             flag: Major::VirtualAlloc as u32,
         },
         minors: &[
@@ -850,6 +888,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SpinLock",
+            display_name: None,
             flag: Major::SpinLock as u32,
         },
         minors: &[],
@@ -858,6 +897,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SyncObjects",
+            display_name: None,
             flag: Major::SyncObjects as u32,
         },
         minors: &[],
@@ -866,6 +906,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DpcQueue",
+            display_name: None,
             flag: Major::DpcQueue as u32,
         },
         minors: &[],
@@ -874,6 +915,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "MemInfo",
+            display_name: None,
             flag: Major::MemInfo as u32,
         },
         minors: &[],
@@ -882,6 +924,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ContMemGen",
+            display_name: None,
             flag: Major::ContMemGen as u32,
         },
         minors: &[],
@@ -890,6 +933,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SpinLockCounts",
+            display_name: None,
             flag: Major::SpinLockCounts as u32,
         },
         minors: &[],
@@ -898,6 +942,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SpinInstr",
+            display_name: None,
             flag: Major::SpinInstr as u32,
         },
         minors: &[],
@@ -906,6 +951,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SessionOrPfSection",
+            display_name: None,
             flag: Major::SessionOrPfSection as u32,
         },
         minors: &[],
@@ -914,6 +960,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "MemInfoWs",
+            display_name: None,
             flag: Major::MemInfoWs as u32,
         },
         minors: &[],
@@ -922,6 +969,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "KernelQueue",
+            display_name: None,
             flag: Major::KernelQueue as u32,
         },
         minors: &[],
@@ -930,6 +978,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "InterruptSteer",
+            display_name: None,
             flag: Major::InterruptSteer as u32,
         },
         minors: &[],
@@ -938,6 +987,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ShouldYield",
+            display_name: None,
             flag: Major::ShouldYield as u32,
         },
         minors: &[],
@@ -946,6 +996,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Ws",
+            display_name: None,
             flag: Major::Ws as u32,
         },
         minors: &[],
@@ -955,6 +1006,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "AntiStarvation",
+            display_name: None,
             flag: Major::AntiStarvation as u32,
         },
         minors: &[],
@@ -963,6 +1015,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ProcessFreeze",
+            display_name: None,
             flag: Major::ProcessFreeze as u32,
         },
         minors: &[],
@@ -971,6 +1024,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PfnList",
+            display_name: None,
             flag: Major::PfnList as u32,
         },
         minors: &[],
@@ -979,6 +1033,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WsDeTail",
+            display_name: None,
             flag: Major::WsDeTail as u32,
         },
         minors: &[],
@@ -987,6 +1042,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WsEntry",
+            display_name: None,
             flag: Major::WsEntry as u32,
         },
         minors: &[],
@@ -995,6 +1051,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Heap",
+            display_name: None,
             flag: Major::Heap as u32,
         },
         minors: &[
@@ -1064,6 +1121,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SystemCall",
+            display_name: None,
             flag: Major::SystemCall as u32,
         },
         minors: &[
@@ -1081,6 +1139,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Ums",
+            display_name: None,
             flag: Major::Ums as u32,
         },
         minors: &[],
@@ -1089,6 +1148,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "BackTrace",
+            display_name: None,
             flag: Major::BackTrace as u32,
         },
         minors: &[],
@@ -1097,6 +1157,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Vulcan",
+            display_name: None,
             flag: Major::Vulcan as u32,
         },
         minors: &[],
@@ -1105,6 +1166,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "EventTrace",
+            display_name: None,
             flag: Major::Events as u32,
         },
         minors: &[
@@ -1126,6 +1188,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FullTrace",
+            display_name: None,
             flag: Major::FullTrace as u32,
         },
         minors: &[],
@@ -1134,6 +1197,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Dfss",
+            display_name: None,
             flag: Major::Dfss as u32,
         },
         minors: &[],
@@ -1142,6 +1206,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PreFetch",
+            display_name: None,
             flag: Major::PreFetch as u32,
         },
         minors: &[],
@@ -1150,6 +1215,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ProcessorIdle",
+            display_name: None,
             flag: Major::ProcessorIdle as u32,
         },
         minors: &[],
@@ -1158,6 +1224,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "CpuConfig",
+            display_name: None,
             flag: Major::CpuConfig as u32,
         },
         minors: &[],
@@ -1166,6 +1233,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Timer",
+            display_name: None,
             flag: Major::Timer as u32,
         },
         minors: &[],
@@ -1174,6 +1242,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ClockInterrupt",
+            display_name: None,
             flag: Major::ClockInterrupt as u32,
         },
         minors: &[],
@@ -1182,6 +1251,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "LoadBalancer",
+            display_name: None,
             flag: Major::LoadBalancer as u32,
         },
         minors: &[],
@@ -1190,6 +1260,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ClockTimer",
+            display_name: None,
             flag: Major::ClockTimer as u32,
         },
         minors: &[],
@@ -1198,6 +1269,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "IdleSelection",
+            display_name: None,
             flag: Major::IdleSelection as u32,
         },
         minors: &[],
@@ -1206,6 +1278,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Ipi",
+            display_name: None,
             flag: Major::Ipi as u32,
         },
         minors: &[],
@@ -1214,6 +1287,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "IoTimer",
+            display_name: None,
             flag: Major::IoTimer as u32,
         },
         minors: &[],
@@ -1222,6 +1296,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "RegHive",
+            display_name: None,
             flag: Major::RegHive as u32,
         },
         minors: &[],
@@ -1230,6 +1305,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "RegNotIf",
+            display_name: None,
             flag: Major::RegNotIf as u32,
         },
         minors: &[],
@@ -1238,6 +1314,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PpmExitLatency",
+            display_name: None,
             flag: Major::PpmExitLatency as u32,
         },
         minors: &[],
@@ -1246,6 +1323,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WorkerThread",
+            display_name: None,
             flag: Major::WorkerThread as u32,
         },
         minors: &[],
@@ -1255,6 +1333,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "OpticalIo",
+            display_name: None,
             flag: Major::OpticalIo as u32,
         },
         minors: &[],
@@ -1263,6 +1342,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "OpticalIoInit",
+            display_name: None,
             flag: Major::OpticalIoInit as u32,
         },
         minors: &[],
@@ -1271,6 +1351,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DllInfo",
+            display_name: None,
             flag: Major::DllInfo as u32,
         },
         minors: &[],
@@ -1279,6 +1360,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DllFlushWs",
+            display_name: None,
             flag: Major::DllFlushWs as u32,
         },
         minors: &[],
@@ -1287,6 +1369,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Object",
+            display_name: Some("Handle"),
             flag: Major::ObHandle as u32,
         },
         minors: &[
@@ -1324,6 +1407,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Object",
+            display_name: None,
             flag: Major::ObObject as u32,
         },
         minors: &[
@@ -1349,6 +1433,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WakeDrop",
+            display_name: None,
             flag: Major::WakeDrop as u32,
         },
         minors: &[],
@@ -1357,6 +1442,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WakeEvent",
+            display_name: None,
             flag: Major::WakeEvent as u32,
         },
         minors: &[],
@@ -1365,6 +1451,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Debugger",
+            display_name: None,
             flag: Major::Debugger as u32,
         },
         minors: &[],
@@ -1373,6 +1460,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ProcAttach",
+            display_name: None,
             flag: Major::ProcAttach as u32,
         },
         minors: &[],
@@ -1381,6 +1469,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WakeCounter",
+            display_name: None,
             flag: Major::WakeCounter as u32,
         },
         minors: &[],
@@ -1389,6 +1478,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Power",
+            display_name: None,
             flag: Major::Power as u32,
         },
         minors: &[],
@@ -1397,6 +1487,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SoftTrim",
+            display_name: None,
             flag: Major::SoftTrim as u32,
         },
         minors: &[],
@@ -1405,6 +1496,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Cc",
+            display_name: None,
             flag: Major::Cc as u32,
         },
         minors: &[],
@@ -1413,6 +1505,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FltIoInit",
+            display_name: None,
             flag: Major::FltIoInit as u32,
         },
         minors: &[],
@@ -1421,6 +1514,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FltIo",
+            display_name: None,
             flag: Major::FltIo as u32,
         },
         minors: &[
@@ -1454,6 +1548,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FltFastIo",
+            display_name: None,
             flag: Major::FltFastIo as u32,
         },
         minors: &[],
@@ -1462,6 +1557,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "FltIoFailure",
+            display_name: None,
             flag: Major::FltIoFailure as u32,
         },
         minors: &[],
@@ -1470,6 +1566,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "HvProfile",
+            display_name: None,
             flag: Major::HvProfile as u32,
         },
         minors: &[],
@@ -1478,6 +1575,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WdfDpc",
+            display_name: None,
             flag: Major::WdfDpc as u32,
         },
         minors: &[],
@@ -1486,6 +1584,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "WdfInterrupt",
+            display_name: None,
             flag: Major::WdfInterrupt as u32,
         },
         minors: &[],
@@ -1494,6 +1593,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "CacheFlush",
+            display_name: None,
             flag: Major::CacheFlush as u32,
         },
         minors: &[],
@@ -1503,6 +1603,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "HiberRundown",
+            display_name: None,
             flag: Major::HiberRundown as u32,
         },
         minors: &[],
@@ -1512,6 +1613,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigSystem",
+            display_name: None,
             flag: Major::SysConfigSystem as u32,
         },
         minors: &[],
@@ -1520,6 +1622,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigGraphics",
+            display_name: None,
             flag: Major::SysConfigGraphics as u32,
         },
         minors: &[],
@@ -1528,6 +1631,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigStorge",
+            display_name: None,
             flag: Major::SysConfigStorge as u32,
         },
         minors: &[],
@@ -1536,6 +1640,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigNetwork",
+            display_name: None,
             flag: Major::SysConfigNetwork as u32,
         },
         minors: &[],
@@ -1544,6 +1649,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigServices",
+            display_name: None,
             flag: Major::SysConfigServices as u32,
         },
         minors: &[],
@@ -1552,6 +1658,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigPnp",
+            display_name: None,
             flag: Major::SysConfigPnp as u32,
         },
         minors: &[],
@@ -1560,6 +1667,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigOptical",
+            display_name: None,
             flag: Major::SysConfigOptical as u32,
         },
         minors: &[],
@@ -1568,6 +1676,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigAll",
+            display_name: None,
             flag: Major::SysConfigAll as u32,
         },
         minors: &[],
@@ -1577,6 +1686,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ClusterOff",
+            display_name: None,
             flag: Major::ClusterOff as u32,
         },
         minors: &[],
@@ -1585,6 +1695,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "MemoryControl",
+            display_name: None,
             flag: Major::MemoryControl as u32,
         },
         minors: &[],
@@ -1599,6 +1710,7 @@ pub struct EventsDescribe {
 }
 pub struct MajorDescribe {
     pub name: &'static str,
+    pub display_name: Option<&'static str>,
     pub flag: u32,
 }
 
