@@ -3,12 +3,11 @@ use chumsky::prelude::*;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{collections::HashMap, sync::Arc};
+use crate::event_trace::EVENTS_DESC_MAP;
+
 
 static FILTER_EXPRESSION: Lazy<
-    FairMutex<(
-        Arc<Option<ExpressionForOne>>,
-        Arc<Vec<ExpressionForPair>>,
-    )>,
+    FairMutex<(Arc<Option<ExpressionForOne>>, Arc<Vec<ExpressionForPair>>)>,
 > = Lazy::new(|| FairMutex::new((Arc::new(None), Arc::new(vec![]))));
 
 pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
@@ -21,10 +20,7 @@ pub fn filter_expression_for_pair_set(expressions: Vec<ExpressionForPair>) {
     lock.1 = Arc::new(expressions);
 }
 
-pub fn filter_expression_get() -> (
-    Arc<Option<ExpressionForOne>>,
-    Arc<Vec<ExpressionForPair>>,
-) {
+pub fn filter_expression_get() -> (Arc<Option<ExpressionForOne>>, Arc<Vec<ExpressionForPair>>) {
     let lock = FILTER_EXPRESSION.lock();
     (lock.0.clone(), lock.1.clone())
 }
@@ -292,16 +288,14 @@ pub enum ExpressionForPair {
         event_name: String,
         opcode_name_first: String,
         opcode_name_second: String,
-        fields_for_match: Vec<Path>,
+        path_for_match: Vec<Path>,
     },
 }
 
 impl ExpressionForPair {
     pub fn parse(src: &str) -> Result<Vec<ExpressionForPair>> {
-        Self::build_parser()
-            .parse(src.trim())
-            .into_result()
-            .map_err(|e| {
+        match Self::build_parser().parse(src.trim()).into_result() {
+            Err(e) => {
                 let mut s = String::with_capacity(100);
                 e.into_iter().for_each(|e| {
                     s.push_str(
@@ -313,8 +307,43 @@ impl ExpressionForPair {
                         .as_str(),
                     );
                 });
-                anyhow!(s)
-            })
+                Err(anyhow!(s))
+            }
+
+            Ok(ok) => {
+                let mut err_string = String::with_capacity(100);
+                for express in ok.iter() {
+                    if let ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match: fields_for_match } = express {
+                        if let Some(event_desc) = EVENTS_DESC_MAP.get(&event_name.to_ascii_lowercase()) {
+                            if event_desc.1.get(&opcode_name_first.to_ascii_lowercase()).is_none() {
+                                err_string.push_str(format!("No the opcode_name_first {opcode_name_first} for {event_name}\n").as_str());
+                            }
+                            if event_desc.1.get(&opcode_name_second.to_ascii_lowercase()).is_none() {
+                                err_string.push_str(format!("No the opcode_name_first {opcode_name_second} for {event_name}\n").as_str());
+                            }
+                        } else {
+                            err_string.push_str(format!("No the event name {event_name}\n").as_str());
+                        }
+                        for path in fields_for_match.iter() {
+                            if path.key.to_ascii_lowercase() != "properties" {
+                                if path.field.is_some() {
+                                    err_string.push_str(format!("The path {} no field\n", path.key).as_str());
+                                }
+                            } else {
+                                if path.field.is_none() {
+                                    err_string.push_str(format!("No specified field for properties\n").as_str());
+                                }
+                            }
+                        }
+                    }
+                }
+                if err_string.is_empty() {
+                    Ok(ok)
+                } else {
+                    Err(anyhow!(err_string))
+                }
+            }
+        }
     }
 
     fn build_parser<'a>(
@@ -347,7 +376,7 @@ impl ExpressionForPair {
                     event_name: event_opcode_names[0].clone(),
                     opcode_name_first: event_opcode_names[1].clone(),
                     opcode_name_second: event_opcode_names[2].clone(),
-                    fields_for_match: fields_for_match,
+                    path_for_match: fields_for_match,
                 },
             ),
         ));
@@ -427,7 +456,7 @@ mod tests {
 
     #[test]
     fn expression_for_pair_custom_succuss() {
-        let src = r#"handle || memory || custom(handle, CreateHandle, CloseHandle, process_id, properties.xx)"#;
+        let src = r#"handle || memory || custom(object, CreateHandle, CloseHandle, process_id, properties.xx)"#;
         let r = ExpressionForPair::parse(src.trim()).unwrap();
         println!("{r:#?}");
     }

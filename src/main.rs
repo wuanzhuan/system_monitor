@@ -233,7 +233,7 @@ fn main() {
                             match expression_for_pair {
                                 filter::ExpressionForPair::Handle => {},
                                 filter::ExpressionForPair::Memory => {},
-                                filter::ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, fields_for_match } => {}
+                                filter::ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match: fields_for_match } => {}
                             }
                         }
                         let row_arc = Arc::new(event_list::Node::new(er));
