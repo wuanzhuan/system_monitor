@@ -74,8 +74,11 @@ export component FindBar {
                 }
                 ta_up := TouchArea {
                     clicked => {
-                        if current-row-index - 1 >= 0 {
+                        if current-row-index >= 1 {
                             current-row-index =  current-row-index - 1;
+                            set-current-row(row-find-info.indexes[current-row-index])
+                        } else {
+                            current-row-index =  row-find-info.indexes.length - 1;
                             set-current-row(row-find-info.indexes[current-row-index])
                         }
                     }
@@ -95,8 +98,11 @@ export component FindBar {
                 }
                 ta_down := TouchArea {
                     clicked => {
-                        if current-row-index + 1 < row-find-info.indexes.length {
+                        if current-row-index < row-find-info.indexes.length - 1 {
                             current-row-index =  current-row-index + 1;
+                            set-current-row(row-find-info.indexes[current-row-index])
+                        } else {
+                            current-row-index = 0;
                             set-current-row(row-find-info.indexes[current-row-index])
                         }
                     }
