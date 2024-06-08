@@ -3,7 +3,7 @@ use chumsky::prelude::*;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{collections::HashMap, sync::Arc};
-use crate::event_trace::EVENTS_DESC_MAP;
+use crate::event_trace::EVENTS_DISPLAY_NAME_MAP;
 
 
 static FILTER_EXPRESSION: Lazy<
@@ -314,7 +314,7 @@ impl ExpressionForPair {
                 let mut err_string = String::with_capacity(100);
                 for express in ok.iter() {
                     if let ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match: fields_for_match } = express {
-                        if let Some(event_desc) = EVENTS_DESC_MAP.get(&event_name.to_ascii_lowercase()) {
+                        if let Some(event_desc) = EVENTS_DISPLAY_NAME_MAP.get(&event_name.to_ascii_lowercase()) {
                             if event_desc.1.get(&opcode_name_first.to_ascii_lowercase()).is_none() {
                                 err_string.push_str(format!("No the opcode_name_first {opcode_name_first} for {event_name}\n").as_str());
                             }
@@ -456,8 +456,28 @@ mod tests {
 
     #[test]
     fn expression_for_pair_custom_succuss() {
-        let src = r#"handle || memory || custom(object, CreateHandle, CloseHandle, process_id, properties.xx)"#;
+        let src = r#"handle || memory || custom(handle, CreateHandle, CloseHandle, process_id, properties.xx)"#;
         let r = ExpressionForPair::parse(src.trim()).unwrap();
-        println!("{r:#?}");
+        assert_eq!(r, vec![
+            ExpressionForPair::Handle,
+            ExpressionForPair::Memory,
+            ExpressionForPair::Custom {
+                event_name: "handle".to_string(),
+                opcode_name_first: "CreateHandle".to_string(),
+                opcode_name_second: "CloseHandle".to_string(),
+                path_for_match: vec![
+                    Path {
+                        key: "process_id".to_string(),
+                        field: None,
+                    },
+                    Path {
+                        key: "properties".to_string(),
+                        field: Some(
+                            "xx".to_string(),
+                        ),
+                    },
+                ],
+            },
+        ]);
     }
 }

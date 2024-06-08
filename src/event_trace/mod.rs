@@ -530,14 +530,19 @@ impl<'a> fmt::Display for EventRecord<'a> {
     }
 }
 
-pub static EVENTS_DESC_MAP: Lazy<LinkedHashMap<String, (/*major index*/usize, LinkedHashMap<String, /*minor index*/usize>)>> = Lazy::new(|| {
+pub static EVENTS_DISPLAY_NAME_MAP: Lazy<LinkedHashMap<String, (/*major index*/usize, LinkedHashMap<String, /*minor index*/usize>)>> = Lazy::new(|| {
     let mut map = LinkedHashMap::new();
     for (index, event_desc) in EVENTS_DESC.iter().enumerate() {
         let mut minor_map = LinkedHashMap::new();
         for (index_minor, desc_minor) in event_desc.minors.iter().enumerate() {
             minor_map.insert(desc_minor.name.to_ascii_lowercase(), index_minor);
         }
-        map.insert(event_desc.major.name.to_ascii_lowercase(), (index, minor_map));
+        let name = if let Some(name) = event_desc.major.display_name {
+            name
+        } else {
+            event_desc.major.name
+        };
+        map.insert(name.to_ascii_lowercase(), (index, minor_map));
     }
     map
 });
