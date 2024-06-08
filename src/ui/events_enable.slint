@@ -28,10 +28,6 @@ export component EventsEnables {
             return;
         }
 
-        if index == current-row {
-            return;
-        }
-
         current-row = index;
 
         if (current-item-y < 0) {
@@ -39,7 +35,7 @@ export component EventsEnables {
         }
 
         if (current-item-y + item-height > list-view.visible-height) {
-            list-view.viewport-y -= current-item-y + item-height - list-view.visible-height;
+            list-view.viewport-y -= current-item-y + item-height - list-view.visible-height + 2mm;
         }
     }
     
