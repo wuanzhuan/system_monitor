@@ -1,7 +1,6 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
 //#![windows_subsystem = "windows"]
 
-use event_list::Node;
 use i_slint_backend_winit::WinitWindowAccessor;
 use linked_hash_map::LinkedHashMap;
 use slint::{Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, VecModel};
@@ -119,7 +118,11 @@ fn main() {
             minors.push(minor.name.into());
         }
         event_descs.push(EventDesc {
-            name: major.major.name.into(),
+            name: if let Some(name) = major.major.display_name {
+                name.into()
+            } else {
+                major.major.name.into()
+            },
             minors: ModelRc::from(minors.as_slice()),
         });
     }
@@ -190,7 +193,7 @@ fn main() {
     app.on_start(move || {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
-        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Option<Arc<Node<EventRecordModel>>>>::with_capacity(50));
+        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Option<Arc<event_list::Node<EventRecordModel>>>>::with_capacity(50));
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
@@ -229,11 +232,13 @@ fn main() {
                         }
                     }
                     if is_matched {
-                       for expression_for_pair in filter_expression_for_pair.iter() {
+                       for (index, expression_for_pair) in filter_expression_for_pair.iter().enumerate() {
                             match expression_for_pair {
                                 filter::ExpressionForPair::Handle => {},
                                 filter::ExpressionForPair::Memory => {},
-                                filter::ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match: fields_for_match } => {}
+                                filter::ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match } => {
+
+                                }
                             }
                         }
                         let row_arc = Arc::new(event_list::Node::new(er));

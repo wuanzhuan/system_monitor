@@ -4,6 +4,8 @@ use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{collections::HashMap, sync::Arc};
 use crate::event_trace::EVENTS_DISPLAY_NAME_MAP;
+use crate::event_list::Node;
+use crate::event_record_model::EventRecordModel;
 
 
 static FILTER_EXPRESSION: Lazy<
@@ -292,6 +294,10 @@ pub enum ExpressionForPair {
     },
 }
 
+static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>>= Lazy::new(|| {
+    FairMutex::new(Vec::new())
+});
+
 impl ExpressionForPair {
     pub fn parse(src: &str) -> Result<Vec<ExpressionForPair>> {
         match Self::build_parser().parse(src.trim()).into_result() {
@@ -337,10 +343,12 @@ impl ExpressionForPair {
                         }
                     }
                 }
-                if err_string.is_empty() {
-                    Ok(ok)
-                } else {
+                if !err_string.is_empty() {
                     Err(anyhow!(err_string))
+                } else {
+                    let mut lock = CONTEXT_FOR_PAIR.lock();
+                    lock.resize(ok.len(), HashMap::new());
+                    Ok(ok)
                 }
             }
         }
