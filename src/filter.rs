@@ -281,7 +281,11 @@ impl ExpressionForOne {
     }
 }
 
-// start with #
+static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>>= Lazy::new(|| {
+    FairMutex::new(Vec::new())
+});
+
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForPair {
     Handle,
@@ -293,10 +297,6 @@ pub enum ExpressionForPair {
         path_for_match: Vec<Path>,
     },
 }
-
-static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>>= Lazy::new(|| {
-    FairMutex::new(Vec::new())
-});
 
 impl ExpressionForPair {
     pub fn parse(src: &str) -> Result<Vec<ExpressionForPair>> {
