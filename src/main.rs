@@ -234,7 +234,7 @@ fn main() {
                 };
 
                 let mut is_push_to_list = false;
-                let mut notify: Option<(/*index*/usize, delay_notify::Notify)> = None;
+                let mut notify: Option<delay_notify::Notify> = None;
                 if is_matched {
                     match filter::filter_for_pair(&er) {
                         Err(e) => {
@@ -244,7 +244,7 @@ fn main() {
                         Ok(ok) => {
                             if let Some(node) = ok {
                                 event_list_arc_1.remove(node);
-                                notify = Some((0, delay_notify::Notify::Remove));
+                                notify = Some(delay_notify::Notify::Remove);
                             }
                         }
                     }
@@ -254,13 +254,13 @@ fn main() {
                     let row_arc = Arc::new(event_list::Node::new(er));
                     stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));
                     let index = event_list_arc_1.push(row_arc);
-                    notify = Some((index, delay_notify::Notify::Push));
+                    notify = Some(delay_notify::Notify::Push(index, 1));
                 } else {
                     stack_walk_map.get_mut().insert((thread_id, timestamp), None);
                 }
 
-                if let Some((index, notify_type)) = notify {
-                    delay_notify.notify(app_weak_1.clone(), index, notify_type);
+                if let Some(notify) = notify {
+                    delay_notify.notify(app_weak_1.clone(), notify);
                 }
             }
         }, |ret| {
