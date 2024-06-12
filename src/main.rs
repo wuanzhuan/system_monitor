@@ -221,7 +221,7 @@ fn main() {
                 let timestamp = event_record.timestamp.0;
                 let er = event_record_model::EventRecordModel::new(event_record);
                 
-                let is_matched = match filter::filter_for_one(&er, |path, value| {
+                let is_matched = match filter::filter_for_one(|path, value| {
                     er.find_by_path_value(path, value)
                 }, |value| {
                     er.find_by_value(value)

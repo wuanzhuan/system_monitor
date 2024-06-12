@@ -20,7 +20,7 @@ struct DelayNotifyStatus {
     push_index: usize,
     push_count: usize,
     is_notified: bool,
-    is_removed: bool
+    is_removed: bool,
 }
 
 impl DelayNotify {
@@ -30,7 +30,7 @@ impl DelayNotify {
                 push_index: 0,
                 push_count: 0,
                 is_notified: false,
-                is_removed: false
+                is_removed: false,
             }),
             max_count,
             timer_task: None,
@@ -99,10 +99,7 @@ impl DelayNotify {
         }
     }
 
-    fn notify_to_app(
-        app_weak: Weak<App>,
-        notify: Notify,
-    ) {
+    fn notify_to_app(app_weak: Weak<App>, notify: Notify) {
         app_weak
             .upgrade_in_event_loop(move |app_handle| {
                 let row_data = app_handle.global::<EventsViewData>().get_row_data();

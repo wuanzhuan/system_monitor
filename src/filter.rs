@@ -7,17 +7,16 @@ use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{collections::HashMap, sync::Arc};
 
-static FILTER_EXPRESSION_FOR_ONE: Lazy<
-    FairMutex<Option<ExpressionForOne>>,
-> = Lazy::new(|| FairMutex::new(None));
+static FILTER_EXPRESSION_FOR_ONE: Lazy<FairMutex<Option<ExpressionForOne>>> =
+    Lazy::new(|| FairMutex::new(None));
 
-static FILTER_EXPRESSION_FOR_PAIR: Lazy<
-    FairMutex<Vec<ExpressionForPair>>,
-> = Lazy::new(|| FairMutex::new(vec![]));
+static FILTER_EXPRESSION_FOR_PAIR: Lazy<FairMutex<Vec<ExpressionForPair>>> =
+    Lazy::new(|| FairMutex::new(vec![]));
 
-pub fn filter_for_one( event_model: &EventRecordModel,
+pub fn filter_for_one(
     fn_path_value: impl Fn(/*path*/ &Path, /*value*/ &Value) -> Result<bool> + Clone,
-    fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone) -> Result<bool> {
+    fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone,
+) -> Result<bool> {
     let lock = FILTER_EXPRESSION_FOR_ONE.lock();
     if let Some(ref expression) = *lock {
         expression.evaluate(fn_path_value, fn_value)
@@ -26,16 +25,21 @@ pub fn filter_for_one( event_model: &EventRecordModel,
     }
 }
 
-pub fn filter_for_pair(event_model: &EventRecordModel) -> Result<Option<Arc<Node<EventRecordModel>>>> {
+pub fn filter_for_pair(
+    event_model: &EventRecordModel,
+) -> Result<Option<Arc<Node<EventRecordModel>>>> {
     let lock = FILTER_EXPRESSION_FOR_PAIR.lock();
 
     for (index, expression_for_pair) in lock.iter().enumerate() {
         match expression_for_pair {
-            ExpressionForPair::Handle => {},
-            ExpressionForPair::Memory => {},
-            ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match } => {
-
-            }
+            ExpressionForPair::Handle => {}
+            ExpressionForPair::Memory => {}
+            ExpressionForPair::Custom {
+                event_name,
+                opcode_name_first,
+                opcode_name_second,
+                path_for_match,
+            } => {}
         }
     }
     Ok(None)
@@ -48,7 +52,6 @@ pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
 pub fn filter_expression_for_pair_set(expressions: Vec<ExpressionForPair>) {
     *FILTER_EXPRESSION_FOR_PAIR.lock() = expressions;
 }
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForOne {
@@ -306,7 +309,6 @@ impl ExpressionForOne {
 
 static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>> =
     Lazy::new(|| FairMutex::new(Vec::new()));
-
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForPair {
