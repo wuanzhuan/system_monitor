@@ -1,31 +1,54 @@
+use crate::event_list::Node;
+use crate::event_record_model::EventRecordModel;
+use crate::event_trace::EVENTS_DISPLAY_NAME_MAP;
 use anyhow::{anyhow, Result};
 use chumsky::prelude::*;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{collections::HashMap, sync::Arc};
-use crate::event_trace::EVENTS_DISPLAY_NAME_MAP;
-use crate::event_list::Node;
-use crate::event_record_model::EventRecordModel;
 
+static FILTER_EXPRESSION_FOR_ONE: Lazy<
+    FairMutex<Option<ExpressionForOne>>,
+> = Lazy::new(|| FairMutex::new(None));
 
-static FILTER_EXPRESSION: Lazy<
-    FairMutex<(Arc<Option<ExpressionForOne>>, Arc<Vec<ExpressionForPair>>)>,
-> = Lazy::new(|| FairMutex::new((Arc::new(None), Arc::new(vec![]))));
+static FILTER_EXPRESSION_FOR_PAIR: Lazy<
+    FairMutex<Vec<ExpressionForPair>>,
+> = Lazy::new(|| FairMutex::new(vec![]));
+
+pub fn filter_for_one( event_model: &EventRecordModel,
+    fn_path_value: impl Fn(/*path*/ &Path, /*value*/ &Value) -> Result<bool> + Clone,
+    fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone) -> Result<bool> {
+    let lock = FILTER_EXPRESSION_FOR_ONE.lock();
+    if let Some(ref expression) = *lock {
+        expression.evaluate(fn_path_value, fn_value)
+    } else {
+        Ok(false)
+    }
+}
+
+pub fn filter_for_pair(event_model: &EventRecordModel) -> Result<Option<Arc<Node<EventRecordModel>>>> {
+    let lock = FILTER_EXPRESSION_FOR_PAIR.lock();
+
+    for (index, expression_for_pair) in lock.iter().enumerate() {
+        match expression_for_pair {
+            ExpressionForPair::Handle => {},
+            ExpressionForPair::Memory => {},
+            ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match } => {
+
+            }
+        }
+    }
+    Ok(None)
+}
 
 pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
-    let mut lock = FILTER_EXPRESSION.lock();
-    lock.0 = Arc::new(expression);
+    *FILTER_EXPRESSION_FOR_ONE.lock() = expression;
 }
 
 pub fn filter_expression_for_pair_set(expressions: Vec<ExpressionForPair>) {
-    let mut lock = FILTER_EXPRESSION.lock();
-    lock.1 = Arc::new(expressions);
+    *FILTER_EXPRESSION_FOR_PAIR.lock() = expressions;
 }
 
-pub fn filter_expression_get() -> (Arc<Option<ExpressionForOne>>, Arc<Vec<ExpressionForPair>>) {
-    let lock = FILTER_EXPRESSION.lock();
-    (lock.0.clone(), lock.1.clone())
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForOne {
@@ -76,11 +99,11 @@ impl ExpressionForOne {
             })
     }
     pub fn evaluate(
-        expr: &ExpressionForOne,
+        &self,
         fn_path_value: impl Fn(/*path*/ &Path, /*value*/ &Value) -> Result<bool> + Clone,
         fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone,
     ) -> Result<bool> {
-        match expr {
+        match self {
             ExpressionForOne::Parentheses(expr) => {
                 return ExpressionForOne::evaluate(expr, fn_path_value, fn_value)
             }
@@ -281,9 +304,8 @@ impl ExpressionForOne {
     }
 }
 
-static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>>= Lazy::new(|| {
-    FairMutex::new(Vec::new())
-});
+static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>> =
+    Lazy::new(|| FairMutex::new(Vec::new()));
 
 
 #[derive(Clone, Debug, PartialEq)]
@@ -319,25 +341,46 @@ impl ExpressionForPair {
             Ok(ok) => {
                 let mut err_string = String::with_capacity(100);
                 for express in ok.iter() {
-                    if let ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match: fields_for_match } = express {
-                        if let Some(event_desc) = EVENTS_DISPLAY_NAME_MAP.get(&event_name.to_ascii_lowercase()) {
-                            if event_desc.1.get(&opcode_name_first.to_ascii_lowercase()).is_none() {
+                    if let ExpressionForPair::Custom {
+                        event_name,
+                        opcode_name_first,
+                        opcode_name_second,
+                        path_for_match: fields_for_match,
+                    } = express
+                    {
+                        if let Some(event_desc) =
+                            EVENTS_DISPLAY_NAME_MAP.get(&event_name.to_ascii_lowercase())
+                        {
+                            if event_desc
+                                .1
+                                .get(&opcode_name_first.to_ascii_lowercase())
+                                .is_none()
+                            {
                                 err_string.push_str(format!("No the opcode_name_first {opcode_name_first} for {event_name}\n").as_str());
                             }
-                            if event_desc.1.get(&opcode_name_second.to_ascii_lowercase()).is_none() {
+                            if event_desc
+                                .1
+                                .get(&opcode_name_second.to_ascii_lowercase())
+                                .is_none()
+                            {
                                 err_string.push_str(format!("No the opcode_name_first {opcode_name_second} for {event_name}\n").as_str());
                             }
                         } else {
-                            err_string.push_str(format!("No the event name {event_name}\n").as_str());
+                            err_string
+                                .push_str(format!("No the event name {event_name}\n").as_str());
                         }
                         for path in fields_for_match.iter() {
                             if path.key.to_ascii_lowercase() != "properties" {
                                 if path.field.is_some() {
-                                    err_string.push_str(format!("The path {} no field\n", path.key).as_str());
+                                    err_string.push_str(
+                                        format!("The path {} no field\n", path.key).as_str(),
+                                    );
                                 }
                             } else {
                                 if path.field.is_none() {
-                                    err_string.push_str(format!("No specified field for properties\n").as_str());
+                                    err_string.push_str(
+                                        format!("No specified field for properties\n").as_str(),
+                                    );
                                 }
                             }
                         }
@@ -466,26 +509,27 @@ mod tests {
     fn expression_for_pair_custom_succuss() {
         let src = r#"handle || memory || custom(handle, CreateHandle, CloseHandle, process_id, properties.xx)"#;
         let r = ExpressionForPair::parse(src.trim()).unwrap();
-        assert_eq!(r, vec![
-            ExpressionForPair::Handle,
-            ExpressionForPair::Memory,
-            ExpressionForPair::Custom {
-                event_name: "handle".to_string(),
-                opcode_name_first: "CreateHandle".to_string(),
-                opcode_name_second: "CloseHandle".to_string(),
-                path_for_match: vec![
-                    Path {
-                        key: "process_id".to_string(),
-                        field: None,
-                    },
-                    Path {
-                        key: "properties".to_string(),
-                        field: Some(
-                            "xx".to_string(),
-                        ),
-                    },
-                ],
-            },
-        ]);
+        assert_eq!(
+            r,
+            vec![
+                ExpressionForPair::Handle,
+                ExpressionForPair::Memory,
+                ExpressionForPair::Custom {
+                    event_name: "handle".to_string(),
+                    opcode_name_first: "CreateHandle".to_string(),
+                    opcode_name_second: "CloseHandle".to_string(),
+                    path_for_match: vec![
+                        Path {
+                            key: "process_id".to_string(),
+                            field: None,
+                        },
+                        Path {
+                            key: "properties".to_string(),
+                            field: Some("xx".to_string(),),
+                        },
+                    ],
+                },
+            ]
+        );
     }
 }

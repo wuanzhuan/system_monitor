@@ -213,41 +213,54 @@ fn main() {
                 }
             } else {
                 process_modules::handle_event_for_module(&mut event_record);
+                if !is_selected {
+                    return;
+                }
 
-                if is_selected {
-                    let thread_id = event_record.thread_id;
-                    let timestamp = event_record.timestamp.0;
-                    let er = event_record_model::EventRecordModel::new(event_record);
+                let thread_id = event_record.thread_id;
+                let timestamp = event_record.timestamp.0;
+                let er = event_record_model::EventRecordModel::new(event_record);
+                
+                let is_matched = match filter::filter_for_one(&er, |path, value| {
+                    er.find_by_path_value(path, value)
+                }, |value| {
+                    er.find_by_value(value)
+                }) {
+                    Err(e) => {
+                        error!("Failed to filter: {e}");
+                        return;
+                    }, 
+                    Ok(is_matched) => is_matched
+                };
 
-                    let mut is_matched = false;
-                    let (filter_expression_for_one, filter_expression_for_pair) = filter::filter_expression_get();
-                    if let Some(ref expression_for_one) = *filter_expression_for_one {
-                        match filter::ExpressionForOne::evaluate(expression_for_one, |path, value| {
-                                er.find_by_path_value(path, value)
-                            }, |value| {
-                                er.find_by_value(value)
-                            }) {
-                            Err(e) => {error!("Failed to evaluate: {e}")},
-                            Ok(ok) => is_matched = ok
-                        }
-                    }
-                    if is_matched {
-                       for (index, expression_for_pair) in filter_expression_for_pair.iter().enumerate() {
-                            match expression_for_pair {
-                                filter::ExpressionForPair::Handle => {},
-                                filter::ExpressionForPair::Memory => {},
-                                filter::ExpressionForPair::Custom { event_name, opcode_name_first, opcode_name_second, path_for_match } => {
-
-                                }
+                let mut is_push_to_list = false;
+                let mut notify: Option<(/*index*/usize, delay_notify::Notify)> = None;
+                if is_matched {
+                    match filter::filter_for_pair(&er) {
+                        Err(e) => {
+                            error!("Failed to filter: {e}");
+                            is_push_to_list = true;
+                        },
+                        Ok(ok) => {
+                            if let Some(node) = ok {
+                                event_list_arc_1.remove(node);
+                                notify = Some((0, delay_notify::Notify::Remove));
                             }
                         }
-                        let row_arc = Arc::new(event_list::Node::new(er));
-                        stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));
-                        let index = event_list_arc_1.push(row_arc);
-                        delay_notify.notify(app_weak_1.clone(), index, delay_notify::NotifyType::Push);
-                    } else {
-                        stack_walk_map.get_mut().insert((thread_id, timestamp), None);
                     }
+                }
+
+                if is_push_to_list {
+                    let row_arc = Arc::new(event_list::Node::new(er));
+                    stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));
+                    let index = event_list_arc_1.push(row_arc);
+                    notify = Some((index, delay_notify::Notify::Push));
+                } else {
+                    stack_walk_map.get_mut().insert((thread_id, timestamp), None);
+                }
+
+                if let Some((index, notify_type)) = notify {
+                    delay_notify.notify(app_weak_1.clone(), index, notify_type);
                 }
             }
         }, |ret| {
