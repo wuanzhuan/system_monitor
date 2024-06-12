@@ -1,13 +1,11 @@
-use crate::event_list_model::ListModel;
-use crate::{App, EventsViewData};
+use crate::{event_list_model::ListModel, App, EventsViewData};
 use parking_lot::{FairMutex, FairMutexGuard};
 use slint::{ComponentHandle, Model, Weak};
 use smol::{Task, Timer};
 use std::time::Duration;
 
-#[derive(PartialEq)]
-pub enum NotifyType {
-    Push,
+pub enum Notify {
+    Push(/*index*/ usize, /*count*/ usize),
     Remove,
 }
 
@@ -49,7 +47,7 @@ impl DelayNotify {
                     if !data.is_notified {
                         let index = data.index;
                         let count = data.count;
-                        Self::notify_to_app(data, app_weak.clone(), NotifyType::Push, index, count);
+                        Self::notify_to_app(data, app_weak.clone(), Notify::Push(index, count));
                     } else {
                         data.is_notified = false;
                     }
@@ -59,34 +57,37 @@ impl DelayNotify {
         }));
     }
 
-    pub fn notify(&self, app_weak: Weak<App>, index: usize, notify_type: NotifyType) {
+    pub fn notify(&self, app_weak: Weak<App>, index: usize, notify: Notify) {
         let mut data = self.data.lock();
         // merge notify
-        if notify_type == NotifyType::Push {
-            // data.count == 0 if no item for waiting notify
-            if data.count == 0 {
-                data.index = index;
-                data.count = 1;
-            } else {
-                assert!(index == data.index + data.count);
-                data.count += 1;
+        match notify {
+            Notify::Push(index, count) => {
+                // data.count == 0 if no item for waiting notify
+                if data.count == 0 {
+                    data.index = index;
+                    data.count = 1;
+                } else {
+                    assert!(index == data.index + data.count);
+                    data.count += 1;
+                }
+                if data.count >= self.max_count {
+                    let index = data.index;
+                    let count = data.count;
+                    data.is_notified = true;
+                    Self::notify_to_app(data, app_weak, Notify::Push(index, count));
+                }
             }
-            if data.count >= self.max_count {
-                let index = data.index;
-                let count = data.count;
-                data.is_notified = true;
-                Self::notify_to_app(data, app_weak, NotifyType::Push, index, count);
-            }
-        } else if notify_type == NotifyType::Remove {
-            if data.count == 0 {
-                data.is_notified = true;
-                Self::notify_to_app(data, app_weak, NotifyType::Remove, index, 1);
-            } else if index < data.index {
-                data.index -= 1;
-                data.is_notified = true;
-                Self::notify_to_app(data, app_weak, NotifyType::Remove, index, 1);
-            } else {
-                data.count -= 1;
+            Notify::Remove => {
+                if data.count == 0 {
+                    data.is_notified = true;
+                    Self::notify_to_app(data, app_weak, Notify::Remove);
+                } else if index < data.index {
+                    data.index -= 1;
+                    data.is_notified = true;
+                    Self::notify_to_app(data, app_weak, Notify::Remove);
+                } else {
+                    data.count -= 1;
+                }
             }
         }
     }
@@ -94,21 +95,20 @@ impl DelayNotify {
     fn notify_to_app(
         mut data: FairMutexGuard<'_, NotifyPush>,
         app_weak: Weak<App>,
-        ty: NotifyType,
-        index: usize,
-        count: usize,
+        notify: Notify,
     ) {
-        data.index = index;
-        data.count = 0;
-        drop(data);
+        if let Notify::Push(index, count) = notify {
+            data.index = index;
+            data.count = 0;
+            drop(data);
+        }
         app_weak
             .upgrade_in_event_loop(move |app_handle| {
                 let row_data = app_handle.global::<EventsViewData>().get_row_data();
                 let rows = row_data.as_any().downcast_ref::<ListModel>().unwrap();
-                if ty == NotifyType::Push {
-                    rows.notify_push(index, count);
-                } else {
-                    rows.notify_remove(index, count);
+                match notify {
+                    Notify::Push(index, count) => rows.notify_push(index, count),
+                    Notify::Remove => rows.notify_remove(),
                 }
             })
             .unwrap();

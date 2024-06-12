@@ -58,8 +58,8 @@ impl<'a> ListModel<'a> {
 
     /// Remove the row at the given index from the model
     #[allow(unused)]
-    pub fn notify_remove(&self, index: usize, count: usize) {
-        self.notify.row_removed(index, count);
+    pub fn notify_remove(&self) {
+        self.notify.reset();
     }
 
     pub fn row_data_detail(&self, row: usize) -> Option<Arc<Node<EventRecordModel>>> {
