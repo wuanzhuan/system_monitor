@@ -113,11 +113,12 @@ fn main() {
 
     let mut event_descs = vec![];
     for major in event_trace::EVENTS_DESC.iter() {
-        let mut minors: Vec<SharedString> = vec![];
+        let mut minors: Vec<(bool, SharedString)> = vec![];
         for minor in major.minors {
-            minors.push(minor.name.into());
+            minors.push((false, minor.name.into()));
         }
         event_descs.push(EventDesc {
+            enable: false,
             name: if let Some(name) = major.major.display_name {
                 name.into()
             } else {
