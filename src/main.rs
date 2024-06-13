@@ -246,6 +246,8 @@ fn main() {
                             if let Some(node) = ok {
                                 event_list_arc_1.remove(node);
                                 notify = Some(delay_notify::Notify::Remove);
+                            } else {
+                                is_push_to_list = true; 
                             }
                         }
                     }

@@ -25,7 +25,7 @@ pub fn filter_for_one(
     if let Some(ref expression) = *lock {
         expression.evaluate(fn_path_value, fn_value)
     } else {
-        Ok(false)
+        Ok(true)
     }
 }
 
