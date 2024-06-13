@@ -10,14 +10,15 @@ use std::{
     },
 };
 
-pub struct Node<T> {
+#[derive(Clone)]
+pub struct Node<T: Clone + Send + Sync> {
     link: LinkedListLink,
     pub value: T,
 }
-unsafe impl<T> Send for Node<T> {}
-unsafe impl<T> Sync for Node<T> {}
+unsafe impl<T: Clone + Send + Sync> Send for Node<T> {}
+unsafe impl<T: Clone + Send + Sync> Sync for Node<T> {}
 
-impl<T> Node<T> {
+impl<T: Clone + Send + Sync> Node<T> {
     pub fn new(value: T) -> Self {
         Self {
             link: LinkedListLink::new(),
@@ -26,16 +27,16 @@ impl<T> Node<T> {
     }
 }
 
-intrusive_adapter!(NodeAdapter<T> = Arc<Node<T>>: Node<T> { link: LinkedListLink });
+intrusive_adapter!(NodeAdapter<T> = Arc<Node<T>>: Node<T> { link: LinkedListLink } where T: Clone + Send + Sync);
 
-struct CursorSync<'a, T> {
+struct CursorSync<'a, T: Clone + Send + Sync> {
     pub inner: Cursor<'a, NodeAdapter<T>>,
     pub index: usize,
 }
-unsafe impl<'a, T> Send for CursorSync<'a, T> {}
-unsafe impl<'a, T> Sync for CursorSync<'a, T> {}
+unsafe impl<'a, T: Clone + Send + Sync> Send for CursorSync<'a, T> {}
+unsafe impl<'a, T: Clone + Send + Sync> Sync for CursorSync<'a, T> {}
 
-pub struct EventList<'a: 'static, T> {
+pub struct EventList<'a: 'static, T: Clone + Send + Sync> {
     // the backing data, access by cursor
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
@@ -45,7 +46,7 @@ pub struct EventList<'a: 'static, T> {
 
 // when modifying the model, we call the corresponding function in
 // the ModelNotify
-impl<'a, T> EventList<'a, T> {
+impl<'a, T: Clone + Send + Sync> EventList<'a, T> {
     pub fn new() -> Self {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
@@ -109,7 +110,7 @@ impl<'a, T> EventList<'a, T> {
         }
         return reader_guard.inner.clone_pointer();
 
-        fn move_next_to_uncheck<'a, T>(
+        fn move_next_to_uncheck<'a, T: Clone + Send + Sync>(
             reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
             index_to: usize,
             list_len: usize,
@@ -137,7 +138,7 @@ impl<'a, T> EventList<'a, T> {
             }
         }
 
-        fn move_prev_to_uncheck<'a, T>(
+        fn move_prev_to_uncheck<'a, T: Clone + Send + Sync>(
             reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
             index_to: usize,
             list_len: usize,
