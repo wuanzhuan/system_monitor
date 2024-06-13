@@ -258,6 +258,57 @@ impl EventRecordModel {
             _ => Err(anyhow!("Not supported value type")),
         }
     }
+
+    pub fn get_key_by_paths(&self, paths: &[Path]) -> Result<String> {
+        let mut s = String::with_capacity(32);
+        for path in paths {
+            match path.key.as_str() {
+                "datetime" => {
+                    s.push_str(self.array.timestamp.0.to_string().as_str());
+                }
+                "process_id" => {
+                    s.push_str(self.array.process_id.to_string().as_str());
+                }
+                "thread_id" => {
+                    s.push_str(self.array.thread_id.to_string().as_str());
+                }
+                "event_name" => {
+                    s.push_str(self.array.event_name.as_str());
+                }
+                "opcode_name" => {
+                    s.push_str(self.array.opcode_name.as_str());
+                }
+                "properties" => {
+                    if let Some(ref field) = path.field {
+                        if let PropertyDecoded::Struct(ref properties) = self.array.properties {
+                            if let PropertyDecoded::String(ref property_field_str) =
+                                properties[field]
+                            {
+                                s.push_str(property_field_str);
+                            } else {
+                                return Err(anyhow!(
+                                    "The properties's {field} type is not string, {:?}",
+                                    properties[field]
+                                ));
+                            }
+                        } else {
+                            return Err(anyhow!(
+                                "The properties of {}-{} is not a struct!",
+                                self.array.event_name,
+                                self.array.opcode_name
+                            ));
+                        }
+                    } else {
+                        return Err(anyhow!("Not assign field for properties"));
+                    }
+                }
+                _ => {
+                    return Err(anyhow!("no this column name"));
+                }
+            }
+        }
+        Ok(s)
+    }
 }
 
 impl Model for EventRecordModel {

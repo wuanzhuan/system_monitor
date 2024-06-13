@@ -220,7 +220,6 @@ fn main() {
                 let thread_id = event_record.thread_id;
                 let timestamp = event_record.timestamp.0;
                 let er = event_record_model::EventRecordModel::new(event_record);
-                
                 let is_matched = match filter::filter_for_one(|path, value| {
                     er.find_by_path_value(path, value)
                 }, |value| {
@@ -233,10 +232,11 @@ fn main() {
                     Ok(is_matched) => is_matched
                 };
 
+                let row_arc = Arc::new(event_list::Node::new(er));
                 let mut is_push_to_list = false;
                 let mut notify: Option<delay_notify::Notify> = None;
                 if is_matched {
-                    match filter::filter_for_pair(&er) {
+                    match filter::filter_for_pair(&row_arc) {
                         Err(e) => {
                             error!("Failed to filter: {e}");
                             is_push_to_list = true;
@@ -251,7 +251,6 @@ fn main() {
                 }
 
                 if is_push_to_list {
-                    let row_arc = Arc::new(event_list::Node::new(er));
                     stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));
                     let index = event_list_arc_1.push(row_arc);
                     notify = Some(delay_notify::Notify::Push(index, 1));

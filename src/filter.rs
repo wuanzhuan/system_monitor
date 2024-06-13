@@ -13,6 +13,10 @@ static FILTER_EXPRESSION_FOR_ONE: Lazy<FairMutex<Option<ExpressionForOne>>> =
 static FILTER_EXPRESSION_FOR_PAIR: Lazy<FairMutex<Vec<ExpressionForPair>>> =
     Lazy::new(|| FairMutex::new(vec![]));
 
+static CONTEXT_FOR_PAIR: Lazy<
+    FairMutex<Vec<FairMutex<HashMap<String, Arc<Node<EventRecordModel>>>>>>,
+> = Lazy::new(|| FairMutex::new(Vec::new()));
+
 pub fn filter_for_one(
     fn_path_value: impl Fn(/*path*/ &Path, /*value*/ &Value) -> Result<bool> + Clone,
     fn_value: impl Fn(/*value*/ &Value) -> Result<bool> + Clone,
@@ -26,23 +30,117 @@ pub fn filter_for_one(
 }
 
 pub fn filter_for_pair(
-    event_model: &EventRecordModel,
+    event_model_arc: &Arc<Node<EventRecordModel>>,
 ) -> Result<Option<Arc<Node<EventRecordModel>>>> {
     let lock = FILTER_EXPRESSION_FOR_PAIR.lock();
 
     for (index, expression_for_pair) in lock.iter().enumerate() {
         match expression_for_pair {
-            ExpressionForPair::Handle => {}
-            ExpressionForPair::Memory => {}
+            ExpressionForPair::Handle => {
+                match custom(
+                    event_model_arc,
+                    index,
+                    "Object",
+                    "CreateHandle",
+                    "CloseHandle",
+                    &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from(""))}],
+                ) {
+                    Err(e) => return Err(e),
+                    Ok((is_matched, node_arc)) => {
+                        if is_matched {
+                            return Ok(node_arc);
+                        }
+                    }
+                }
+            }
+            ExpressionForPair::Memory => {
+                match custom(
+                    event_model_arc,
+                    index,
+                    "Memory",
+                    "CreateHandle",
+                    "CloseHandle",
+                    &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from(""))}],
+                ) {
+                    Err(e) => return Err(e),
+                    Ok((is_matched, node_arc)) => {
+                        if is_matched {
+                            return Ok(node_arc);
+                        }
+                    }
+                }
+            }
             ExpressionForPair::Custom {
                 event_name,
                 opcode_name_first,
                 opcode_name_second,
                 path_for_match,
-            } => {}
+            } => {
+                match custom(
+                    event_model_arc,
+                    index,
+                    event_name,
+                    opcode_name_first,
+                    opcode_name_second,
+                    path_for_match,
+                ) {
+                    Err(e) => return Err(e),
+                    Ok((is_matched, node_arc)) => {
+                        if is_matched {
+                            return Ok(node_arc);
+                        }
+                    }
+                }
+            }
         }
     }
-    Ok(None)
+    return Ok(None);
+
+    fn custom(
+        event_model_arc: &Arc<Node<EventRecordModel>>,
+        index: usize,
+        event_name: &str,
+        opcode_name_first: &str,
+        opcode_name_second: &str,
+        path_for_match: &[Path],
+    ) -> Result<(
+        /*is_matched*/ bool,
+        Option<Arc<Node<EventRecordModel>>>,
+    )> {
+        if event_model_arc.value.array.event_name.to_ascii_lowercase()
+            != event_name.to_ascii_lowercase()
+        {
+            return Ok((false, None));
+        }
+        let opcode_name = event_model_arc.value.array.opcode_name.to_ascii_lowercase();
+        if opcode_name == opcode_name_first.to_ascii_lowercase() {
+            match event_model_arc.value.get_key_by_paths(path_for_match) {
+                Ok(key) => {
+                    let vec_lock = CONTEXT_FOR_PAIR.lock();
+                    let mut lock = vec_lock[index].lock();
+                    lock.insert(key, event_model_arc.clone());
+                    return Ok((true, None));
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        } else if opcode_name == opcode_name_second.to_ascii_lowercase() {
+            match event_model_arc.value.get_key_by_paths(path_for_match) {
+                Ok(key) => {
+                    let vec_lock = CONTEXT_FOR_PAIR.lock();
+                    let mut lock = vec_lock[index].lock();
+                    let node_arc = lock.remove(&key);
+                    return Ok((true, node_arc));
+                }
+                Err(e) => {
+                    return Err(e);
+                }
+            }
+        } else {
+            Ok((false, None))
+        }
+    }
 }
 
 pub fn filter_expression_for_one_set(expression: Option<ExpressionForOne>) {
@@ -307,9 +405,6 @@ impl ExpressionForOne {
     }
 }
 
-static CONTEXT_FOR_PAIR: Lazy<FairMutex<Vec<HashMap<String, Arc<Node<EventRecordModel>>>>>> =
-    Lazy::new(|| FairMutex::new(Vec::new()));
-
 #[derive(Clone, Debug, PartialEq)]
 pub enum ExpressionForPair {
     Handle,
@@ -391,8 +486,11 @@ impl ExpressionForPair {
                 if !err_string.is_empty() {
                     Err(anyhow!(err_string))
                 } else {
-                    let mut lock = CONTEXT_FOR_PAIR.lock();
-                    lock.resize(ok.len(), HashMap::new());
+                    let mut vec_lock = CONTEXT_FOR_PAIR.lock();
+                    vec_lock.clear();
+                    for _ in 0..ok.len() {
+                        vec_lock.push(FairMutex::new(HashMap::new()));
+                    }
                     Ok(ok)
                 }
             }
