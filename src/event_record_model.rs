@@ -9,7 +9,7 @@ use tracing::error;
 
 #[derive(Clone)]
 pub struct EventRecordModel {
-    array: Arc<EventRecordDecoded>,
+    pub array: Arc<EventRecordDecoded>,
     stack_walk: OnceLock<Arc<StackWalk>>,
 }
 
