@@ -82,37 +82,46 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
             return None;
         }
 
-        let cursor_index = if !list_except_last_lock.inner.is_null() {
-            list_except_last_lock.index
+        // i.e. the cursor is null at start
+        let cursor_index = if list_except_last_lock.inner.is_null() {
+            // now the list must not be empty
+            *list_except_last_lock = CursorSync {
+                inner: unsafe { &*self.list.get() }.front(),
+                index: 0,
+            };
+            0
         } else {
-            list_len
+            list_except_last_lock.index
         };
 
         if cursor_index == index_to {
             return list_except_last_lock.inner.clone_pointer();
         } else if cursor_index < index_to {
             if (index_to - cursor_index) * 2 <= list_len {
-                move_next_to_uncheck(&mut list_except_last_lock, index_to, list_len);
+                move_next_to_uncheck(&mut list_except_last_lock, index_to);
             } else {
                 let _list_last_lock = self.list_last_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
+                let cursor = unsafe { &*self.list.get() }.back();
+                drop(_list_last_lock);
                 *list_except_last_lock = CursorSync {
-                    inner: unsafe { &*self.list.get() }.front(),
-                    index: 0,
+                    inner: cursor,
+                    index: list_len - 1,
                 };
-                move_prev_to_uncheck(&mut list_except_last_lock, index_to, list_len);
+                move_prev_to_uncheck(&mut list_except_last_lock, index_to);
             }
         } else {
             if (cursor_index - index_to) * 2 <= list_len {
-                move_prev_to_uncheck(&mut list_except_last_lock, index_to, list_len);
+                move_prev_to_uncheck(&mut list_except_last_lock, index_to);
             } else {
                 let _list_last_lock = self.list_last_lock.lock();
-                let list_len = self.list_len.load(Ordering::Acquire);
+                let cursor = unsafe { &*self.list.get() }.front();
+                drop(_list_last_lock);
                 *list_except_last_lock = CursorSync {
-                    inner: unsafe { &*self.list.get() }.back(),
-                    index: list_len - 1,
+                    inner: cursor,
+                    index: 0,
                 };
-                move_next_to_uncheck(&mut list_except_last_lock, index_to, list_len);
+                move_next_to_uncheck(&mut list_except_last_lock, index_to);
             }
         }
         return list_except_last_lock.inner.clone_pointer();
@@ -120,27 +129,13 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
         fn move_next_to_uncheck<'a, T: Clone + Send + Sync>(
             list_except_last_lock: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
             index_to: usize,
-            list_len: usize,
         ) {
-            assert!(list_len > 0);
             loop {
-                let prev_is_null = list_except_last_lock.inner.is_null();
+                assert!(!list_except_last_lock.inner.is_null());
                 list_except_last_lock.inner.move_next();
-                if list_except_last_lock.inner.is_null() {
-                    if prev_is_null {
-                        list_except_last_lock.index = 0;
-                        break;
-                    }
-                    list_except_last_lock.index = list_len;
-                } else {
-                    if prev_is_null {
-                        list_except_last_lock.index = 0;
-                    } else {
-                        list_except_last_lock.index += 1;
-                    }
-                    if list_except_last_lock.index == index_to {
-                        break;
-                    }
+                list_except_last_lock.index += 1;
+                if list_except_last_lock.index == index_to {
+                    break;
                 }
             }
         }
@@ -148,27 +143,13 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
         fn move_prev_to_uncheck<'a, T: Clone + Send + Sync>(
             list_except_last_lock: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
             index_to: usize,
-            list_len: usize,
         ) {
-            assert!(list_len > 0);
             loop {
-                let prev_is_null = list_except_last_lock.inner.is_null();
+                assert!(!list_except_last_lock.inner.is_null());
                 list_except_last_lock.inner.move_prev();
-                if list_except_last_lock.inner.is_null() {
-                    if prev_is_null {
-                        list_except_last_lock.index = 0;
-                        break;
-                    }
-                    list_except_last_lock.index = list_len;
-                } else {
-                    if prev_is_null {
-                        list_except_last_lock.index = list_len - 1;
-                    } else {
-                        list_except_last_lock.index -= 1;
-                    }
-                    if list_except_last_lock.index == index_to {
-                        break;
-                    }
+                list_except_last_lock.index -= 1;
+                if list_except_last_lock.index == index_to {
+                    break;
                 }
             }
         }
