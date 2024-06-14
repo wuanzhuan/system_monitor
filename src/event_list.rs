@@ -3,16 +3,19 @@ use intrusive_collections::intrusive_adapter;
 use intrusive_collections::{linked_list::Cursor, LinkedList, LinkedListLink};
 use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
 use std::{
+    mem,
     cell::SyncUnsafeCell,
     sync::{
-        atomic::{AtomicUsize, Ordering},
+        atomic::{AtomicUsize, AtomicU64, Ordering},
         Arc,
     },
 };
+use once_cell::sync::OnceCell;
 
 #[derive(Clone)]
 pub struct Node<T: Clone + Send + Sync> {
     link: LinkedListLink,
+    pub serial_number: OnceCell<u64>,
     pub value: T,
 }
 unsafe impl<T: Clone + Send + Sync> Send for Node<T> {}
@@ -22,6 +25,7 @@ impl<T: Clone + Send + Sync> Node<T> {
     pub fn new(value: T) -> Self {
         Self {
             link: LinkedListLink::new(),
+            serial_number: OnceCell::new(),
             value,
         }
     }
@@ -40,16 +44,18 @@ pub struct EventList<'a: 'static, T: Clone + Send + Sync> {
     // the backing data, access by cursor
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
-    reader_lock: RwLock<CursorSync<'a, T>>,
+    serial_number: AtomicU64, //todo: integer overflow
+    reader_lock: RwLock</*cursor_last_read*/CursorSync<'a, T>>,
     push_back_lock: FairMutex<()>,
 }
 
 // when modifying the model, we call the corresponding function in
 // the ModelNotify
-impl<'a, T: Clone + Send + Sync> EventList<'a, T> {
+impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
     pub fn new() -> Self {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
+        let serial_number = AtomicU64::new(0);
         let reader_lock = RwLock::new(CursorSync {
             inner: unsafe { &mut *list.get() }.cursor(),
             index: 0,
@@ -58,6 +64,7 @@ impl<'a, T: Clone + Send + Sync> EventList<'a, T> {
         Self {
             list,
             list_len,
+            serial_number,
             reader_lock,
             push_back_lock,
         }
@@ -186,18 +193,31 @@ impl<'a, T: Clone + Send + Sync> EventList<'a, T> {
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {
         let mut _push_back_guard = self.push_back_lock.lock();
+        let serail_number = self.serial_number.fetch_add(1, Ordering::Release);
+        value.serial_number.set(serail_number).unwrap();
         unsafe { &mut *self.list.get() }.push_back(value);
         let index = self.list_len.fetch_add(1, Ordering::Release);
         index
     }
 
-    /// Remove the row at the given index from the model
-    #[allow(unused)]
+    /// Remove the row by a arc
     pub fn remove(&self, node_arc: Arc<Node<T>>) {
         let mut cursor = unsafe { (&mut *self.list.get()).cursor_mut_from_ptr(node_arc.as_ref()) };
-        if cursor.remove().is_some() {
+        let mut reader_guard = self.reader_lock.write(); // lock before remove
+        if let Some(node_arc_removed) = cursor.remove() {
             self.list_len.fetch_sub(1, Ordering::Release);
+            if let Some(cursor_last_read) = reader_guard.inner.get() {
+                if &*node_arc_removed as *const _ as *const () == cursor_last_read as *const _ as *const () {
+                    *reader_guard = CursorSync {
+                        inner: unsafe{ mem::transmute(cursor.as_cursor()) },
+                        index: reader_guard.index - 1
+                    };
+                } else {
+                    if node_arc_removed.serial_number.get().unwrap() <= cursor_last_read.serial_number.get().unwrap() {
+                        reader_guard.index -= 1;
+                    }
+                }
+            }
         }
-        //notify
     }
 }
