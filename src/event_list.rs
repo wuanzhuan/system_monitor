@@ -45,8 +45,8 @@ pub struct EventList<'a: 'static, T: Clone + Send + Sync> {
     list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
     serial_number: AtomicU64, //todo: integer overflow
-    reader_lock: RwLock</*cursor_last_read*/CursorSync<'a, T>>,
-    push_back_lock: FairMutex<()>,
+    list_except_last_lock: RwLock</*cursor_last_read*/CursorSync<'a, T>>,
+    list_last_lock: FairMutex<()>,
 }
 
 // when modifying the model, we call the corresponding function in
@@ -56,17 +56,17 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
         let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
         let serial_number = AtomicU64::new(0);
-        let reader_lock = RwLock::new(CursorSync {
+        let list_except_last_lock = RwLock::new(CursorSync {
             inner: unsafe { &mut *list.get() }.cursor(),
             index: 0,
         });
-        let push_back_lock = FairMutex::new(());
+        let list_last_lock = FairMutex::new(());
         Self {
             list,
             list_len,
             serial_number,
-            reader_lock,
-            push_back_lock,
+            list_except_last_lock,
+            list_last_lock,
         }
     }
 
@@ -75,70 +75,70 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
     }
 
     pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>> {
-        let mut reader_guard = self.reader_lock.write();
+        let mut list_except_last_lock = self.list_except_last_lock.write();
 
         let list_len = self.list_len.load(Ordering::Acquire);
         if index_to >= list_len {
             return None;
         }
 
-        let cursor_index = if !reader_guard.inner.is_null() {
-            reader_guard.index
+        let cursor_index = if !list_except_last_lock.inner.is_null() {
+            list_except_last_lock.index
         } else {
             list_len
         };
 
         if cursor_index == index_to {
-            return reader_guard.inner.clone_pointer();
+            return list_except_last_lock.inner.clone_pointer();
         } else if cursor_index < index_to {
             if (index_to - cursor_index) * 2 <= list_len {
-                move_next_to_uncheck(&mut reader_guard, index_to, list_len);
+                move_next_to_uncheck(&mut list_except_last_lock, index_to, list_len);
             } else {
-                let _push_back_guard = self.push_back_lock.lock();
+                let _list_last_lock = self.list_last_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                *reader_guard = CursorSync {
+                *list_except_last_lock = CursorSync {
                     inner: unsafe { &*self.list.get() }.front(),
                     index: 0,
                 };
-                move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
+                move_prev_to_uncheck(&mut list_except_last_lock, index_to, list_len);
             }
         } else {
             if (cursor_index - index_to) * 2 <= list_len {
-                move_prev_to_uncheck(&mut reader_guard, index_to, list_len);
+                move_prev_to_uncheck(&mut list_except_last_lock, index_to, list_len);
             } else {
-                let _push_back_guard = self.push_back_lock.lock();
+                let _list_last_lock = self.list_last_lock.lock();
                 let list_len = self.list_len.load(Ordering::Acquire);
-                *reader_guard = CursorSync {
+                *list_except_last_lock = CursorSync {
                     inner: unsafe { &*self.list.get() }.back(),
                     index: list_len - 1,
                 };
-                move_next_to_uncheck(&mut reader_guard, index_to, list_len);
+                move_next_to_uncheck(&mut list_except_last_lock, index_to, list_len);
             }
         }
-        return reader_guard.inner.clone_pointer();
+        return list_except_last_lock.inner.clone_pointer();
 
         fn move_next_to_uncheck<'a, T: Clone + Send + Sync>(
-            reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
+            list_except_last_lock: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
             index_to: usize,
             list_len: usize,
         ) {
             assert!(list_len > 0);
             loop {
-                let prev_is_null = reader_guard.inner.is_null();
-                reader_guard.inner.move_next();
-                if reader_guard.inner.is_null() {
+                let prev_is_null = list_except_last_lock.inner.is_null();
+                list_except_last_lock.inner.move_next();
+                if list_except_last_lock.inner.is_null() {
                     if prev_is_null {
-                        reader_guard.index = 0;
+                        list_except_last_lock.index = 0;
                         break;
                     }
-                    reader_guard.index = list_len;
+                    list_except_last_lock.index = list_len;
                 } else {
                     if prev_is_null {
-                        reader_guard.index = 0;
+                        list_except_last_lock.index = 0;
                     } else {
-                        reader_guard.index += 1;
+                        list_except_last_lock.index += 1;
                     }
-                    if reader_guard.index == index_to {
+                    if list_except_last_lock.index == index_to {
                         break;
                     }
                 }
@@ -146,27 +146,27 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
         }
 
         fn move_prev_to_uncheck<'a, T: Clone + Send + Sync>(
-            reader_guard: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
+            list_except_last_lock: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
             index_to: usize,
             list_len: usize,
         ) {
             assert!(list_len > 0);
             loop {
-                let prev_is_null = reader_guard.inner.is_null();
-                reader_guard.inner.move_prev();
-                if reader_guard.inner.is_null() {
+                let prev_is_null = list_except_last_lock.inner.is_null();
+                list_except_last_lock.inner.move_prev();
+                if list_except_last_lock.inner.is_null() {
                     if prev_is_null {
-                        reader_guard.index = 0;
+                        list_except_last_lock.index = 0;
                         break;
                     }
-                    reader_guard.index = list_len;
+                    list_except_last_lock.index = list_len;
                 } else {
                     if prev_is_null {
-                        reader_guard.index = list_len - 1;
+                        list_except_last_lock.index = list_len - 1;
                     } else {
-                        reader_guard.index -= 1;
+                        list_except_last_lock.index -= 1;
                     }
-                    if reader_guard.index == index_to {
+                    if list_except_last_lock.index == index_to {
                         break;
                     }
                 }
@@ -175,7 +175,7 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
     }
 
     pub fn traversal(&self, cb: impl Fn(&T) -> Result<bool>) -> Result<Vec<i32>> {
-        let mut _reader_guard = self.reader_lock.read();
+        let mut _list_except_last_lock = self.list_except_last_lock.read();
         let list_len = self.list_len.load(Ordering::Acquire);
         let list = unsafe { &*self.list.get() };
         let mut vec = vec![];
@@ -192,7 +192,7 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
     }
 
     pub fn push(&self, value: Arc<Node<T>>) -> usize {
-        let mut _push_back_guard = self.push_back_lock.lock();
+        let mut _list_last_lock = self.list_last_lock.lock();
         let serail_number = self.serial_number.fetch_add(1, Ordering::Release);
         value.serial_number.set(serail_number).unwrap();
         unsafe { &mut *self.list.get() }.push_back(value);
@@ -203,18 +203,18 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
     /// Remove the row by a arc
     pub fn remove(&self, node_arc: Arc<Node<T>>) {
         let mut cursor = unsafe { (&mut *self.list.get()).cursor_mut_from_ptr(node_arc.as_ref()) };
-        let mut reader_guard = self.reader_lock.write(); // lock before remove
+        let mut list_except_last_lock = self.list_except_last_lock.write(); // lock before remove
         if let Some(node_arc_removed) = cursor.remove() {
             self.list_len.fetch_sub(1, Ordering::Release);
-            if let Some(cursor_last_read) = reader_guard.inner.get() {
+            if let Some(cursor_last_read) = list_except_last_lock.inner.get() {
                 if &*node_arc_removed as *const _ as *const () == cursor_last_read as *const _ as *const () {
-                    *reader_guard = CursorSync {
+                    *list_except_last_lock = CursorSync {
                         inner: unsafe{ mem::transmute(cursor.as_cursor()) },
-                        index: reader_guard.index - 1
+                        index: list_except_last_lock.index - 1
                     };
                 } else {
                     if node_arc_removed.serial_number.get().unwrap() <= cursor_last_read.serial_number.get().unwrap() {
-                        reader_guard.index -= 1;
+                        list_except_last_lock.index -= 1;
                     }
                 }
             }
