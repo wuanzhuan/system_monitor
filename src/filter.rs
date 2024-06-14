@@ -43,7 +43,7 @@ pub fn filter_for_pair(
                     "Object",
                     "CreateHandle",
                     "CloseHandle",
-                    &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from(""))}],
+                    &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from("Handle"))}],
                 ) {
                     Err(e) => return Err(e),
                     Ok((is_matched, node_arc)) => {
