@@ -287,11 +287,7 @@ impl Controller {
                     }
                 }
             },
-            Err(e) => {
-                error!(
-                    "Faild to Decoder::new: {e} EventRecord: {}",
-                    EventRecord(er)
-                );
+            Err(_) => {
                 match decode_kernel_event_when_error(er, is_stack_walk) {
                     Some(erd) => erd,
                     None => return,
