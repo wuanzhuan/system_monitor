@@ -11,7 +11,7 @@ use crate::third_extend::strings::*;
 use linked_hash_map::LinkedHashMap;
 use once_cell::sync::Lazy;
 use parking_lot::{FairMutex, FairMutexGuard};
-use tracing::{error, warn};
+use tracing::{error, warn, debug};
 use widestring::*;
 use windows::{
     core::*,
@@ -280,14 +280,15 @@ impl Controller {
             Ok(mut decoder) => match decoder.decode() {
                 Ok(event_record_decoded) => event_record_decoded,
                 Err(e) => {
-                    error!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
+                    debug!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
                     match decode_kernel_event_when_error(er, is_stack_walk) {
                         Some(erd) => erd,
                         None => return,
                     }
                 }
             },
-            Err(_) => {
+            Err(e) => {
+                debug!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
                 match decode_kernel_event_when_error(er, is_stack_walk) {
                     Some(erd) => erd,
                     None => return,
