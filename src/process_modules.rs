@@ -555,11 +555,13 @@ fn process_init(process_id: u32) {
 }
 
 fn process_start(process_id: u32) {
-    let process_module_mutex = RUNNING_PROCESSES_MODULES_MAP.lock().insert(
+    let old_key = RUNNING_PROCESSES_MODULES_MAP.lock().insert(
         process_id,
         Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
     );
-    assert!(process_module_mutex.is_none());
+    if old_key.is_some() {
+        warn!("The process: {process_id} new is coming but old is not remove");
+    }
 }
 
 fn process_end(process_id: u32) {
