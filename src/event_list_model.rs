@@ -6,14 +6,14 @@ use anyhow::Result;
 use slint::{Model, ModelNotify, ModelRc, ModelTracker, StandardListViewItem};
 use std::sync::Arc;
 
-pub struct ListModel<'a: 'static> {
+pub struct ListModel {
     // the backing data, access by cursor
-    list: Arc<EventList<'a, EventRecordModel>>,
+    list: Arc<EventList<EventRecordModel>>,
     // the ModelNotify will allow to notify the UI that the model changes
     notify: ModelNotify,
 }
 
-impl<'a> Model for ListModel<'a> {
+impl Model for ListModel {
     type Data = ModelRc<StandardListViewItem>;
 
     fn row_count(&self) -> usize {
@@ -43,7 +43,7 @@ impl<'a> Model for ListModel<'a> {
 
 // when modifying the model, we call the corresponding function in
 // the ModelNotify
-impl<'a> ListModel<'a> {
+impl ListModel {
     pub fn new(list: Arc<EventList<EventRecordModel>>) -> Self {
         Self {
             list,

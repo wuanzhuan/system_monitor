@@ -1,9 +1,10 @@
 use anyhow::Result;
 use intrusive_collections::intrusive_adapter;
+use intrusive_collections::linked_list::CursorMut;
 use intrusive_collections::{linked_list::Cursor, LinkedList, LinkedListLink};
-use parking_lot::{FairMutex, RwLock, RwLockWriteGuard};
+use parking_lot::FairMutex;
 use std::{
-    mem,
+    ptr,
     cell::SyncUnsafeCell,
     sync::{
         atomic::{AtomicUsize, AtomicU64, Ordering},
@@ -33,33 +34,51 @@ impl<T: Clone + Send + Sync> Node<T> {
 
 intrusive_adapter!(NodeAdapter<T> = Arc<Node<T>>: Node<T> { link: LinkedListLink } where T: Clone + Send + Sync);
 
-struct CursorSync<'a, T: Clone + Send + Sync> {
-    pub inner: Cursor<'a, NodeAdapter<T>>,
-    pub index: usize,
+struct NodeArc<T: Clone + Send + Sync> {
+    node: Option<Arc<Node<T>>>,
+    index: usize,
 }
-unsafe impl<'a, T: Clone + Send + Sync> Send for CursorSync<'a, T> {}
-unsafe impl<'a, T: Clone + Send + Sync> Sync for CursorSync<'a, T> {}
 
-pub struct EventList<'a: 'static, T: Clone + Send + Sync> {
+impl<T: Clone + Send + Sync> NodeArc<T> {
+    fn new() -> Self {
+        Self {
+            node: None,
+            index: 0,
+        }
+    }
+
+    fn get_cursor<'a>(&self, list: &'a LinkedList<NodeAdapter<T>>) -> Option<Cursor<'a, NodeAdapter<T>>> {
+        if let Some(ref node) = self.node {
+            let cursor = unsafe{ list.cursor_from_ptr(node.as_ref()) };
+            Some(cursor)
+        } else {
+            None
+        }
+    }
+
+    fn set(&mut self, node: Option<Arc<Node<T>>>, index: usize) {
+        self.index = if node.is_some() { index } else { 0 };
+        self.node = node;
+    }
+}
+
+pub struct EventList<T: Clone + Send + Sync> {
     // the backing data, access by cursor
-    list: SyncUnsafeCell<Box<LinkedList<NodeAdapter<T>>>>,
+    list: Box<SyncUnsafeCell<LinkedList<NodeAdapter<T>>>>,
     list_len: AtomicUsize,
     serial_number: AtomicU64, //todo: integer overflow
-    list_except_last_lock: RwLock</*cursor_last_read*/CursorSync<'a, T>>,
+    list_except_last_lock: FairMutex<NodeArc<T>>,
     list_last_lock: FairMutex<()>,
 }
 
 // when modifying the model, we call the corresponding function in
 // the ModelNotify
-impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
+impl<T: Clone + Send + Sync> EventList<T> {
     pub fn new() -> Self {
-        let list = SyncUnsafeCell::new(Box::new(LinkedList::<NodeAdapter<T>>::default()));
+        let list = Box::new(SyncUnsafeCell::new(LinkedList::<NodeAdapter<T>>::default()));
         let list_len = AtomicUsize::new(0);
         let serial_number = AtomicU64::new(0);
-        let list_except_last_lock = RwLock::new(CursorSync {
-            inner: unsafe { &mut *list.get() }.cursor(),
-            index: 0,
-        });
+        let list_except_last_lock = FairMutex::new(NodeArc::new());
         let list_last_lock = FairMutex::new(());
         Self {
             list,
@@ -75,88 +94,82 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
     }
 
     pub fn get_by_index(&self, index_to: usize) -> Option<Arc<Node<T>>> {
-        let mut list_except_last_lock = self.list_except_last_lock.write();
-
-        let list_len = self.list_len.load(Ordering::Acquire);
+        let mut list_except_last_lock = self.list_except_last_lock.lock();
+        let mut list_len = self.list_len.load(Ordering::Acquire);
         if index_to >= list_len {
             return None;
         }
-
+        
         // i.e. the cursor is null at start
-        let cursor_index = if list_except_last_lock.inner.is_null() {
-            // now the list must not be empty
-            *list_except_last_lock = CursorSync {
-                inner: unsafe { &*self.list.get() }.front(),
-                index: 0,
-            };
-            0
+        let (mut cursor, cursor_index) = if let Some(cursor) = list_except_last_lock.get_cursor(self.get_list()) {
+            (cursor, list_except_last_lock.index)
         } else {
-            list_except_last_lock.index
+            let cursor = self.get_list().front();
+            if cursor.is_null() {
+                return None;
+            }
+            (cursor, 0usize)
         };
 
         if cursor_index == index_to {
-            return list_except_last_lock.inner.clone_pointer();
-        } else if cursor_index < index_to {
-            if (index_to - cursor_index) * 2 <= list_len {
-                move_next_to_uncheck(&mut list_except_last_lock, index_to);
-            } else {
-                let _list_last_lock = self.list_last_lock.lock();
-                let list_len = self.list_len.load(Ordering::Acquire);
-                let cursor = unsafe { &*self.list.get() }.back();
-                drop(_list_last_lock);
-                *list_except_last_lock = CursorSync {
-                    inner: cursor,
-                    index: list_len - 1,
-                };
-                move_prev_to_uncheck(&mut list_except_last_lock, index_to);
-            }
+            list_except_last_lock.set(cursor.clone_pointer(), index_to);
+            return cursor.clone_pointer();
         } else {
-            if (cursor_index - index_to) * 2 <= list_len {
-                move_prev_to_uncheck(&mut list_except_last_lock, index_to);
+            if cursor_index < index_to {
+                if index_to <= (list_len + cursor_index) / 2 {
+                    move_next_to_uncheck(&mut cursor, cursor_index, index_to);
+                } else {
+                    let _list_last_lock = self.list_last_lock.lock();
+                    list_len = self.list_len.load(Ordering::Acquire);
+                    cursor = self.get_list().back();
+                    drop(_list_last_lock);
+                    move_prev_to_uncheck(&mut cursor, list_len - 1, index_to);
+                }
             } else {
-                let _list_last_lock = self.list_last_lock.lock();
-                let cursor = unsafe { &*self.list.get() }.front();
-                drop(_list_last_lock);
-                *list_except_last_lock = CursorSync {
-                    inner: cursor,
-                    index: 0,
-                };
-                move_next_to_uncheck(&mut list_except_last_lock, index_to);
-            }
-        }
-        return list_except_last_lock.inner.clone_pointer();
-
-        fn move_next_to_uncheck<'a, T: Clone + Send + Sync>(
-            list_except_last_lock: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
-            index_to: usize,
-        ) {
-            loop {
-                assert!(!list_except_last_lock.inner.is_null());
-                list_except_last_lock.inner.move_next();
-                list_except_last_lock.index += 1;
-                if list_except_last_lock.index == index_to {
-                    break;
+                if index_to >= cursor_index / 2 {
+                    move_prev_to_uncheck(&mut cursor, cursor_index, index_to);
+                } else {
+                    let _list_last_lock = self.list_last_lock.lock();
+                    cursor = self.get_list().front();
+                    drop(_list_last_lock);
+                    move_next_to_uncheck(&mut cursor, 0, index_to);
                 }
             }
+            list_except_last_lock.set(cursor.clone_pointer(), index_to);
+            return cursor.clone_pointer();
         }
 
+        // the function should be success
+        fn move_next_to_uncheck<'a, T: Clone + Send + Sync> (
+            cursor: &mut Cursor<'a, NodeAdapter<T>>,
+            current_index: usize,
+            index_to: usize,
+        ) {
+            let mut index = current_index;
+            while index != index_to {
+                assert!(!cursor.is_null(), "index: {index} index_to: {index_to}");
+                cursor.move_next();
+                index += 1;
+            }
+        }
+
+        // the function should be success
         fn move_prev_to_uncheck<'a, T: Clone + Send + Sync>(
-            list_except_last_lock: &mut RwLockWriteGuard<'_, CursorSync<'_, T>>,
+            cursor: &mut Cursor<'a, NodeAdapter<T>>,
+            current_index: usize,
             index_to: usize,
         ) {
-            loop {
-                assert!(!list_except_last_lock.inner.is_null());
-                list_except_last_lock.inner.move_prev();
-                list_except_last_lock.index -= 1;
-                if list_except_last_lock.index == index_to {
-                    break;
-                }
+            let mut index = current_index;
+            while index != index_to {
+                assert!(!cursor.is_null(), "index: {index} index_to: {index_to}");
+                cursor.move_prev();
+                index -= 1;
             }
         }
     }
 
     pub fn traversal(&self, cb: impl Fn(&T) -> Result<bool>) -> Result<Vec<i32>> {
-        let mut _list_except_last_lock = self.list_except_last_lock.read();
+        let mut _list_except_last_lock = self.list_except_last_lock.lock();
         let list_len = self.list_len.load(Ordering::Acquire);
         let list = unsafe { &*self.list.get() };
         let mut vec = vec![];
@@ -183,22 +196,37 @@ impl<'a: 'static, T: Clone + Send + Sync> EventList<'a, T> {
 
     /// Remove the row by a arc
     pub fn remove(&self, node_arc: Arc<Node<T>>) {
-        let mut cursor = unsafe { (&mut *self.list.get()).cursor_mut_from_ptr(node_arc.as_ref()) };
-        let mut list_except_last_lock = self.list_except_last_lock.write(); // lock before remove
-        if let Some(node_arc_removed) = cursor.remove() {
+        let mut list_except_last_lock = self.list_except_last_lock.lock(); // lock before remove
+        let mut cursor = self.get_cursor_mut_from_node(node_arc.as_ref());  // the node_arc may be modify by other 
+        // the remove and push is called in same thread
+        let node_arc_removed = cursor.remove();
+        if let Some(node_arc_removed) = &node_arc_removed {
             self.list_len.fetch_sub(1, Ordering::Release);
-            if let Some(cursor_last_read) = list_except_last_lock.inner.get() {
-                if &*node_arc_removed as *const _ as *const () == cursor_last_read as *const _ as *const () {
-                    *list_except_last_lock = CursorSync {
-                        inner: unsafe{ mem::transmute(cursor.as_cursor()) },
-                        index: list_except_last_lock.index - 1
-                    };
+            if let Some(cursor_last_read) = &list_except_last_lock.node {
+                if ptr::eq(node_arc_removed.as_ref(), cursor_last_read.as_ref()) {
+                    let index = list_except_last_lock.index;
+                    list_except_last_lock.set(cursor.as_cursor().clone_pointer(), index);
                 } else {
                     if node_arc_removed.serial_number.get().unwrap() <= cursor_last_read.serial_number.get().unwrap() {
-                        list_except_last_lock.index -= 1;
+                        if list_except_last_lock.index != 0 {
+                            list_except_last_lock.index -= 1;
+                        }
                     }
                 }
             }
         }
     }
+
+    fn get_list(&self) -> &LinkedList<NodeAdapter<T>> {
+        unsafe{ &*self.list.get() }
+    }
+
+    fn get_list_mut(&self) -> &mut LinkedList<NodeAdapter<T>> {
+        unsafe{ &mut *self.list.get() }
+    }
+
+    fn get_cursor_mut_from_node(&self, node: &Node<T>) -> CursorMut<NodeAdapter<T>> {
+        unsafe { self.get_list_mut().cursor_mut_from_ptr(node) }
+    }
+
 }
