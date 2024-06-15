@@ -7,6 +7,7 @@ import { FindBar } from "find_bar.slint";
 export struct EventDesc {
     name: string,
     enable: bool,
+    is_config: bool,
     minors: [{name:string, enable: bool}]
 }
 
@@ -94,6 +95,7 @@ export component EventsEnables {
     
                 HorizontalBox {
                     major_cb := CheckBox {
+                        enabled: major.is_config;
                         checked: major.enable;
                         text: major.name;
                         toggled => {
@@ -106,6 +108,7 @@ export component EventsEnables {
                     if is_expand.checked : VerticalBox {
                         for minor[index_minor] in major.minors : HorizontalBox {
                             minor_cb := CheckBox {
+                                enabled: major.is_config;
                                 checked: minor.enable;
                                 text: minor.name;
                                 toggled => {

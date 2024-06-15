@@ -1657,7 +1657,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
-        visible: false,
+        is_config: false,
         major: MajorDescribe {
             name: "LostEvent",
             flag: Major::MemoryControl as u32,
@@ -1683,14 +1683,14 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
 
 #[derive(Debug)]
 pub struct EventsDescribe {
-    pub visible: bool, // default true
+    pub is_config: bool, // default true
     pub major: MajorDescribe,
     pub minors: &'static [MinorDescribe],
     pub guid: GUID,
 }
 
 impl ConstDefault for EventsDescribe {
-    const DEFAULT: Self = Self { visible: true, major: MajorDescribe::DEFAULT, minors: &[], guid: GUID::zeroed() };
+    const DEFAULT: Self = Self { is_config: true, major: MajorDescribe::DEFAULT, minors: &[], guid: GUID::zeroed() };
 }
 
 #[derive(Debug, ConstDefault)]

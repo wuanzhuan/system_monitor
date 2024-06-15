@@ -118,6 +118,7 @@ fn main() {
             minors.push((false, minor.name.into()));
         }
         event_descs.push(EventDesc {
+            is_config: major.is_config,
             enable: false,
             name: if let Some(name) = major.major.display_name {
                 name.into()
