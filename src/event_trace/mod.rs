@@ -464,6 +464,7 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
     };
     properties.Wnode.Flags = WNODE_FLAG_TRACED_GUID;
     properties.Wnode.ClientContext = 2; // if 1 the StackWalk event's timestamp is invalid. because of not set PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA
+    properties.BufferSize = 512 * 1024;
     properties.FlushTimer = 1;
     properties.LogFileMode = EVENT_TRACE_SYSTEM_LOGGER_MODE
         | EVENT_TRACE_REAL_TIME_MODE
