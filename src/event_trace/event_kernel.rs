@@ -1677,6 +1677,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: 34,
             },
         ],
+        guid: LOST_EVENT_GUID,
         ..EventsDescribe::DEFAULT
     },
 ];
@@ -1912,6 +1913,8 @@ pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430
 
 /// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
 pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
+pub const LOST_EVENT_GUID: GUID = GUID::from_u128(0x6a399ae0_4bc6_4de9_870b_3657f8947e7e);
+
 
 pub mod event_property {
     use crate::event_trace::event_decoder;

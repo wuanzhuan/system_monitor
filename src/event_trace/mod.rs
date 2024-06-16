@@ -26,8 +26,7 @@ mod event_decoder;
 mod event_kernel;
 
 pub use event_decoder::{EventRecordDecoded, PropertyDecoded};
-pub use event_kernel::event_property::*;
-pub use event_kernel::EVENTS_DESC;
+pub use event_kernel::{event_property::*, EVENTS_DESC, LOST_EVENT_GUID};
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
 const SESSION_NAME_NT: &U16CStr = u16cstr!("NT Kernel Logger");
@@ -276,6 +275,7 @@ impl Controller {
         let is_stack_walk = er.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
         let is_module_event =
             er.EventHeader.ProviderId == ImageLoadGuid || er.EventHeader.ProviderId == ProcessGuid;
+        let is_lost_event = er.EventHeader.ProviderId == LOST_EVENT_GUID;
         let is_auto_generated = er.EventHeader.ProviderId == EventTraceGuid;
         let mut is_enabled = false;
         let mut event_indexes: Option<(/*major_index*/ usize, /*minor_index*/ usize)> = None;
@@ -305,11 +305,16 @@ impl Controller {
                 }
                 Err(e) => {
                     error!("{e}");
+                    context_mg
+                        .unstored_events_map
+                        .borrow_mut()
+                        .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
+                    return;
                 }
             }
 
             if !is_enabled {
-                if !is_module_event {
+                if !is_module_event && !is_lost_event {
                     context_mg
                         .unstored_events_map
                         .borrow_mut()
@@ -351,10 +356,14 @@ impl Controller {
                 cb(event_record_decoded, Some(sw), false);
             }
         } else {
-            let cb = context_mg.event_record_callback.clone().unwrap();
-            mem::drop(context_mg);
-            let cb = unsafe { &mut *cb.get() };
-            cb(event_record_decoded, None, is_enabled);
+            if !is_lost_event {
+                let cb = context_mg.event_record_callback.clone().unwrap();
+                mem::drop(context_mg);
+                let cb = unsafe { &mut *cb.get() };
+                cb(event_record_decoded, None, is_enabled);
+            } else {
+                warn!("Lost_Event: {:#?}", event_record_decoded);
+            }
         }
 
         fn get_event_indexes(
