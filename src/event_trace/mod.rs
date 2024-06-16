@@ -11,7 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tracing::{debug, error, warn};
+use tracing::{error, warn};
 use widestring::*;
 use windows::{
     core::*,
@@ -87,7 +87,7 @@ impl Controller {
         fn_event_callback: impl FnMut(
                 EventRecordDecoded,
                 /*stack_walk*/ Option<StackWalk>,
-                /*is_selected*/ bool,
+                /*is_enabled*/ bool,
             ) + Send
             + 'static,
         fn_completion: impl FnOnce(Result<()>) + Send + 'static,
@@ -274,26 +274,65 @@ impl Controller {
     unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
         let er: &EVENT_RECORD = mem::transmute(eventrecord);
         let is_stack_walk = er.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
+        let is_module_event =
+            er.EventHeader.ProviderId == ImageLoadGuid || er.EventHeader.ProviderId == ProcessGuid;
+        let is_auto_generated = er.EventHeader.ProviderId == EventTraceGuid;
+        let mut is_enabled = false;
+        let mut event_indexes: Option<(/*major_index*/ usize, /*minor_index*/ usize)> = None;
+
+        if !is_stack_walk {
+            let context_mg = CONTEXT.lock();
+            match get_event_indexes(er, Some(&context_mg)) {
+                Ok((major_index, minor_index)) => {
+                    event_indexes = Some((major_index, minor_index));
+                    let event_enable = &context_mg.config.events_enables[major_index];
+                    if event_enable.major {
+                        if event_enable.minors[minor_index] {
+                            is_enabled = true;
+                        }
+                    } else {
+                        // the major event is filter by flag. so a error happens when a event that is not enable comes
+                        // the EventTrace Process Image event is always enable.
+                        if !is_module_event && !is_auto_generated {
+                            error!(
+                                "No enable major event is coming: {}-{} event_record: {}",
+                                EVENTS_DESC[major_index].major.name,
+                                EVENTS_DESC[major_index].minors[minor_index].name,
+                                EventRecord(er)
+                            );
+                        }
+                    }
+                }
+                Err(e) => {
+                    error!("{e}");
+                }
+            }
+
+            if !is_enabled {
+                if !is_module_event {
+                    context_mg
+                        .unstored_events_map
+                        .borrow_mut()
+                        .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
+                    return;
+                }
+            }
+        };
+
         let event_record_decoded = match event_decoder::Decoder::new(er) {
             Ok(mut decoder) => match decoder.decode() {
                 Ok(event_record_decoded) => event_record_decoded,
                 Err(e) => {
-                    debug!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
-                    match decode_kernel_event_when_error(er, is_stack_walk) {
-                        Some(erd) => erd,
-                        None => return,
-                    }
+                    warn!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
+                    decode_kernel_event_when_error(er, event_indexes)
                 }
             },
             Err(e) => {
-                debug!(
+                warn!(
                     "Faild to Decoder::new: {e} EventRecord: {}",
                     EventRecord(er)
                 );
-                match decode_kernel_event_when_error(er, is_stack_walk) {
-                    Some(erd) => erd,
-                    None => return,
-                }
+                decode_kernel_event_when_error(er, event_indexes)
             }
         };
 
@@ -312,118 +351,60 @@ impl Controller {
                 cb(event_record_decoded, Some(sw), false);
             }
         } else {
-            if let Some(enable_indexs) = context_mg.config.events_name_map.get(&(
-                event_record_decoded.event_name.as_str(),
-                event_record_decoded.opcode_name.as_str(),
-            )) {
-                if context_mg.config.events_enables[enable_indexs.0].major {
-                    if context_mg.config.events_enables[enable_indexs.0].minors[enable_indexs.1] {
-                        call_non_stack_walk_cb(context_mg, event_record_decoded, true);
-                    } else {
-                        insert_unstored_event(
-                            is_stack_walk,
-                            (er.EventHeader.ThreadId, er.EventHeader.TimeStamp),
-                            Some(&context_mg),
-                        );
-                        call_non_stack_walk_cb(context_mg, event_record_decoded, false);
-                    }
-                } else {
-                    insert_unstored_event(
-                        is_stack_walk,
-                        (er.EventHeader.ThreadId, er.EventHeader.TimeStamp),
-                        Some(&context_mg),
-                    );
-                    // the major event is filter by flag. so a error happens when a event that is not enable comes
-                    // the EventTrace Process Image event is always enable.
-                    if event_record_decoded.event_name != "EventTrace"
-                        && event_record_decoded.event_name != "Process"
-                        && event_record_decoded.event_name != "Image"
-                    {
-                        error!(
-                            "No enable major event is coming: {}-{} event_record_decoded: {}",
-                            event_record_decoded.event_name,
-                            event_record_decoded.opcode_name,
-                            serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default()
-                        );
-                    }
-                    call_non_stack_walk_cb(context_mg, event_record_decoded, false);
-                }
-            } else {
-                insert_unstored_event(
-                    is_stack_walk,
-                    (er.EventHeader.ThreadId, er.EventHeader.TimeStamp),
-                    Some(&context_mg),
-                );
-                error!(
-                    "Can't find {}-{} in events_enable_map event_record_decoded: {}",
-                    event_record_decoded.event_name.as_str(),
-                    event_record_decoded.opcode_name,
-                    serde_json::to_string_pretty(&event_record_decoded).unwrap_or_default()
-                );
-            }
-        }
-        // contains error and inactivated event
-        fn insert_unstored_event(
-            is_stack_walk: bool,
-            key: (u32, i64),
-            context_mg_op: Option<&FairMutexGuard<Controller>>,
-        ) {
-            if is_stack_walk {
-                return;
-            }
-            if let Some(context_mg) = context_mg_op {
-                context_mg.unstored_events_map.borrow_mut().insert(key, ());
-            } else {
-                let context_mg = CONTEXT.lock();
-                context_mg.unstored_events_map.borrow_mut().insert(key, ());
-            }
-        }
-
-        fn call_non_stack_walk_cb(
-            context_mg: FairMutexGuard<Controller>,
-            event_record_decoded: EventRecordDecoded,
-            is_selected: bool,
-        ) {
-            if !is_selected {
-                let is_module_event = event_record_decoded.provider_id.0 == ImageLoadGuid
-                    || event_record_decoded.provider_id.0 == ProcessGuid;
-                if !is_module_event {
-                    mem::drop(context_mg);
-                    return;
-                }
-            }
             let cb = context_mg.event_record_callback.clone().unwrap();
             mem::drop(context_mg);
             let cb = unsafe { &mut *cb.get() };
-            cb(event_record_decoded, None, is_selected);
+            cb(event_record_decoded, None, is_enabled);
+        }
+
+        fn get_event_indexes(
+            er: &EVENT_RECORD,
+            context_mg_op: Option<&FairMutexGuard<Controller>>,
+        ) -> Result<(/*major_index*/ usize, /*minor_index*/ usize)> {
+            fn get(
+                er: &EVENT_RECORD,
+                context_mg: &FairMutexGuard<Controller>,
+            ) -> Result<(/*major_index*/ usize, /*minor_index*/ usize)> {
+                if let Some((major_index, minor_index)) =
+                    context_mg.config.events_opcode_map.get(&(
+                        er.EventHeader.ProviderId,
+                        er.EventHeader.EventDescriptor.Opcode as u32,
+                    ))
+                {
+                    Ok((*major_index, *minor_index))
+                } else {
+                    Err(anyhow!(
+                        "Failed to find event in events_opcode_map EventRecord: {}",
+                        EventRecord(er)
+                    ))
+                }
+            }
+
+            if let Some(context_mg) = context_mg_op {
+                get(er, context_mg)
+            } else {
+                let context_mg = CONTEXT.lock();
+                get(er, &context_mg)
+            }
         }
 
         fn decode_kernel_event_when_error(
             er: &EVENT_RECORD,
-            is_stack_walk: bool,
-        ) -> Option<EventRecordDecoded> {
-            let context_mg = CONTEXT.lock();
-            if let Some(indexs) = context_mg.config.events_opcode_map.get(&(
-                er.EventHeader.ProviderId,
-                er.EventHeader.EventDescriptor.Opcode as u32,
-            )) {
-                Some(event_decoder::decode_kernel_event(
+            event_indexes: Option<(/*major_index*/ usize, /*minor_index*/ usize)>,
+        ) -> EventRecordDecoded {
+            if let Some((major_index, minor_index)) = event_indexes {
+                event_decoder::decode_kernel_event(
                     er,
-                    event_kernel::EVENTS_DESC[indexs.0].major.name,
-                    event_kernel::EVENTS_DESC[indexs.0].minors[indexs.1].name,
-                ))
+                    event_kernel::EVENTS_DESC[major_index].major.name,
+                    event_kernel::EVENTS_DESC[major_index].minors[minor_index].name,
+                )
             } else {
-                insert_unstored_event(
-                    is_stack_walk,
-                    (er.EventHeader.ThreadId, er.EventHeader.TimeStamp),
-                    Some(&context_mg),
-                );
-                mem::drop(context_mg);
-                error!(
-                    "Failed to find event in events_opcode_map EventRecord: {}",
-                    EventRecord(er)
-                );
-                return None;
+                let (major_index, minor_index) = get_event_indexes(er, None).unwrap(); // Be sure to be able to get index for stack walk
+                event_decoder::decode_kernel_event(
+                    er,
+                    event_kernel::EVENTS_DESC[major_index].major.name,
+                    event_kernel::EVENTS_DESC[major_index].minors[minor_index].name,
+                )
             }
         }
     }
