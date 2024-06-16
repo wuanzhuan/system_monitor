@@ -113,7 +113,7 @@ export component EventsEnables {
                                 text: minor.name;
                                 toggled => {
                                     minor.enable = self.checked;
-                                    if (self.checked) {major_cb.checked = true}
+                                    if (self.checked) {major.enable = true}
                                     EnablesData.toggled_minor(index_major, index_minor, self.checked);
                                     set-current-row(index_major);
                                     root.focus();
