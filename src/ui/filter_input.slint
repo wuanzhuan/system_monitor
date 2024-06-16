@@ -9,19 +9,17 @@ export component FilterInput {
         padding: 0px;
         height: 7mm;
 
-        private property <{result: bool, message: string}> result_for_one;
+        private property <{result: bool, message: string}> result;
 
         LineEdit {
             placeholder-text: placeholder-text;
 
             accepted(text) => {
-                result_for_one = set_filter_expression(text);
-                if !result_for_one.result {
-                    popup-for-one.show();
-                }
+                result = set_filter_expression(text);
+                popup.show();
             }
         }
-        popup-for-one := PopupWindow {
+        popup := PopupWindow {
             y: parent.preferred-height + 1mm;
 
             Rectangle {
@@ -30,8 +28,8 @@ export component FilterInput {
                 background: Palette.background;
                 HorizontalBox {
                     Text {
-                        text: result_for_one.message;
-                        color: #ec5353;
+                        text: result.result ? "update sucess!" : result.message;
+                        color: result.result ? #90ee90 : #ec5353;
                     }
                 }
             }
