@@ -1,3 +1,8 @@
+use crate::third_extend::strings::*;
+use anyhow::{anyhow, Error as ErrorAnyhow, Result};
+use linked_hash_map::LinkedHashMap;
+use once_cell::sync::Lazy;
+use parking_lot::{FairMutex, FairMutexGuard};
 use std::{
     cell::{RefCell, UnsafeCell},
     ffi, fmt, mem, ptr,
@@ -6,12 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
-
-use crate::third_extend::strings::*;
-use linked_hash_map::LinkedHashMap;
-use once_cell::sync::Lazy;
-use parking_lot::{FairMutex, FairMutexGuard};
-use tracing::{error, warn, debug};
+use tracing::{debug, error, warn};
 use widestring::*;
 use windows::{
     core::*,
@@ -159,26 +159,25 @@ impl Controller {
             let h_consumer = unsafe { OpenTraceW(&mut trace_log) };
             if INVALID_PROCESSTRACE_HANDLE == h_consumer.Value {
                 context_mg.event_record_callback = None;
-                let e = Err(Error::from_win32());
-                error!("Failed to OpenTraceW: {:#?}", e);
-                break e;
+                break Err(anyhow!("Failed to OpenTraceW: {:#?}", Error::from_win32()));
             }
             context_mg.h_trace_consumer = h_consumer;
 
-            let (tx, rx) = mpsc::channel::<Error>();
+            let (tx, rx) = mpsc::channel::<ErrorAnyhow>();
             let h_thread = thread::spawn(move || {
                 let ft_now = unsafe { GetSystemTimeAsFileTime() };
-                let r_pt = unsafe { ProcessTrace(&[h_consumer], Some(&ft_now), None) };
-                if let Err(e) = r_pt.clone() {
-                    error!("Failed to ProcessTrace: {}", e);
-                    let r_send = tx.send(e);
-                    if r_send.is_ok() {
-                        return;
+                let r = match unsafe { ProcessTrace(&[h_consumer], Some(&ft_now), None) } {
+                    Err(e) => {
+                        let r_send = tx.send(anyhow!("Failed to ProcessTrace: {}", e));
+                        if r_send.is_ok() {
+                            return;
+                        }
+                        Err(e.into())
                     }
-                }
-                let mut context_mg = CONTEXT.lock();
-                context_mg.h_consumer_thread = None;
-                fn_completion(r_pt);
+                    Ok(_) => Ok(()),
+                };
+                CONTEXT.lock().h_consumer_thread = None;
+                fn_completion(r);
             });
             let r_recv = rx.recv_timeout(Duration::from_millis(200));
             match r_recv {
@@ -189,10 +188,9 @@ impl Controller {
                     }
                     error!("Failed to recv_timeout {}", e);
                     context_mg.h_consumer_thread = None;
-                    break Err(E_FAIL.into());
+                    break Err(e.into());
                 }
                 Ok(e) => {
-                    error!("{}", e);
                     context_mg.h_consumer_thread = None;
                     break Err(e);
                 }
@@ -288,7 +286,10 @@ impl Controller {
                 }
             },
             Err(e) => {
-                debug!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                debug!(
+                    "Faild to Decoder::new: {e} EventRecord: {}",
+                    EventRecord(er)
+                );
                 match decode_kernel_event_when_error(er, is_stack_walk) {
                     Some(erd) => erd,
                     None => return,
@@ -441,7 +442,7 @@ impl Controller {
                 "Failed to TraceSetInformation TraceSystemTraceEnableFlagsInfo: {}",
                 e
             );
-            return Err(e);
+            return Err(e.into());
         }
         let (vec_event_id, size) = self.config.get_classic_event_id_vec();
         if let Err(e) = unsafe {
@@ -453,7 +454,7 @@ impl Controller {
             )
         } {
             error!("Failed to TraceSetInformation TraceStackTracingInfo: {}", e);
-            return Err(e);
+            return Err(e.into());
         }
         Ok(())
     }
@@ -527,7 +528,15 @@ impl<'a> fmt::Display for EventRecord<'a> {
     }
 }
 
-pub static EVENTS_DISPLAY_NAME_MAP: Lazy<LinkedHashMap<String, (/*major index*/usize, LinkedHashMap<String, /*minor index*/usize>)>> = Lazy::new(|| {
+pub static EVENTS_DISPLAY_NAME_MAP: Lazy<
+    LinkedHashMap<
+        String,
+        (
+            /*major index*/ usize,
+            LinkedHashMap<String, /*minor index*/ usize>,
+        ),
+    >,
+> = Lazy::new(|| {
     let mut map = LinkedHashMap::new();
     for (index, event_desc) in EVENTS_DESC.iter().enumerate() {
         let mut minor_map = LinkedHashMap::new();
