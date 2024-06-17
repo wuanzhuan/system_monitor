@@ -223,7 +223,7 @@ impl<'a> Decoder<'a> {
             level_name,
             channel_name,
             keywords_name,
-            event_display_name: event_name.clone(),
+            event_display_name: None,
             event_name,
             opcode_name,
             event_message,
@@ -528,7 +528,7 @@ pub fn decode_kernel_event(
         level_name: "".to_string(),
         channel_name: "".to_string(),
         keywords_name: "".to_string(),
-        event_display_name: event_name.to_string(),
+        event_display_name: None,
         event_name: event_name.to_string(),
         opcode_name: opcode_name.to_string(),
         event_message: "".to_string(),
@@ -550,7 +550,7 @@ pub struct EventRecordDecoded {
     pub level_name: String,
     pub channel_name: String,
     pub keywords_name: String,
-    pub event_display_name: String,
+        event_display_name: Option<String>,
     pub event_name: String,
     pub opcode_name: String,
     pub event_message: String,
@@ -561,6 +561,20 @@ pub struct EventRecordDecoded {
     pub thread_id: u32,
     pub timestamp: TimeStamp,
     pub properties: PropertyDecoded,
+}
+
+impl EventRecordDecoded {
+    pub fn get_event_display_name(&self) -> &str {
+        if let Some(ref name) = self.event_display_name {
+            name.as_str()
+        } else {
+            self.event_name.as_str()
+        }
+    }
+
+    pub fn set_event_display_name(&mut self, name: &str) {
+        self.event_display_name = Some(name.to_string());
+    }
 }
 
 #[derive(Debug, Serialize)]

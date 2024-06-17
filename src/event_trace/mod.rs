@@ -347,7 +347,7 @@ impl Controller {
         };
 
         if let Some(display_name) = EVENTS_DESC[event_indexes.0].major.display_name {
-            event_record_decoded.event_display_name = display_name.to_string();
+            event_record_decoded.set_event_display_name(display_name);
         }
 
         let context_mg = CONTEXT.lock();

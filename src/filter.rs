@@ -107,7 +107,7 @@ pub fn filter_for_pair(
         /*is_matched*/ bool,
         Option<Arc<Node<EventRecordModel>>>,
     )> {
-        if event_model_arc.value.array.event_display_name.to_ascii_lowercase()
+        if event_model_arc.value.array.get_event_display_name().to_ascii_lowercase()
             != event_display_name.to_ascii_lowercase()
         {
             return Ok((false, None));
