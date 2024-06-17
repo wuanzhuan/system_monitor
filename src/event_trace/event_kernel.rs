@@ -1657,7 +1657,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
-        is_config: false,
+        configurable: false,
         major: MajorDescribe {
             name: "LostEvent",
             flag: Major::None as u32,
@@ -1681,7 +1681,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
-        is_config: false,
+        configurable: false,
         major: MajorDescribe {
             name: "StackWalk",
             flag: Major::None as u32,
@@ -1700,14 +1700,14 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
 
 #[derive(Debug)]
 pub struct EventsDescribe {
-    pub is_config: bool, // default true
+    pub configurable: bool, // default true
     pub major: MajorDescribe,
     pub minors: &'static [MinorDescribe],
     pub guid: GUID,
 }
 
 impl ConstDefault for EventsDescribe {
-    const DEFAULT: Self = Self { is_config: true, major: MajorDescribe::DEFAULT, minors: &[], guid: GUID::zeroed() };
+    const DEFAULT: Self = Self { configurable: true, major: MajorDescribe::DEFAULT, minors: &[], guid: GUID::zeroed() };
 }
 
 #[derive(Debug, ConstDefault)]
