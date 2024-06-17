@@ -68,7 +68,7 @@ export component App inherits Window {
                 height: 7mm;
 
                 FilterInput {
-                    placeholder-text: @tr("filter one");
+                    placeholder-text: @tr("filter one: process_id = 4");
                     set_filter_expression(text) => {
                         set_filter_expression_for_one(text)
                     }
@@ -79,7 +79,7 @@ export component App inherits Window {
                     color: Palette.accent-background;
                 }
                 FilterInput {
-                    placeholder-text: @tr("filter pair");
+                    placeholder-text: @tr("filter pair: handle || custom(handle, CreateHandle, CloseHandle, process_id, properties.xx");
                     set_filter_expression(text) => {
                         set_filter_expression_for_pair(text)
                     }
