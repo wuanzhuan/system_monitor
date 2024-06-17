@@ -2,25 +2,21 @@ use super::event_trace::{EventRecordDecoded, PropertyDecoded, StackWalk};
 use crate::filter::{Path, Value};
 use crate::process_modules;
 use crate::StackWalkInfo;
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, Result, Error};
 use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
-use std::sync::{Arc, OnceLock};
+use std::{
+    sync::{Arc, OnceLock},
+    str::FromStr
+};
 use tracing::error;
+use strum::{VariantArray, AsRefStr};
+
 
 #[derive(Clone)]
 pub struct EventRecordModel {
     pub array: Arc<EventRecordDecoded>,
     stack_walk: OnceLock<Arc<StackWalk>>,
 }
-
-pub const COLUMN_NAMES: &[&str] = &[
-    "datetime",
-    "process_id",
-    "thread_id",
-    "event_name",
-    "opcode_name",
-    "properties",
-];
 
 impl EventRecordModel {
     pub fn new(event_record: EventRecordDecoded) -> Self {
@@ -93,8 +89,8 @@ impl EventRecordModel {
     }
 
     pub fn find_by_path_value(&self, path: &Path, value: &Value) -> Result<bool> {
-        match path.key.as_str() {
-            "datetime" => {
+        match path.key {
+            Columns::Datetime => {
                 if let Value::I64(num) = value {
                     if *num == self.array.timestamp.0 {
                         return Ok(true);
@@ -103,7 +99,7 @@ impl EventRecordModel {
                 }
                 return Err(anyhow!("invalid value type"));
             }
-            "process_id" => {
+            Columns::ProcessId => {
                 if let Value::I64(num) = value {
                     if *num as u32 == self.array.process_id {
                         return Ok(true);
@@ -112,7 +108,7 @@ impl EventRecordModel {
                 }
                 return Err(anyhow!("invalid value type"));
             }
-            "thread_id" => {
+            Columns::ThreadId => {
                 if let Value::I64(num) = value {
                     if *num as u32 == self.array.thread_id {
                         return Ok(true);
@@ -121,7 +117,7 @@ impl EventRecordModel {
                 }
                 return Err(anyhow!("invalid value type"));
             }
-            "event_name" => {
+            Columns::EventName => {
                 if let Value::Str(string) = value {
                     if self.array.get_event_display_name().to_ascii_lowercase() == string.to_ascii_lowercase() {
                         return Ok(true);
@@ -130,7 +126,7 @@ impl EventRecordModel {
                 }
                 return Err(anyhow!("invalid value type"));
             }
-            "opcode_name" => {
+            Columns::OpcodeName => {
                 if let Value::Str(string) = value {
                     if self.array.opcode_name.to_ascii_lowercase() == string.to_ascii_lowercase() {
                         return Ok(true);
@@ -139,7 +135,7 @@ impl EventRecordModel {
                 }
                 return Err(anyhow!("invalid value type"));
             }
-            "properties" => {
+            Columns::Properties => {
                 if let Some(ref field) = path.field {
                     if let Value::Str(ref value_str) = value {
                         if let PropertyDecoded::Struct(ref properties) = self.array.properties {
@@ -167,7 +163,6 @@ impl EventRecordModel {
                     return Err(anyhow!("Not assign field for properties"));
                 }
             }
-            _ => Err(anyhow!("no this column name")),
         }
     }
 
@@ -262,23 +257,23 @@ impl EventRecordModel {
     pub fn get_key_by_paths(&self, paths: &[Path]) -> Result<String> {
         let mut s = String::with_capacity(32);
         for path in paths {
-            match path.key.as_str() {
-                "datetime" => {
+            match path.key {
+                Columns::Datetime => {
                     s.push_str(self.array.timestamp.0.to_string().as_str());
                 }
-                "process_id" => {
+                Columns::ProcessId => {
                     s.push_str(self.array.process_id.to_string().as_str());
                 }
-                "thread_id" => {
+                Columns::ThreadId => {
                     s.push_str(self.array.thread_id.to_string().as_str());
                 }
-                "event_name" => {
+                Columns::EventName => {
                     s.push_str(self.array.get_event_display_name());
                 }
-                "opcode_name" => {
+                Columns::OpcodeName => {
                     s.push_str(self.array.opcode_name.as_str());
                 }
-                "properties" => {
+                Columns::Properties => {
                     if let Some(ref field) = path.field {
                         if let PropertyDecoded::Struct(ref properties) = self.array.properties {
                             if let PropertyDecoded::String(ref property_field_str) =
@@ -302,9 +297,6 @@ impl EventRecordModel {
                         return Err(anyhow!("Not assign field for properties"));
                     }
                 }
-                _ => {
-                    return Err(anyhow!("no this column name"));
-                }
             }
         }
         Ok(s)
@@ -315,34 +307,32 @@ impl Model for EventRecordModel {
     type Data = StandardListViewItem;
 
     fn row_count(&self) -> usize {
-        COLUMN_NAMES.len()
+        <Columns as VariantArray>::VARIANTS.len()
     }
 
     fn row_data(&self, row: usize) -> Option<Self::Data> {
-        if row >= COLUMN_NAMES.len() {
-            None
-        } else {
-            match row {
-                0 => Some(StandardListViewItem::from(SharedString::from(
-                    self.array.timestamp.to_datetime_detail(),
-                ))),
-                1 => Some(StandardListViewItem::from(SharedString::from(
-                    (self.array.process_id as i32).to_string(),
-                ))),
-                2 => Some(StandardListViewItem::from(SharedString::from(
-                    (self.array.thread_id as i32).to_string(),
-                ))),
-                3 => Some(StandardListViewItem::from(SharedString::from(
-                    self.array.get_event_display_name().to_string(),
-                ))),
-                4 => Some(StandardListViewItem::from(SharedString::from(
-                    self.array.opcode_name.to_string(),
-                ))),
-                5 => Some(StandardListViewItem::from(SharedString::from(
-                    serde_json::to_string(&self.array.properties).unwrap_or_default(),
-                ))),
-                _ => None,
-            }
+        if row >= <Columns as VariantArray>::VARIANTS.len() {
+            return None;
+        }
+        match <Columns as VariantArray>::VARIANTS[row] {
+            Columns::Datetime => Some(StandardListViewItem::from(SharedString::from(
+                self.array.timestamp.to_datetime_detail(),
+            ))),
+            Columns::ProcessId => Some(StandardListViewItem::from(SharedString::from(
+                (self.array.process_id as i32).to_string(),
+            ))),
+            Columns::ThreadId => Some(StandardListViewItem::from(SharedString::from(
+                (self.array.thread_id as i32).to_string(),
+            ))),
+            Columns::EventName => Some(StandardListViewItem::from(SharedString::from(
+                self.array.get_event_display_name().to_string(),
+            ))),
+            Columns::OpcodeName => Some(StandardListViewItem::from(SharedString::from(
+                self.array.opcode_name.to_string(),
+            ))),
+            Columns::Properties => Some(StandardListViewItem::from(SharedString::from(
+                serde_json::to_string(&self.array.properties).unwrap_or_default(),
+            ))),
         }
     }
 
@@ -358,5 +348,45 @@ impl Model for EventRecordModel {
     fn as_any(&self) -> &dyn core::any::Any {
         // a typical implementation just return `self`
         self
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, VariantArray, AsRefStr)]
+#[strum(serialize_all = "snake_case")]
+pub enum Columns {
+    Datetime,
+    ProcessId,
+    ThreadId,
+    EventName,
+    OpcodeName,
+    Properties,
+}
+
+impl FromStr for Columns {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        for column in Columns::VARIANTS {
+            if s == column.as_ref() {
+                return Ok(column.clone());
+            }
+        }
+        Err(anyhow!("invalid Columns string: {s}"))
+    }
+}
+
+
+#[cfg(test)]
+mod tests{
+    use super::*;
+
+    #[test]
+    fn column_as_str() {
+        assert_eq!(Columns::Datetime.as_ref(), "datetime");
+        assert_eq!(Columns::ProcessId.as_ref(), "process_id");
+        assert_eq!(Columns::ThreadId.as_ref(), "thread_id");
+        assert_eq!(Columns::EventName.as_ref(), "event_name");
+        assert_eq!(Columns::OpcodeName.as_ref(), "opcode_name");
+        assert_eq!(Columns::Properties.as_ref(), "properties");
     }
 }

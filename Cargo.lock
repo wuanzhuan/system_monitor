@@ -1796,15 +1796,6 @@ dependencies = [
 
 [[package]]
 name = "heck"
-version = "0.3.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d621efb26863f0e9924c6ac577e8275e5e6b77455db64ffa6c65c904e9e132c"
-dependencies = [
- "unicode-segmentation",
-]
-
-[[package]]
-name = "heck"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
@@ -1957,7 +1948,7 @@ dependencies = [
  "resvg",
  "rowan",
  "smol_str",
- "strum 0.26.1",
+ "strum",
  "thiserror",
  "url",
 ]
@@ -1998,7 +1989,7 @@ dependencies = [
  "scopeguard",
  "slab",
  "static_assertions",
- "strum 0.26.1",
+ "strum",
  "unicode-linebreak",
  "unicode-script",
  "unicode-segmentation",
@@ -3443,7 +3434,7 @@ dependencies = [
  "bindgen",
  "cc",
  "flate2",
- "heck 0.4.1",
+ "heck",
  "lazy_static",
  "regex",
  "serde_json",
@@ -3685,33 +3676,11 @@ dependencies = [
 
 [[package]]
 name = "strum"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cae14b91c7d11c9a851d3fbc80a963198998c2a64eec840477fa92d8ce9b70bb"
-dependencies = [
- "strum_macros 0.23.1",
-]
-
-[[package]]
-name = "strum"
 version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "723b93e8addf9aa965ebe2d11da6d7540fa2283fcea14b3371ff055f7ba13f5f"
 dependencies = [
- "strum_macros 0.26.1",
-]
-
-[[package]]
-name = "strum_macros"
-version = "0.23.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5bb0dc7ee9c15cea6199cde9a127fa16a4c5819af85395457ad72d68edc85a38"
-dependencies = [
- "heck 0.3.3",
- "proc-macro2",
- "quote",
- "rustversion",
- "syn 1.0.109",
+ "strum_macros",
 ]
 
 [[package]]
@@ -3720,7 +3689,7 @@ version = "0.26.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7a3417fc93d76740d974a01654a09777cb500428cc874ca9f45edfe0c4d4cd18"
 dependencies = [
- "heck 0.4.1",
+ "heck",
  "proc-macro2",
  "quote",
  "rustversion",
@@ -3781,7 +3750,7 @@ dependencies = [
  "slint",
  "slint-build",
  "smol",
- "strum 0.23.0",
+ "strum",
  "tracing",
  "tracing-appender",
  "tracing-subscriber",

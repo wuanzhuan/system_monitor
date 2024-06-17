@@ -1,9 +1,11 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
 //#![windows_subsystem = "windows"]
 
+use event_record_model::Columns;
 use i_slint_backend_winit::WinitWindowAccessor;
 use linked_hash_map::LinkedHashMap;
-use slint::{Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, VecModel};
+use slint::{Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel};
+use strum::VariantArray;
 use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc};
 use tracing::{error, info};
 
@@ -64,6 +66,21 @@ fn main() {
     let event_list_model_rc_3 = event_list_model_rc.clone();
 
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_model_rc);
+    let column_names_rc = Rc::new(VecModel::default());
+    for column in event_record_model::Columns::VARIANTS {
+        let mut table_column = TableColumn::default();
+        table_column.title = SharedString::from(column.as_ref());
+        table_column.width = match column {
+            Columns::Datetime => 160.0,
+            Columns::ProcessId => 120.0,
+            Columns::ThreadId => 120.0,
+            Columns::EventName => 120.0,
+            Columns::OpcodeName => 140.0,
+            Columns::Properties => 200.0,
+        };
+        column_names_rc.push(table_column);
+    }
+    app.global::<EventsViewData>().set_column_names(ModelRc::from(column_names_rc));
     app.global::<EventsViewData>().set_row_data(row_data);
     app.global::<EventsViewData>()
         .on_row_data_detail(move |index_row| {

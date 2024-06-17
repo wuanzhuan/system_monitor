@@ -1,11 +1,12 @@
 use crate::event_list::Node;
-use crate::event_record_model::EventRecordModel;
+use crate::event_record_model::{Columns, EventRecordModel};
 use crate::event_trace::EVENTS_DISPLAY_NAME_MAP;
 use anyhow::{anyhow, Result};
 use chumsky::prelude::*;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{collections::HashMap, sync::Arc};
+use strum::VariantArray;
 
 static FILTER_EXPRESSION_FOR_ONE: Lazy<FairMutex<Option<ExpressionForOne>>> =
     Lazy::new(|| FairMutex::new(None));
@@ -43,7 +44,16 @@ pub fn filter_for_pair(
                     "Handle",
                     "CreateHandle",
                     "CloseHandle",
-                    &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from("Handle"))}],
+                    &[
+                        Path {
+                            key: Columns::ProcessId,
+                            field: None,
+                        },
+                        Path {
+                            key: Columns::Properties,
+                            field: Some(String::from("Handle")),
+                        },
+                    ],
                 ) {
                     Err(e) => return Err(e),
                     Ok((is_matched, node_arc)) => {
@@ -60,7 +70,16 @@ pub fn filter_for_pair(
                     "Memory",
                     "CreateHandle",
                     "CloseHandle",
-                    &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from(""))}],
+                    &[
+                        Path {
+                            key: Columns::ProcessId,
+                            field: None,
+                        },
+                        Path {
+                            key: Columns::Properties,
+                            field: Some(String::from("")),
+                        },
+                    ],
                 ) {
                     Err(e) => return Err(e),
                     Ok((is_matched, node_arc)) => {
@@ -107,7 +126,11 @@ pub fn filter_for_pair(
         /*is_matched*/ bool,
         Option<Arc<Node<EventRecordModel>>>,
     )> {
-        if event_model_arc.value.array.get_event_display_name().to_ascii_lowercase()
+        if event_model_arc
+            .value
+            .array
+            .get_event_display_name()
+            .to_ascii_lowercase()
             != event_display_name.to_ascii_lowercase()
         {
             return Ok((false, None));
@@ -175,7 +198,7 @@ pub enum Value {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Path {
-    pub key: String,
+    pub key: Columns,
     pub field: Option<String>,
 }
 
@@ -363,10 +386,19 @@ impl ExpressionForOne {
                 .padded()
             });
 
-            let path = text::ident()
+            let columns = Columns::VARIANTS;
+            let column = choice((
+                just(columns[0].as_ref()).to(columns[0].clone()),
+                just(columns[1].as_ref()).to(columns[1].clone()),
+                just(columns[2].as_ref()).to(columns[2].clone()),
+                just(columns[3].as_ref()).to(columns[3].clone()),
+                just(columns[4].as_ref()).to(columns[4].clone()),
+                just(columns[5].as_ref()).to(columns[5].clone()),
+            ));
+            let path = column
                 .then(just(".").ignore_then(text::ident()).or_not())
-                .map(|(key, field): (&str, Option<&str>)| Path {
-                    key: key.to_string(),
+                .map(|(key, field): (Columns, Option<&str>)| Path {
+                    key,
                     field: field.map(|s| String::from(s)),
                 });
             let parentheses = just("(")
@@ -463,14 +495,15 @@ impl ExpressionForPair {
                                 err_string.push_str(format!("No the opcode_name_first {opcode_name_second} for {event_display_name}\n").as_str());
                             }
                         } else {
-                            err_string
-                                .push_str(format!("No the event name {event_display_name}\n").as_str());
+                            err_string.push_str(
+                                format!("No the event name {event_display_name}\n").as_str(),
+                            );
                         }
                         for path in fields_for_match.iter() {
-                            if path.key.to_ascii_lowercase() != "properties" {
+                            if path.key != Columns::Properties {
                                 if path.field.is_some() {
                                     err_string.push_str(
-                                        format!("The path {} no field\n", path.key).as_str(),
+                                        format!("The path {} no field\n", path.key.as_ref()).as_str(),
                                     );
                                 }
                             } else {
@@ -499,10 +532,19 @@ impl ExpressionForPair {
 
     fn build_parser<'a>(
     ) -> impl Parser<'a, &'a str, Vec<ExpressionForPair>, extra::Err<Rich<'a, char>>> {
-        let path = text::ident()
+        let columns = Columns::VARIANTS;
+        let column = choice((
+            just(columns[0].as_ref()).to(columns[0].clone()),
+            just(columns[1].as_ref()).to(columns[1].clone()),
+            just(columns[2].as_ref()).to(columns[2].clone()),
+            just(columns[3].as_ref()).to(columns[3].clone()),
+            just(columns[4].as_ref()).to(columns[4].clone()),
+            just(columns[5].as_ref()).to(columns[5].clone()),
+        ));
+        let path = column
             .then(just(".").ignore_then(text::ident()).or_not())
-            .map(|(key, field): (&str, Option<&str>)| Path {
-                key: key.to_string(),
+            .map(|(key, field): (Columns, Option<&str>)| Path {
+                key,
                 field: field.map(|s| String::from(s)),
             });
         let event_opcode_names = text::ascii::ident()
@@ -545,7 +587,7 @@ mod tests {
 
     #[test]
     fn success() {
-        let src = r#"(key1.field = 1.556) && key2 = 2.55"#;
+        let src = r#"(propertie.field = 1.556) && key2 = 2.55"#;
         //let (json, errs) = parse_test().parse(src.trim()).into_output_errors();
         let r = ExpressionForOne::parse(src.trim());
         assert_eq!(
@@ -554,7 +596,7 @@ mod tests {
                 Box::new(ExpressionForOne::Parentheses(Box::new(
                     ExpressionForOne::KvPair {
                         key: Path {
-                            key: "key1".to_string(),
+                            key: Columns::Properties,
                             field: Some("field".to_string(),),
                         },
                         value: Value::Num(1.556,),
@@ -562,7 +604,7 @@ mod tests {
                 ),)),
                 Box::new(ExpressionForOne::KvPair {
                     key: Path {
-                        key: "key2".to_string(),
+                        key: Columns::ProcessId,
                         field: None,
                     },
                     value: Value::Num(2.55,),
@@ -581,13 +623,13 @@ mod tests {
 
     #[test]
     fn value_i64() {
-        let src = r#"key = 2555555554421"#;
+        let src = r#"process_id = 2555555554421"#;
         let r = ExpressionForOne::parse(src.trim()).unwrap();
         assert_eq!(
             r,
             ExpressionForOne::KvPair {
                 key: Path {
-                    key: "key".to_string(),
+                    key: Columns::ProcessId,
                     field: None,
                 },
                 value: Value::I64(2555555554421,),
@@ -620,11 +662,11 @@ mod tests {
                     opcode_name_second: "CloseHandle".to_string(),
                     path_for_match: vec![
                         Path {
-                            key: "process_id".to_string(),
+                            key: Columns::ProcessId,
                             field: None,
                         },
                         Path {
-                            key: "properties".to_string(),
+                            key: Columns::Properties,
                             field: Some("xx".to_string(),),
                         },
                     ],
