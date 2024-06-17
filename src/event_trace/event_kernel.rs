@@ -1660,7 +1660,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         is_config: false,
         major: MajorDescribe {
             name: "LostEvent",
-            flag: Major::MemoryControl as u32,
+            flag: Major::None as u32,
             ..MajorDescribe::DEFAULT
         },
         minors: &[
@@ -1678,6 +1678,22 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             },
         ],
         guid: LOST_EVENT_GUID,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        is_config: false,
+        major: MajorDescribe {
+            name: "StackWalk",
+            flag: Major::None as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Stack",
+                op_code: 32,
+            },
+        ],
+        guid: STACK_WALK_GUID,
         ..EventsDescribe::DEFAULT
     },
 ];

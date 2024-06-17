@@ -40,7 +40,7 @@ pub fn filter_for_pair(
                 match custom(
                     event_model_arc,
                     index,
-                    "Object",
+                    "Handle",
                     "CreateHandle",
                     "CloseHandle",
                     &[Path{key: String::from("process_id"), field: None}, Path{key: String::from("properties"), field: Some(String::from("Handle"))}],
@@ -71,7 +71,7 @@ pub fn filter_for_pair(
                 }
             }
             ExpressionForPair::Custom {
-                event_name,
+                event_display_name,
                 opcode_name_first,
                 opcode_name_second,
                 path_for_match,
@@ -79,7 +79,7 @@ pub fn filter_for_pair(
                 match custom(
                     event_model_arc,
                     index,
-                    event_name,
+                    event_display_name,
                     opcode_name_first,
                     opcode_name_second,
                     path_for_match,
@@ -99,7 +99,7 @@ pub fn filter_for_pair(
     fn custom(
         event_model_arc: &Arc<Node<EventRecordModel>>,
         index: usize,
-        event_name: &str,
+        event_display_name: &str,
         opcode_name_first: &str,
         opcode_name_second: &str,
         path_for_match: &[Path],
@@ -107,8 +107,8 @@ pub fn filter_for_pair(
         /*is_matched*/ bool,
         Option<Arc<Node<EventRecordModel>>>,
     )> {
-        if event_model_arc.value.array.event_name.to_ascii_lowercase()
-            != event_name.to_ascii_lowercase()
+        if event_model_arc.value.array.event_display_name.to_ascii_lowercase()
+            != event_display_name.to_ascii_lowercase()
         {
             return Ok((false, None));
         }
@@ -410,7 +410,7 @@ pub enum ExpressionForPair {
     Handle,
     Memory,
     Custom {
-        event_name: String,
+        event_display_name: String,
         opcode_name_first: String,
         opcode_name_second: String,
         path_for_match: Vec<Path>,
@@ -439,32 +439,32 @@ impl ExpressionForPair {
                 let mut err_string = String::with_capacity(100);
                 for express in ok.iter() {
                     if let ExpressionForPair::Custom {
-                        event_name,
+                        event_display_name,
                         opcode_name_first,
                         opcode_name_second,
                         path_for_match: fields_for_match,
                     } = express
                     {
                         if let Some(event_desc) =
-                            EVENTS_DISPLAY_NAME_MAP.get(&event_name.to_ascii_lowercase())
+                            EVENTS_DISPLAY_NAME_MAP.get(&event_display_name.to_ascii_lowercase())
                         {
                             if event_desc
                                 .1
                                 .get(&opcode_name_first.to_ascii_lowercase())
                                 .is_none()
                             {
-                                err_string.push_str(format!("No the opcode_name_first {opcode_name_first} for {event_name}\n").as_str());
+                                err_string.push_str(format!("No the opcode_name_first {opcode_name_first} for {event_display_name}\n").as_str());
                             }
                             if event_desc
                                 .1
                                 .get(&opcode_name_second.to_ascii_lowercase())
                                 .is_none()
                             {
-                                err_string.push_str(format!("No the opcode_name_first {opcode_name_second} for {event_name}\n").as_str());
+                                err_string.push_str(format!("No the opcode_name_first {opcode_name_second} for {event_display_name}\n").as_str());
                             }
                         } else {
                             err_string
-                                .push_str(format!("No the event name {event_name}\n").as_str());
+                                .push_str(format!("No the event name {event_display_name}\n").as_str());
                         }
                         for path in fields_for_match.iter() {
                             if path.key.to_ascii_lowercase() != "properties" {
@@ -524,7 +524,7 @@ impl ExpressionForPair {
             just("memory").to(ExpressionForPair::Memory),
             just("custom").ignore_then(custom_parameters).map(
                 |(event_opcode_names, fields_for_match)| ExpressionForPair::Custom {
-                    event_name: event_opcode_names[0].clone(),
+                    event_display_name: event_opcode_names[0].clone(),
                     opcode_name_first: event_opcode_names[1].clone(),
                     opcode_name_second: event_opcode_names[2].clone(),
                     path_for_match: fields_for_match,
@@ -615,7 +615,7 @@ mod tests {
                 ExpressionForPair::Handle,
                 ExpressionForPair::Memory,
                 ExpressionForPair::Custom {
-                    event_name: "handle".to_string(),
+                    event_display_name: "handle".to_string(),
                     opcode_name_first: "CreateHandle".to_string(),
                     opcode_name_second: "CloseHandle".to_string(),
                     path_for_match: vec![

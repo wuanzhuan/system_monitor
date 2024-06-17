@@ -277,43 +277,42 @@ impl Controller {
             er.EventHeader.ProviderId == ImageLoadGuid || er.EventHeader.ProviderId == ProcessGuid;
         let is_lost_event = er.EventHeader.ProviderId == LOST_EVENT_GUID;
         let is_auto_generated = er.EventHeader.ProviderId == EventTraceGuid;
-        let mut is_enabled = false;
-        let mut event_indexes: Option<(/*major_index*/ usize, /*minor_index*/ usize)> = None;
+        
+        let context_mg = CONTEXT.lock();
+        let event_indexes = match get_event_indexes(er, Some(&context_mg)) {
+            Ok(indexes) => indexes,
+            Err(e) => {
+                error!("{e}");
+                context_mg
+                    .unstored_events_map
+                    .borrow_mut()
+                    .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
+                return;
+            }
+        };
 
+        // filter non stack walk events
+        let mut is_enabled = false;
         if !is_stack_walk {
-            let context_mg = CONTEXT.lock();
-            match get_event_indexes(er, Some(&context_mg)) {
-                Ok((major_index, minor_index)) => {
-                    event_indexes = Some((major_index, minor_index));
-                    let event_enable = &context_mg.config.events_enables[major_index];
-                    if event_enable.major {
-                        if event_enable.minors[minor_index] {
-                            is_enabled = true;
-                        }
-                    } else {
-                        // the major event is filter by flag. so a error happens when a event that is not enable comes
-                        // the EventTrace Process Image event is always enable.
-                        if !is_module_event && !is_auto_generated {
-                            error!(
-                                "No enable major event is coming: {}-{} event_record: {}",
-                                EVENTS_DESC[major_index].major.name,
-                                EVENTS_DESC[major_index].minors[minor_index].name,
-                                EventRecord(er)
-                            );
-                        }
-                    }
+            let event_enable = &context_mg.config.events_enables[event_indexes.0];
+            if event_enable.major {
+                if event_enable.minors[event_indexes.1] {
+                    is_enabled = true;
                 }
-                Err(e) => {
-                    error!("{e}");
-                    context_mg
-                        .unstored_events_map
-                        .borrow_mut()
-                        .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
-                    return;
+            } else {
+                // the major event is filter by flag. so a error happens when a event that is not enable comes
+                // the EventTrace Process Image event is always enable.
+                if !is_module_event && !is_auto_generated {
+                    error!(
+                        "No enable major event is coming: {}-{} event_record: {}",
+                        EVENTS_DESC[event_indexes.0].major.name,
+                        EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
+                        EventRecord(er)
+                    );
                 }
             }
-
             if !is_enabled {
+                // escape event
                 if !is_module_event && !is_lost_event {
                     context_mg
                         .unstored_events_map
@@ -323,23 +322,33 @@ impl Controller {
                 }
             }
         };
+        drop(context_mg);
 
-        let event_record_decoded = match event_decoder::Decoder::new(er) {
+        let mut event_record_decoded = match event_decoder::Decoder::new(er) {
             Ok(mut decoder) => match decoder.decode() {
                 Ok(event_record_decoded) => event_record_decoded,
                 Err(e) => {
                     warn!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
-                    decode_kernel_event_when_error(er, event_indexes)
+                    event_decoder::decode_kernel_event(
+                        er,
+                        event_kernel::EVENTS_DESC[event_indexes.0].major.name,
+                        event_kernel::EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
+                    )
                 }
             },
             Err(e) => {
-                warn!(
-                    "Faild to Decoder::new: {e} EventRecord: {}",
-                    EventRecord(er)
-                );
-                decode_kernel_event_when_error(er, event_indexes)
+                warn!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                event_decoder::decode_kernel_event(
+                    er,
+                    event_kernel::EVENTS_DESC[event_indexes.0].major.name,
+                    event_kernel::EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
+                )
             }
         };
+
+        if let Some(display_name) = EVENTS_DESC[event_indexes.0].major.display_name {
+            event_record_decoded.event_display_name = display_name.to_string();
+        }
 
         let context_mg = CONTEXT.lock();
         if is_stack_walk {
@@ -397,25 +406,6 @@ impl Controller {
             }
         }
 
-        fn decode_kernel_event_when_error(
-            er: &EVENT_RECORD,
-            event_indexes: Option<(/*major_index*/ usize, /*minor_index*/ usize)>,
-        ) -> EventRecordDecoded {
-            if let Some((major_index, minor_index)) = event_indexes {
-                event_decoder::decode_kernel_event(
-                    er,
-                    event_kernel::EVENTS_DESC[major_index].major.name,
-                    event_kernel::EVENTS_DESC[major_index].minors[minor_index].name,
-                )
-            } else {
-                let (major_index, minor_index) = get_event_indexes(er, None).unwrap(); // Be sure to be able to get index for stack walk
-                event_decoder::decode_kernel_event(
-                    er,
-                    event_kernel::EVENTS_DESC[major_index].major.name,
-                    event_kernel::EVENTS_DESC[major_index].minors[minor_index].name,
-                )
-            }
-        }
     }
 
     fn update_config(&self) -> Result<()> {

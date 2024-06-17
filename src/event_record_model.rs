@@ -123,7 +123,7 @@ impl EventRecordModel {
             }
             "event_name" => {
                 if let Value::Str(num) = value {
-                    if *num == self.array.event_name {
+                    if *num == self.array.event_display_name {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -154,7 +154,7 @@ impl EventRecordModel {
                         } else {
                             return Err(anyhow!(
                                 "The properties of {}-{} is not a struct!",
-                                self.array.event_name,
+                                self.array.event_display_name,
                                 self.array.opcode_name
                             ));
                         }
@@ -176,7 +176,7 @@ impl EventRecordModel {
             Value::Str(v) => {
                 if self
                     .array
-                    .event_name
+                    .event_display_name
                     .to_ascii_lowercase()
                     .contains(v.to_ascii_lowercase().as_str())
                 {
@@ -273,7 +273,7 @@ impl EventRecordModel {
                     s.push_str(self.array.thread_id.to_string().as_str());
                 }
                 "event_name" => {
-                    s.push_str(self.array.event_name.as_str());
+                    s.push_str(self.array.event_display_name.as_str());
                 }
                 "opcode_name" => {
                     s.push_str(self.array.opcode_name.as_str());
@@ -294,7 +294,7 @@ impl EventRecordModel {
                         } else {
                             return Err(anyhow!(
                                 "The properties of {}-{} is not a struct!",
-                                self.array.event_name,
+                                self.array.event_display_name,
                                 self.array.opcode_name
                             ));
                         }
@@ -333,7 +333,7 @@ impl Model for EventRecordModel {
                     (self.array.thread_id as i32).to_string(),
                 ))),
                 3 => Some(StandardListViewItem::from(SharedString::from(
-                    self.array.event_name.to_string(),
+                    self.array.event_display_name.to_string(),
                 ))),
                 4 => Some(StandardListViewItem::from(SharedString::from(
                     self.array.opcode_name.to_string(),
