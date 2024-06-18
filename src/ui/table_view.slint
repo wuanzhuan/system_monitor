@@ -264,7 +264,7 @@ export component TableView {
 
                 if has-order-number : TableViewColumn {
                     width: root.order-column-width;
-                    text: @tr("index");
+                    text: @tr("No.");
                     index-column: 0;
 
                     adjust_size(diff) => {
@@ -301,7 +301,7 @@ export component TableView {
                     text: idx;
                     index-row: idx;
                     index-column: 0;
-                    horizontal-alignment: center;
+                    horizontal-alignment: left;
 
                     pointer-event(pe, pos) => {
                         root.row-pointer-event(idx, pe, {
