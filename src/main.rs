@@ -50,12 +50,12 @@ fn main() {
         let height = current_monitor_size.height as f32 * 0.6;
         let x = (current_monitor_size.width - width as u32) / 2;
         let y = (current_monitor_size.height - height as u32) / 2;
-        app.set_preferred_size((height, width));
+        app.set_initial_size((height, width));
         window.set_position(PhysicalPosition::new(x as i32, y as i32));
     } else {
         let width = 800.0;
         let height = 600.0;
-        app.set_preferred_size((height, width));
+        app.set_initial_size((height, width));
     }
 
     let event_list_arc =

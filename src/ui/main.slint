@@ -6,10 +6,10 @@ import { FilterInput } from "filter_input.slint";
 export { EventsEnables, EnablesData, EventDesc, EventsViewData, StackWalkInfo }
 
 export component App inherits Window {
-    in property <{width: physical_length, height: physical_length}> preferred-size;
+    in property <{width: physical_length, height: physical_length}> initial-size;
 
-    preferred-width: preferred-size.width;
-    preferred-height: preferred-size.height;
+    preferred-width: initial-size.width;
+    preferred-height: initial-size.height;
     title: @tr("kernel events trace");
     icon: @image-url("./logo/slint-logo-small-light.png");
     default-font-family: "Noto Sans";
@@ -95,7 +95,7 @@ export component App inherits Window {
                 width: self.preferred-width;
             }
             line := Rectangle {
-                background: gray; width: 2px;
+                background: Palette.border; width: 1phx;
 
                 TouchArea {
                     x: -(parent.width / 2);
