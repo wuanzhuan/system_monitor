@@ -15,13 +15,15 @@ use strum::{VariantArray, AsRefStr};
 #[derive(Clone)]
 pub struct EventRecordModel {
     pub array: Arc<EventRecordDecoded>,
+    pub process_path: String,
     stack_walk: OnceLock<Arc<StackWalk>>,
 }
 
 impl EventRecordModel {
-    pub fn new(event_record: EventRecordDecoded) -> Self {
+    pub fn new(event_record: EventRecordDecoded, process_path: String) -> Self {
         EventRecordModel {
             array: Arc::new(event_record),
+            process_path,
             stack_walk: OnceLock::new(),
         }
     }
@@ -54,14 +56,7 @@ impl EventRecordModel {
             for item in sw.stacks.iter() {
                 let s = if let Some(relative) = item.1.relative {
                     if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
-                        let file_name = if let Some(offset) = module_info.file_name.rfind("\\") {
-                            module_info
-                                .file_name
-                                .get(offset + 1..)
-                                .unwrap_or("no_file_name")
-                        } else {
-                            module_info.file_name.as_str()
-                        };
+                        let file_name = module_info.get_module_name();
                         format!(
                             "{}: {:#x} {}+{:#x}",
                             item.0, item.1.raw, file_name, relative.1
@@ -93,6 +88,15 @@ impl EventRecordModel {
             Columns::Datetime => {
                 if let Value::I64(num) = value {
                     if *num == self.array.timestamp.0 {
+                        return Ok(true);
+                    }
+                    return Ok(false);
+                }
+                return Err(anyhow!("invalid value type"));
+            }
+            Columns::ProcessName => {
+                if let Value::Str(string) = value {
+                    if self.process_path.to_ascii_lowercase() == string.to_ascii_lowercase() {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -261,6 +265,9 @@ impl EventRecordModel {
                 Columns::Datetime => {
                     s.push_str(self.array.timestamp.0.to_string().as_str());
                 }
+                Columns::ProcessName => {
+                    s.push_str(self.process_path.as_str());
+                }
                 Columns::ProcessId => {
                     s.push_str(self.array.process_id.to_string().as_str());
                 }
@@ -301,6 +308,11 @@ impl EventRecordModel {
         }
         Ok(s)
     }
+
+    pub fn get_process_name(&self) -> &str {
+        process_modules::get_file_name_from_path(self.process_path.as_str())
+    }
+
 }
 
 impl Model for EventRecordModel {
@@ -317,6 +329,9 @@ impl Model for EventRecordModel {
         match <Columns as VariantArray>::VARIANTS[row] {
             Columns::Datetime => Some(StandardListViewItem::from(SharedString::from(
                 self.array.timestamp.to_datetime_detail(),
+            ))),
+            Columns::ProcessName => Some(StandardListViewItem::from(SharedString::from(
+                self.get_process_name()
             ))),
             Columns::ProcessId => Some(StandardListViewItem::from(SharedString::from(
                 (self.array.process_id as i32).to_string(),
@@ -355,6 +370,7 @@ impl Model for EventRecordModel {
 #[strum(serialize_all = "snake_case")]
 pub enum Columns {
     Datetime,
+    ProcessName,
     ProcessId,
     ThreadId,
     EventName,

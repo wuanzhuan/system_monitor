@@ -33,10 +33,27 @@ use windows::{
     },
 };
 
+static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
+    Lazy::new(|| FairMutex::new(IndexMap::new()));
+
+static RUNNING_KERNEL_MODULES_MAP: Lazy<FairMutex<BTreeMap<u64, ModuleInfoRunning>>> =
+    Lazy::new(|| FairMutex::new(BTreeMap::new()));
+
+static RUNNING_PROCESSES_MODULES_MAP: Lazy<FairMutex<HashMap<u32, Arc<FairMutex<ProcessInfo>>>>> =
+    Lazy::new(|| FairMutex::new(HashMap::new()));
+
+static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
+
 #[derive(Debug)]
 pub struct ModuleInfo {
     pub file_name: String,
     pub time_data_stamp: u32,
+}
+
+impl ModuleInfo {
+    pub fn get_module_name(&self) -> &str {
+        get_file_name_from_path(self.file_name.as_str())
+    }
 }
 
 #[derive(Debug)]
@@ -49,25 +66,13 @@ pub struct ModuleInfoRunning {
     pub start: TimeStamp,
 }
 
-static MODULES_MAP: Lazy<FairMutex<IndexMap<(String, u32), Arc<ModuleInfo>>>> =
-    Lazy::new(|| FairMutex::new(IndexMap::new()));
+#[derive(Debug)]
+pub struct ProcessInfo {
+    pub path: String,
+    init_error: Option<String>,
+    modules_map: BTreeMap<u64, ModuleInfoRunning>,
+}
 
-static RUNNING_KERNEL_MODULES_MAP: Lazy<FairMutex<BTreeMap<u64, ModuleInfoRunning>>> =
-    Lazy::new(|| FairMutex::new(BTreeMap::new()));
-
-static RUNNING_PROCESSES_MODULES_MAP: Lazy<
-    FairMutex<
-        HashMap<
-            u32,
-            Arc<(
-                /*error*/ FairMutex<Option<String>>,
-                FairMutex<BTreeMap<u64, ModuleInfoRunning>>,
-            )>,
-        >,
-    >,
-> = Lazy::new(|| FairMutex::new(HashMap::new()));
-
-static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 
 pub fn init(selected_process_ids: &Vec<u32>) {
     drive_letter_map_init();
@@ -121,16 +126,16 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
             }
         } else {
             if let Some(ref process_module_mutex) = process_module_mutex_option {
-                let process_error_lock = process_module_mutex.0.lock();
-                let process_module_lock = process_module_mutex.1.lock();
-
-                let cursor = process_module_lock.upper_bound(Bound::Included(&address));
+                let process_info = process_module_mutex.lock();
+                let cursor = process_info
+                    .modules_map
+                    .upper_bound(Bound::Included(&address));
                 if let Some(module_info_running) = cursor.value() {
                     if address
                         >= module_info_running.base_of_dll
                             + module_info_running.size_of_image as u64
                     {
-                        if process_error_lock.is_none() {
+                        if process_info.init_error.is_none() {
                             warn!("Cross the border address: {address:#x} in the [{process_id}]. the module start: {:#x} size: {:#x} {}",
                                 module_info_running.base_of_dll, module_info_running.size_of_image, module_info_running.module_info.file_name);
                         }
@@ -141,7 +146,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                         ));
                     }
                 } else {
-                    if process_error_lock.is_none() {
+                    if process_info.init_error.is_none() {
                         warn!("{address:#x} is not find in process_id: {process_id}");
                     }
                 }
@@ -158,6 +163,30 @@ pub fn get_module_info_by_id(id: u32) -> Option<Arc<ModuleInfo>> {
         Some(module_info)
     } else {
         None
+    }
+}
+
+pub fn get_process_path_by_id(process_id: u32) -> String {
+    if process_id == 0 {
+        return String::from("System Idle");
+    }
+    if process_id == 4 {
+        return String::from("System");
+    }
+    if let Some(process_info_arc) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id) {
+        let process_info_mutex = process_info_arc.lock();
+        process_info_mutex.path.clone()
+    } else {
+        error!("Don't find the process:{process_id} when get process path");
+        String::new()
+    }
+}
+
+pub fn get_file_name_from_path(path: &str) -> &str {
+    if let Some(offset) = path.rfind("\\") {
+        path.get((offset + 1)..).unwrap_or("no_file_name")
+    } else {
+        path
     }
 }
 
@@ -430,13 +459,16 @@ fn process_init(process_id: u32) {
         return;
     }
 
-    let process_module_mutex = if let Ok(ok) = RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
+    let process_info_arc = match RUNNING_PROCESSES_MODULES_MAP.lock().try_insert(
         process_id,
-        Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
+        Arc::new(FairMutex::new(ProcessInfo {
+            path: String::new(),
+            init_error: None,
+            modules_map: BTreeMap::new(),
+        })),
     ) {
-        ok.clone()
-    } else {
-        return;
+        Err(_) => return,
+        Ok(proces_info) => proces_info.clone(),
     };
 
     let mut h_process_out = HANDLE::default();
@@ -457,7 +489,7 @@ fn process_init(process_id: u32) {
             status.0,
             status.to_hresult().message()
         );
-        *process_module_mutex.0.lock() = Some(err.clone());
+        process_info_arc.lock().init_error = Some(err.clone());
         if STATUS_ACCESS_DENIED != status {
             error!("{err}");
         }
@@ -500,6 +532,7 @@ fn process_init(process_id: u32) {
     }
     if !module_array.is_empty() {
         let mut vec = Vec::<u16>::with_capacity(1024);
+        let mut process_info = process_info_arc.lock();
         for i in 0..module_array.len() {
             let status = unsafe {
                 let slice = slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity());
@@ -515,6 +548,9 @@ fn process_init(process_id: u32) {
                     .to_string()
                     .unwrap_or_else(|e| e.to_string())
             };
+            if i == 0 {
+                process_info.path = file_name.clone();
+            }
 
             let mut module_info = MODULEINFO::default();
             let r = unsafe {
@@ -536,7 +572,6 @@ fn process_init(process_id: u32) {
                 }
             };
             let (id, module_info_arc) = module_map_insert(file_name.clone(), time_date_stamp);
-
             let module_info_running = ModuleInfoRunning {
                 id: id as u32,
                 module_info: module_info_arc.clone(),
@@ -545,9 +580,8 @@ fn process_init(process_id: u32) {
                 entry_point: module_info.EntryPoint as u64,
                 start: TimeStamp(0),
             };
-            let _ = process_module_mutex
-                .1
-                .lock()
+            let _ = process_info
+                .modules_map
                 .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
         }
     }
@@ -557,7 +591,11 @@ fn process_init(process_id: u32) {
 fn process_start(process_id: u32) {
     let old_key = RUNNING_PROCESSES_MODULES_MAP.lock().insert(
         process_id,
-        Arc::new((FairMutex::new(None), FairMutex::new(BTreeMap::new()))),
+        Arc::new(FairMutex::new(ProcessInfo {
+            path: String::new(),
+            init_error: None,
+            modules_map: BTreeMap::new(),
+        })),
     );
     if old_key.is_some() {
         warn!("The process: {process_id} new is coming but old is not remove");
@@ -590,10 +628,10 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
             .lock()
             .try_insert(image.image_base, module_info_running);
     } else {
-        let process_module_mutex = if let Some(process_module_mutex) =
+        let process_info_mutex = if let Some(process_info_mutex) =
             RUNNING_PROCESSES_MODULES_MAP.lock().get(&image.process_id)
         {
-            process_module_mutex.clone()
+            process_info_mutex.clone()
         } else {
             error!(
                 "the process id: {} is not found when load image: {}",
@@ -601,9 +639,13 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
             );
             return;
         };
-        let _ = process_module_mutex
-            .1
-            .lock()
+        let mut process_info = process_info_mutex.lock();
+        // the main image must be the first image!
+        if process_info.path.is_empty() {
+            process_info.path = image.file_name.clone();
+        }
+        let _ = process_info
+            .modules_map
             .try_insert(image.image_base, module_info_running);
     }
 }
@@ -620,10 +662,10 @@ fn process_modules_unload(image: &Image) {
         if is_kernel_space(image_base) {
             let _ = RUNNING_KERNEL_MODULES_MAP.lock().remove(&image_base);
         } else {
-            let process_module_mutex = if let Some(process_module_mutex) =
+            let process_info_mutex = if let Some(process_info_mutex) =
                 RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id)
             {
-                process_module_mutex.clone()
+                process_info_mutex.clone()
             } else {
                 error!(
                     "the process id: {} is not found when unload image: {}",
@@ -631,7 +673,7 @@ fn process_modules_unload(image: &Image) {
                 );
                 return;
             };
-            let _ = process_module_mutex.1.lock().remove(&image_base);
+            let _ = process_info_mutex.lock().modules_map.remove(&image_base);
         }
     })
     .detach();

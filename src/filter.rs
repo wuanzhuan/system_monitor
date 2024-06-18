@@ -394,6 +394,7 @@ impl ExpressionForOne {
                 just(columns[3].as_ref()).to(columns[3].clone()),
                 just(columns[4].as_ref()).to(columns[4].clone()),
                 just(columns[5].as_ref()).to(columns[5].clone()),
+                just(columns[6].as_ref()).to(columns[6].clone()),
             ));
             let path = column
                 .then(just(".").ignore_then(text::ident()).or_not())
@@ -540,6 +541,7 @@ impl ExpressionForPair {
             just(columns[3].as_ref()).to(columns[3].clone()),
             just(columns[4].as_ref()).to(columns[4].clone()),
             just(columns[5].as_ref()).to(columns[5].clone()),
+            just(columns[6].as_ref()).to(columns[6].clone()),
         ));
         let path = column
             .then(just(".").ignore_then(text::ident()).or_not())

@@ -4,9 +4,11 @@
 use event_record_model::Columns;
 use i_slint_backend_winit::WinitWindowAccessor;
 use linked_hash_map::LinkedHashMap;
-use slint::{Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel};
-use strum::VariantArray;
+use slint::{
+    Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel,
+};
 use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc};
+use strum::VariantArray;
 use tracing::{error, info};
 
 use crate::event_record_model::EventRecordModel;
@@ -72,6 +74,7 @@ fn main() {
         table_column.title = SharedString::from(column.as_ref());
         table_column.width = match column {
             Columns::Datetime => 160.0,
+            Columns::ProcessName => 130.0,
             Columns::ProcessId => 120.0,
             Columns::ThreadId => 120.0,
             Columns::EventName => 120.0,
@@ -80,7 +83,8 @@ fn main() {
         };
         column_names_rc.push(table_column);
     }
-    app.global::<EventsViewData>().set_column_names(ModelRc::from(column_names_rc));
+    app.global::<EventsViewData>()
+        .set_column_names(ModelRc::from(column_names_rc));
     app.global::<EventsViewData>().set_row_data(row_data);
     app.global::<EventsViewData>()
         .on_row_data_detail(move |index_row| {
@@ -212,43 +216,68 @@ fn main() {
     app.on_start(move || {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
-        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<(u32, i64), Option<Arc<event_list::Node<EventRecordModel>>>>::with_capacity(50));
+        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<
+            (u32, i64),
+            Option<Arc<event_list::Node<EventRecordModel>>>,
+        >::with_capacity(50));
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
-        let result = event_trace::Controller::start(move |mut event_record, stack_walk, is_selected | {
-            if let Some(mut sw) = stack_walk {
-                if let Some(some_row) = stack_walk_map.get_mut().remove(&(sw.stack_thread, sw.event_timestamp)) {
-                    if let Some(some_node) = some_row {
-                        process_modules::convert_to_module_offset(sw.stack_process, sw.stacks.as_mut_slice());
-                        let erm = some_node.value.as_any().downcast_ref::<event_record_model::EventRecordModel>().unwrap();
-                        erm.set_stack_walk(sw.clone());
+        let result = event_trace::Controller::start(
+            move |mut event_record, stack_walk, is_selected| {
+                let process_id = event_record.process_id;
+                let thread_id = event_record.thread_id;
+                let timestamp = event_record.timestamp.0;
+
+                if let Some(mut sw) = stack_walk {
+                    if let Some(some_row) = stack_walk_map
+                        .get_mut()
+                        .remove(&(sw.stack_thread, sw.event_timestamp))
+                    {
+                        if let Some(some_node) = some_row {
+                            process_modules::convert_to_module_offset(
+                                sw.stack_process,
+                                sw.stacks.as_mut_slice(),
+                            );
+                            let erm = some_node
+                                .value
+                                .as_any()
+                                .downcast_ref::<event_record_model::EventRecordModel>()
+                                .unwrap();
+                            erm.set_stack_walk(sw.clone());
+                        }
+                    } else {
+                        error!(
+                            "Can't find event for the stack walk: {}:{}:{timestamp}  {}:{}:{} {:?}",
+                            process_id as i32,
+                            thread_id as i32,
+                            sw.stack_process,
+                            sw.stack_thread as i32,
+                            sw.event_timestamp,
+                            sw.stacks
+                        );
                     }
-                } else {
-                    let process_id = event_record.process_id as i32;
-                    let thread_id = event_record.thread_id as i32;
-                    let timestamp = event_record.timestamp.0;
-                    error!("Can't find event for the stack walk: {process_id}:{thread_id}:{timestamp}  {}:{}:{} {:?}",  sw.stack_process, sw.stack_thread as i32, sw.event_timestamp, sw.stacks);
+                    return;
                 }
-            } else {
+
                 process_modules::handle_event_for_module(&mut event_record);
                 if !is_selected {
                     return;
                 }
 
-                let thread_id = event_record.thread_id;
-                let timestamp = event_record.timestamp.0;
-                let er = event_record_model::EventRecordModel::new(event_record);
-                let is_matched = match filter::filter_for_one(|path, value| {
-                    er.find_by_path_value(path, value)
-                }, |value| {
-                    er.find_by_value(value)
-                }) {
+                let er = event_record_model::EventRecordModel::new(
+                    event_record,
+                    process_modules::get_process_path_by_id(process_id),
+                );
+                let is_matched = match filter::filter_for_one(
+                    |path, value| er.find_by_path_value(path, value),
+                    |value| er.find_by_value(value),
+                ) {
                     Err(e) => {
                         error!("Failed to filter: {e}");
                         return;
-                    }, 
-                    Ok(is_matched) => is_matched
+                    }
+                    Ok(is_matched) => is_matched,
                 };
 
                 let row_arc = Arc::new(event_list::Node::new(er));
@@ -259,33 +288,38 @@ fn main() {
                         Err(e) => {
                             error!("Failed to filter: {e}");
                             is_push_to_list = true;
-                        },
+                        }
                         Ok(ok) => {
                             if let Some(node) = ok {
                                 event_list_arc_1.remove(node);
                                 notify = Some(delay_notify::Notify::Remove);
                             } else {
-                                is_push_to_list = true; 
+                                is_push_to_list = true;
                             }
                         }
                     }
                 }
 
                 if is_push_to_list {
-                    stack_walk_map.get_mut().insert((thread_id, timestamp), Some(row_arc.clone()));
+                    stack_walk_map
+                        .get_mut()
+                        .insert((thread_id, timestamp), Some(row_arc.clone()));
                     let index = event_list_arc_1.push(row_arc);
                     notify = Some(delay_notify::Notify::Push(index, 1));
                 } else {
-                    stack_walk_map.get_mut().insert((thread_id, timestamp), None);
+                    stack_walk_map
+                        .get_mut()
+                        .insert((thread_id, timestamp), None);
                 }
 
                 if let Some(notify) = notify {
                     delay_notify.notify(app_weak_1.clone(), notify);
                 }
-            }
-        }, |ret| {
-            info!("{:?}", ret);
-        });
+            },
+            |ret| {
+                info!("{:?}", ret);
+            },
+        );
         if let Err(e) = result {
             error!("{}", e);
             (SharedString::from(e.to_string()), false)
