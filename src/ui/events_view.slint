@@ -29,15 +29,12 @@ export component EventsView inherits VerticalBox {
     private property <StackWalkInfo> stacks-info;
 
     spacing: 2px;
+    padding: 0px;
     
     HorizontalBox {
-        alignment: space-between;
-        text-element := Text {
-            text: @tr("Events View");
-            font-size: 5mm;
-            horizontal-alignment: left;
-            vertical-alignment: center;
-        }
+        padding: 0px;
+        alignment: end;
+
         FindBar {
             placeholder-text: "process_id = 1 && properties.xxx = 1 || xxx";
     

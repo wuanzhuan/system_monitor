@@ -45,7 +45,9 @@ export component App inherits Window {
     }
 
     VerticalBox{
+        padding: 0px;
         start-stop := HorizontalBox {
+            padding: 0px;
             spacing: 1cm;
             Switch {
                 text: @tr("On/Off");
@@ -87,6 +89,7 @@ export component App inherits Window {
             }
         }
         main := HorizontalBox {
+            padding: 0px;
             event-enables := EventsEnables{}
             line := Rectangle {
                 background: gray; width: 2px;
