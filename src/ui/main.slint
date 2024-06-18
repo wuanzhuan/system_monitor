@@ -91,7 +91,9 @@ export component App inherits Window {
         }
         main := HorizontalBox {
             padding: 0px;
-            event-enables := EventsEnables{}
+            event-enables := EventsEnables{
+                width: self.preferred-width;
+            }
             line := Rectangle {
                 background: gray; width: 2px;
 

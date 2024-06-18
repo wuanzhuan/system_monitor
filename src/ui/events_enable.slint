@@ -42,8 +42,7 @@ export component EventsEnables {
     }
     
     VerticalBox {
-        spacing: 2mm;
-        width: 25rem;
+        padding-right: 0px;
 
         HorizontalBox {
             spacing: 2mm;
@@ -75,15 +74,20 @@ export component EventsEnables {
                 }
             }
         }
-        FindBar {
-            input-length: 12rem;
-            placeholder-text: "i.e. thread";
-    
-            row-find(event-name) => {
-                return EnablesData.row-find(event-name);
-            }
-            set-current-row(index) => {
-                set-current-row(index);
+        HorizontalBox {
+            padding: 0px;
+            alignment: start;
+
+            FindBar {
+                input-length: 12rem;
+                placeholder-text: "i.e. thread";
+        
+                row-find(event-name) => {
+                    return EnablesData.row-find(event-name);
+                }
+                set-current-row(index) => {
+                    set-current-row(index);
+                }
             }
         }
         list-view := ListView {
