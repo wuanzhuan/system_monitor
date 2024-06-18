@@ -65,11 +65,9 @@ export component EventsView inherits VerticalBox {
         }
     }
     HorizontalBox {
-        height: text.height;
-        padding-left: 12px;
-        padding-right: 12px;
+        height: self.preferred-height;
 
-        text := TextCopiable {
+        TextCopiable {
             height: self.font-size + 2px;
             text: @tr("total: {}", EventsViewData.row_data.length);
             font-weight: 500;
