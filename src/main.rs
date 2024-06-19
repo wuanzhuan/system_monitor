@@ -73,10 +73,10 @@ fn main() {
         let mut table_column = TableColumn::default();
         table_column.title = SharedString::from(column.as_ref());
         table_column.width = match column {
-            Columns::Datetime => 160.0,
-            Columns::ProcessName => 130.0,
-            Columns::ProcessId => 120.0,
-            Columns::ThreadId => 120.0,
+            Columns::Datetime => 180.0,
+            Columns::ProcessName => 150.0,
+            Columns::ProcessId => 110.0,
+            Columns::ThreadId => 100.0,
             Columns::EventName => 120.0,
             Columns::OpcodeName => 140.0,
             Columns::Properties => 200.0,

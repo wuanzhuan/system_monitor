@@ -5,7 +5,8 @@ import { Icons } from "styling.slint";
 import { ListView, ScrollView, Palette, HorizontalBox, TabWidget, VerticalBox } from "std-widgets.slint";
 import { TextCopiable } from "text_copiable.slint";
 
-component TableViewColumn inherits Rectangle {    
+
+component TableViewColumn {
     in property <string> text;
     in property <int> index_column;
     in property <SortOrder> sort-order: SortOrder.unsorted;
@@ -13,79 +14,91 @@ component TableViewColumn inherits Rectangle {
     callback clicked <=> i-touch-area.clicked;
     callback adjust_size(length);
 
-    clip: true;
-
-    states [
-        pressed when i-touch-area.pressed : {
-            background: Palette.control-background;
-            text_element.color: Palette.control-foreground;
-        }
-        hover when i-touch-area.has-hover : {
-            background: Palette.control-background;
-            text_element.color: Palette.control-foreground;
-        }
-    ]
-
     HorizontalLayout {
-        padding-left: 12px;
-        padding-right: 12px;
-        spacing: 2px;
-
-        text_element := TextCopiable {
-            width: 100%;
-            height: 100%;
-            vertical-alignment: center;
-            text: text;
-            font-weight: 600;
-            font-size: 1.4rem;
-            color: Palette.foreground;
-            single-line: true;
-        }
-
-        i-icon := Image {
-            image-fit: contain;
-            colorize: Palette.foreground;
-            visible: root.sort-order != SortOrder.unsorted;
-            width: 12px;
-            y: (parent.height - self.height) / 2;
-            source: root.sort-order == SortOrder.ascending ? Icons.arrow-down : Icons.arrow-up;
-
-            animate colorize { duration: 150ms; }
-        }
-    }
-
-    // border
-    Rectangle {
-        y: parent.height - self.height;
-        width: 100%;
-        height: 1px;
-        background: Palette.foreground.darker(0.5);
-    }
-
-    Rectangle {
-        x: parent.width - 1px;
-        width: 1px;
 
         states [
-            hover when i-movable-touch-area.has-hover : {
-                background: Palette.control-background;
+            pressed when i-touch-area.pressed : {
+                rect_text.background: Palette.control-background;
+                rect_border.background: Palette.control-background;
+                text_element.color: Palette.control-foreground;
+            }
+            hover when i-touch-area.has-hover : {
+                rect_text.background: Palette.control-background;
+                rect_border.background: Palette.control-background;
+                text_element.color: Palette.control-foreground;
             }
         ]
 
-        animate background { duration: 150ms; }
+        rect_text := Rectangle {
+            background: Palette.background;
+            width: parent.width - rect_border.width;
 
-        i-movable-touch-area := TouchArea {
-            width: 10px;
-            mouse-cursor: ew-resize;
+            HorizontalLayout {
+                padding-left: 12px;
+                padding-top: 9px;
+                padding-bottom: 9px;
+                spacing: 3px;
+    
+                text_element := TextCopiable {
+                    width: 100%;
+                    height: 100%;
+                    vertical-alignment: center;
+                    text: text;
+                    font-weight: 600;
+                    font-size: 1.4rem;
+                    color: Palette.foreground;
+                    single-line: true;
+                }
+        
+                i-icon := Image {
+                    image-fit: contain;
+                    colorize: Palette.foreground;
+                    visible: root.sort-order != SortOrder.unsorted;
+                    width: 12px;
+                    y: (parent.height - self.height) / 2;
+                    source: root.sort-order == SortOrder.ascending ? Icons.arrow-down : Icons.arrow-up;
+        
+                    animate colorize { duration: 150ms; }
+                }
+            }
+            i-touch-area := TouchArea {} // neel after other children. otherwise the toucharea is cover
+        }
 
-            moved => {
-                if (self.pressed) {
-                    adjust_size(self.mouse-x - self.pressed-x);
+        rect_border := Rectangle {
+            width: 9px;
+            background: Palette.background;
+
+            HorizontalLayout {
+                alignment: end;
+    
+                Rectangle {
+                    width: 1phx;
+                    background: Palette.border;
+            
+                    animate background { duration: 150ms; }
+            
+                    states [
+                        hover when i-movable-touch-area.has-hover: {
+                            background: Palette.accent-background;
+                        }
+                        pressed when i-movable-touch-area.pressed: {
+                            background: Palette.accent-background;
+                        }
+                    ]
+                }
+            }
+
+            i-movable-touch-area := TouchArea {
+                mouse-cursor: ew-resize;
+    
+                moved => {
+                    if (self.pressed) {
+                        adjust_size(self.mouse-x - self.pressed-x);
+                    }
                 }
             }
         }
     }
-    i-touch-area := TouchArea {} // neel after other children. otherwise the toucharea is cover
 }
 
 component TableViewCell inherits Rectangle {
@@ -198,7 +211,7 @@ export component TableView {
     in-out property <int> current-row: -1;
     in-out property <length> order-column-width: 6rem;
     in property <bool> has_order_number: true;
-    in-out property <length> header-height: i-header-layout.height;
+    out property <length> header-height: i-header-layout.height;
 
     callback sort-ascending(/* column-index */ int);
     callback sort-descending(/* column-index */ int);
@@ -206,7 +219,6 @@ export component TableView {
     callback current-row-changed(/* current-row */ int);
     callback row-double-clicked(/* row-index */ int);
 
-    private property <length> min-header-height: 42px;
     private property <length> item-height: i-scroll-view.viewport-height / rows.length;
     private property <length> current-item-y: i-scroll-view.viewport-y + current-row * item-height;
     private property <int> has-hover-row: -1;
@@ -251,22 +263,24 @@ export component TableView {
     }
 
     VerticalLayout {
-        Rectangle {
-            vertical-stretch: 0;
-            min-height: i-header-layout.min-height;
+        padding: 0px;
+        spacing: 0px;
+
+        VerticalBox {
+            padding: 0px;
+            spacing: 0px;
+            height: self.preferred-height;
 
             i-header-layout := HorizontalLayout {
-                x: i-scroll-view.viewport-x;
-                padding-right: 6px;
-                min-height: root.min-header-height;
+                padding: 0px;
 
-                private property <length> min_column_width: 2rem;
-
+                private property <length> min_column_width: 3rem;
+    
                 if has-order-number : TableViewColumn {
                     width: root.order-column-width;
                     text: @tr("No.");
                     index-column: 0;
-
+    
                     adjust_size(diff) => {
                         root.order-column-width = max(min_column_width, self.width + diff);
                     }
@@ -274,21 +288,23 @@ export component TableView {
                 for column[index] in root.columns : TableViewColumn {
                     sort-order: column.sort-order;
                     horizontal-stretch: column.horizontal-stretch;
-                    width: index < root.columns.length - 1 ? root.columns[index].width : parent.width;
+                    width: index < root.columns.length - 1 ? root.columns[index].width : 10000px;
                     text: column.title;
                     index-column: index;
-
+    
                     clicked => {
                         root.sort(index);
                     }
-
                     adjust_size(diff) => {
                         column.width = max(min_column_width, self.width + diff);
                     }
                 }
             }
+            Rectangle {
+                background: Palette.border; 
+                height: 1phx;
+            }
         }
-
         i-scroll-view := ListView {
             for row[idx] in root.rows : row_element := TableViewRow {
                 selected: idx == root.current-row;
