@@ -136,8 +136,8 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                             + module_info_running.size_of_image as u64
                     {
                         if process_info.init_error.is_none() {
-                            warn!("Cross the border address: {address:#x} in the [{process_id}]. the module start: {:#x} size: {:#x} {}",
-                                module_info_running.base_of_dll, module_info_running.size_of_image, module_info_running.module_info.file_name);
+                            //warn!("Cross the border address: {address:#x} in the [{process_id}]. the module start: {:#x} size: {:#x} {}",
+                            //    module_info_running.base_of_dll, module_info_running.size_of_image, module_info_running.module_info.file_name);
                         }
                     } else {
                         item.1.relative = Some((
@@ -147,7 +147,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                     }
                 } else {
                     if process_info.init_error.is_none() {
-                        warn!("{address:#x} is not find in process_id: {process_id}");
+                        //warn!("{address:#x} is not find in process_id: {process_id}");
                     }
                 }
             }
