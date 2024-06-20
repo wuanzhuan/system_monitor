@@ -7,9 +7,9 @@ use linked_hash_map::LinkedHashMap;
 use slint::{
     Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel,
 };
-use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc};
+use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc, path::Path, fs::create_dir_all};
 use strum::VariantArray;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::event_record_model::EventRecordModel;
 
@@ -22,6 +22,7 @@ mod filter;
 mod process_modules;
 mod third_extend;
 mod utils;
+mod pdb;
 
 slint::include_modules!();
 
@@ -213,7 +214,7 @@ fn main() {
     });
 
     let app_weak = app.as_weak();
-    app.on_start(move || {
+    app.on_trace_start(move || {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
         let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<
@@ -327,9 +328,33 @@ fn main() {
             (SharedString::from(""), true)
         }
     });
-    app.on_stop(|| {
+    app.on_trace_stop(|| {
         let r = event_trace::Controller::stop(None);
         info!("end: {:?}", r);
+    });
+
+    match utils::get_exe_dir() {
+        Err(e) => warn!("{e}"),
+        Ok(path) => {
+            let s = format!("{path}\\pdb");
+            let dir= Path::new(s.as_str());
+            if let Err(e) = create_dir_all(dir) {
+                error!("{e}");
+            }
+
+            app.set_pdb_directory(SharedString::from(s.as_str()))
+        }
+    }
+    app.on_edit_pdb_directory(|path| {
+        let dir = Path::new(path.as_str());
+        if !dir.exists() {
+            return (SharedString::from("The path is not exist"), false);
+        }
+        if !dir.is_dir() {
+            return (SharedString::from("The path is not directory"), false);
+        }
+        pdb::pdb_path_set(path.as_str());
+        (SharedString::new(), true)
     });
 
     app.run().unwrap();

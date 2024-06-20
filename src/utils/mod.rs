@@ -1,6 +1,8 @@
 use chrono::*;
 use serde::{Serialize, Serializer};
-use std::ops::Sub;
+use std::{ops::Sub, env};
+use anyhow::{Result, anyhow};
+
 
 /// https://learn.microsoft.com/zh-CN/windows/win32/api/minwinbase/ns-minwinbase-filetime
 #[derive(Debug, Clone, Copy)]
@@ -75,6 +77,27 @@ pub fn get_path_from_commandline(commandline: &str) -> String {
     string
 }
 
+//no \ at end
+pub fn get_exe_dir() -> Result<String> {
+    match env::current_exe() {
+        Ok(path) => {
+            if let Some(path_str) = path.to_str() {
+                if let Some(index) = path_str.rfind("\\") {
+                    Ok(path_str[..index].to_string())
+                } else {
+                    Err(anyhow!("Can't find \\ in path: {path:?}"))
+                }
+                
+            } else {
+                Err(anyhow!("Can't convert to str: {path:?}"))
+            }
+        }
+        Err(e) => {
+            Err(anyhow!("Failed to env::current_exe: {e}"))
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[test]
@@ -83,5 +106,11 @@ mod tests {
             r#"\"C:\\Program Files\\Git\\cmd\\git.exe\" show --textconv :src/event_trace/mod.rs"#,
         );
         assert_eq!(s, String::from(r"C:\Program Files\Git\cmd\git.exe"));
+    }
+
+    #[test]
+    fn get_exe_dir() {
+        let r = super::get_exe_dir();
+        assert!(r.is_ok());
     }
 }

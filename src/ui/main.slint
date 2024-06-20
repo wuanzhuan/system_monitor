@@ -2,11 +2,15 @@ import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, 
 import { EventsEnables, EnablesData, EventDesc } from "events_enable.slint";
 import { EventsView, EventsViewData,StackWalkInfo } from "events_view.slint";
 import { FilterInput } from "filter_input.slint";
+import { PdbConfig } from "pdb_config.slint";
+
 
 export { EventsEnables, EnablesData, EventDesc, EventsViewData, StackWalkInfo }
 
 export component App inherits Window {
     in property <{width: physical_length, height: physical_length}> initial-size;
+    in property <string> pdb_directory;
+    out property <length> rem: self.default-font-size;
 
     preferred-width: initial-size.width;
     preferred-height: initial-size.height;
@@ -14,12 +18,12 @@ export component App inherits Window {
     icon: @image-url("./logo/slint-logo-small-light.png");
     default-font-family: "Noto Sans";
 
-    callback start() -> {ok: bool, message: string};
-    callback stop();
+    callback trace_start() -> {ok: bool, message: string};
+    callback trace_stop();
     callback set_filter_expression_for_one(string) -> {result: bool, message: string};
     callback set_filter_expression_for_pair(string) -> {result: bool, message: string};
+    callback edit_pdb_directory(string) -> {is_ok: bool, err: string};
 
-    out property <length> rem: self.default-font-size;
     private property <{ok: bool, message: string}> result_start;
 
     switch_popup := PopupWindow {
@@ -46,22 +50,35 @@ export component App inherits Window {
 
     VerticalBox{
         padding: 0px;
+
+        HorizontalBox {
+            height: self.preferred-height;
+            alignment: start;
+
+            PdbConfig {
+                pdb_directory: pdb_directory;
+                edit_pdb_directory(text) => {
+                    edit_pdb_directory(text)
+                }
+            }
+        }
         start-stop := HorizontalBox {
             padding-right: 0px;
             padding-bottom: 0px;
             spacing: 1cm;
+
             Switch {
                 text: @tr("On/Off");
                 checked: false;
                 toggled => {
                     if (self.checked) {
-                        root.result-start = start();
+                        root.result-start = trace_start();
                         if (!root.result-start.ok) {
                             switch_popup.show();
                             self.checked = false;
                         }
                     } else {
-                        stop()
+                        trace_stop()
                     }
                 }
             }

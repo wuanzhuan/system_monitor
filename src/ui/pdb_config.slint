@@ -1,0 +1,72 @@
+import { Button, Palette, LineEdit, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+
+export component PdbConfig {
+    in-out property <string> pdb_directory;
+    callback edit_pdb_directory(string) -> {is_ok: bool, err: string};
+
+    button := Button {
+        width: self.preferred-width;
+        height: self.preferred-height;
+        text: @tr("Pdb Config");
+        clicked => {
+            popup.show()
+        }
+    }
+
+    popup := PopupWindow {
+        y: button.height + 2mm;
+        close-on-click: false;
+
+        Rectangle {
+            background: Palette.background;
+            VerticalBox {
+                HorizontalBox {
+                    alignment: end;
+
+                    Button {
+                        padding: 0px;
+                        width: self.preferred-width;
+                        height: self.preferred-height;
+                        text: @tr("x");
+
+
+                        clicked => {
+                            popup.close();
+                        }
+                    }
+                }
+                HorizontalBox {
+                    alignment: start;
+                    property <{is_ok: bool, err: string}> result;
+
+                    states [
+                        ok when result.is-ok: {
+                            result_text.color: #90ee90;
+                            result_text.text: @tr("\u{a99}");
+
+                        }
+                        err when !result.is-ok: {
+                            result_text.color: #ec5353;
+                            result_text.text: result.err;
+                        }
+                    ]
+
+                    Text {
+                        vertical-alignment: center;
+                        text: @tr("pdb directory: ");
+                    }
+
+                    LineEdit {
+                        text: pdb_directory;
+
+                        edited(text) => {
+                            result = edit_pdb_directory(text);
+                        }
+                    }
+                    result_text := Text {}
+                }
+            }
+        }
+    }
+}
