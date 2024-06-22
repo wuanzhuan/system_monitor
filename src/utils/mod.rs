@@ -1,8 +1,7 @@
+use anyhow::{anyhow, Result};
 use chrono::*;
 use serde::{Serialize, Serializer};
-use std::{ops::Sub, env};
-use anyhow::{Result, anyhow};
-
+use std::{env, ops::Sub};
 
 /// https://learn.microsoft.com/zh-CN/windows/win32/api/minwinbase/ns-minwinbase-filetime
 #[derive(Debug, Clone, Copy)]
@@ -48,6 +47,21 @@ impl Serialize for TimeStamp {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct TimeDateStamp(pub u32);
+
+impl TimeDateStamp {
+    pub fn to_datetime_local(&self) -> DateTime<Local> {
+        let dt_utc = Utc.timestamp(self.0 as i64, 0);
+        DateTime::<Local>::from(dt_utc)
+    }
+
+    pub fn to_string_detail(&self) -> String {
+        let dt = self.to_datetime_local();
+        format!("{}({})", self.0, dt.to_string())
+    }
+}
+
 #[allow(unused)]
 pub fn get_path_from_commandline(commandline: &str) -> String {
     let mut is_in_quotation_mark = false;
@@ -87,14 +101,11 @@ pub fn get_exe_dir() -> Result<String> {
                 } else {
                     Err(anyhow!("Can't find \\ in path: {path:?}"))
                 }
-                
             } else {
                 Err(anyhow!("Can't convert to str: {path:?}"))
             }
         }
-        Err(e) => {
-            Err(anyhow!("Failed to env::current_exe: {e}"))
-        }
+        Err(e) => Err(anyhow!("Failed to env::current_exe: {e}")),
     }
 }
 
