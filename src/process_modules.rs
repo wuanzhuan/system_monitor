@@ -191,18 +191,18 @@ pub fn get_file_name_from_path(path: &str) -> &str {
 }
 
 pub fn get_image_info_from_file(
-    file_name: &str,
+    file_path: &str,
 ) -> Result<(/*image_size*/ u32, /*time_data_stamp*/ u32)> {
-    let mut file = match File::open(file_name) {
+    let mut file = match File::open(file_path) {
         Err(e) => {
-            return Err(anyhow!("Failed to open file: {file_name} {e}"));
+            return Err(anyhow!("Failed to open file: {file_path} {e}"));
         }
         Ok(file) => file,
     };
     let mut data = vec![0u8; mem::size_of::<IMAGE_DOS_HEADER>()];
     let nt_header_offset = match file.read(&mut data) {
         Err(e) => {
-            return Err(anyhow!("Faile to read file: {file_name} {e}"));
+            return Err(anyhow!("Faile to read file: {file_path} {e}"));
         }
         Ok(size) => {
             if size != mem::size_of::<IMAGE_DOS_HEADER>() {
@@ -217,11 +217,11 @@ pub fn get_image_info_from_file(
 
     let mut data = vec![0u8; mem::size_of::<IMAGE_NT_HEADERS64>()];
     if let Err(e) = file.seek(SeekFrom::Start(nt_header_offset as u64)) {
-        return Err(anyhow!("Failed to seek file: {file_name} {e}"));
+        return Err(anyhow!("Failed to seek file: {file_path} {e}"));
     }
     match file.read(&mut data) {
         Err(e) => {
-            return Err(anyhow!("Faile to read file: {file_name} {e}"));
+            return Err(anyhow!("Faile to read file: {file_path} {e}"));
         }
         Ok(size) => {
             if size != mem::size_of::<IMAGE_NT_HEADERS64>() {
