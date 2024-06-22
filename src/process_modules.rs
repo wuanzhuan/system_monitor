@@ -13,6 +13,7 @@ use std::{
     mem, ptr, slice,
     sync::{Arc, OnceLock},
     time::Duration,
+    path::Path
 };
 use tracing::{error, warn};
 use widestring::*;
@@ -191,18 +192,18 @@ pub fn get_file_name_from_path(path: &str) -> &str {
 }
 
 pub fn get_image_info_from_file(
-    file_path: &str,
+    file_path: &Path,
 ) -> Result<(/*image_size*/ u32, /*time_data_stamp*/ u32)> {
     let mut file = match File::open(file_path) {
         Err(e) => {
-            return Err(anyhow!("Failed to open file: {file_path} {e}"));
+            return Err(anyhow!("Failed to open file: {} {e}", file_path.display()));
         }
         Ok(file) => file,
     };
     let mut data = vec![0u8; mem::size_of::<IMAGE_DOS_HEADER>()];
     let nt_header_offset = match file.read(&mut data) {
         Err(e) => {
-            return Err(anyhow!("Faile to read file: {file_path} {e}"));
+            return Err(anyhow!("Faile to read file: {} {e}", file_path.display()));
         }
         Ok(size) => {
             if size != mem::size_of::<IMAGE_DOS_HEADER>() {
@@ -217,11 +218,11 @@ pub fn get_image_info_from_file(
 
     let mut data = vec![0u8; mem::size_of::<IMAGE_NT_HEADERS64>()];
     if let Err(e) = file.seek(SeekFrom::Start(nt_header_offset as u64)) {
-        return Err(anyhow!("Failed to seek file: {file_path} {e}"));
+        return Err(anyhow!("Failed to seek file: {} {e}", file_path.display()));
     }
     match file.read(&mut data) {
         Err(e) => {
-            return Err(anyhow!("Faile to read file: {file_path} {e}"));
+            return Err(anyhow!("Faile to read file: {} {e}", file_path.display()));
         }
         Ok(size) => {
             if size != mem::size_of::<IMAGE_NT_HEADERS64>() {
@@ -376,7 +377,7 @@ fn enum_drivers() {
         } else {
             file_name
         };
-        let (image_size, time_date_stamp) = match get_image_info_from_file(file_name.as_str()) {
+        let (image_size, time_date_stamp) = match get_image_info_from_file(Path::new(file_name.as_str())) {
             Err(e) => {
                 warn!("Failed to get_image_info_from_file: {file_name} {e}");
                 continue;
@@ -564,7 +565,7 @@ fn process_init(process_id: u32) {
             if let Err(e) = r {
                 warn!("Failed to GetModuleInformation: {}", e);
             }
-            let (_, time_date_stamp) = match get_image_info_from_file(file_name.as_str()) {
+            let (_, time_date_stamp) = match get_image_info_from_file(Path::new(file_name.as_str())) {
                 Ok(info) => info,
                 Err(e) => {
                     warn!("Failed to get_image_info_from_file: {e}");
