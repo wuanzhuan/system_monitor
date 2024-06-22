@@ -190,6 +190,60 @@ pub fn get_file_name_from_path(path: &str) -> &str {
     }
 }
 
+pub fn get_image_info_from_file(
+    file_name: &str,
+) -> Result<(/*image_size*/ u32, /*time_data_stamp*/ u32)> {
+    let mut file = match File::open(file_name) {
+        Err(e) => {
+            return Err(anyhow!("Failed to open file: {file_name} {e}"));
+        }
+        Ok(file) => file,
+    };
+    let mut data = vec![0u8; mem::size_of::<IMAGE_DOS_HEADER>()];
+    let nt_header_offset = match file.read(&mut data) {
+        Err(e) => {
+            return Err(anyhow!("Faile to read file: {file_name} {e}"));
+        }
+        Ok(size) => {
+            if size != mem::size_of::<IMAGE_DOS_HEADER>() {
+                return Err(anyhow!(
+                    "The return size: {size} is not equal mem::size_of::<IMAGE_DOS_HEADER>()"
+                ));
+            }
+            let dos_header: &IMAGE_DOS_HEADER = unsafe { mem::transmute(data.as_ptr()) };
+            dos_header.e_lfanew
+        }
+    };
+
+    let mut data = vec![0u8; mem::size_of::<IMAGE_NT_HEADERS64>()];
+    if let Err(e) = file.seek(SeekFrom::Start(nt_header_offset as u64)) {
+        return Err(anyhow!("Failed to seek file: {file_name} {e}"));
+    }
+    match file.read(&mut data) {
+        Err(e) => {
+            return Err(anyhow!("Faile to read file: {file_name} {e}"));
+        }
+        Ok(size) => {
+            if size != mem::size_of::<IMAGE_NT_HEADERS64>() {
+                return Err(anyhow!(
+                    "The return size: {size} is not equal mem::size_of::<IMAGE_NT_HEADERS64>()"
+                ));
+            }
+            let nt_header: &IMAGE_NT_HEADERS64 = unsafe { mem::transmute(data.as_ptr()) };
+            let time_data_stamp = nt_header.FileHeader.TimeDateStamp;
+            let image_size = if nt_header.FileHeader.SizeOfOptionalHeader
+                == mem::size_of::<IMAGE_NT_HEADERS64>() as u16
+            {
+                nt_header.OptionalHeader.SizeOfImage
+            } else {
+                let nt_header: &IMAGE_NT_HEADERS32 = unsafe { mem::transmute(data.as_ptr()) };
+                nt_header.OptionalHeader.SizeOfImage
+            };
+            Ok((image_size, time_data_stamp))
+        }
+    }
+}
+
 fn drive_letter_map_init() {
     let mut map = HashMap::<String, AsciiChar>::new();
     let mut file_name_ret = Vec::<u16>::with_capacity(260);
@@ -342,60 +396,6 @@ fn enum_drivers() {
         let _ = RUNNING_KERNEL_MODULES_MAP
             .lock()
             .try_insert(*image_base as u64, module_info_running);
-    }
-}
-
-fn get_image_info_from_file(
-    file_name: &str,
-) -> Result<(/*image_size*/ u32, /*time_data_stamp*/ u32)> {
-    let mut file = match File::open(file_name) {
-        Err(e) => {
-            return Err(anyhow!("Failed to open file: {file_name} {e}"));
-        }
-        Ok(file) => file,
-    };
-    let mut data = vec![0u8; mem::size_of::<IMAGE_DOS_HEADER>()];
-    let nt_header_offset = match file.read(&mut data) {
-        Err(e) => {
-            return Err(anyhow!("Faile to read file: {file_name} {e}"));
-        }
-        Ok(size) => {
-            if size != mem::size_of::<IMAGE_DOS_HEADER>() {
-                return Err(anyhow!(
-                    "The return size: {size} is not equal mem::size_of::<IMAGE_DOS_HEADER>()"
-                ));
-            }
-            let dos_header: &IMAGE_DOS_HEADER = unsafe { mem::transmute(data.as_ptr()) };
-            dos_header.e_lfanew
-        }
-    };
-
-    let mut data = vec![0u8; mem::size_of::<IMAGE_NT_HEADERS64>()];
-    if let Err(e) = file.seek(SeekFrom::Start(nt_header_offset as u64)) {
-        return Err(anyhow!("Failed to seek file: {file_name} {e}"));
-    }
-    match file.read(&mut data) {
-        Err(e) => {
-            return Err(anyhow!("Faile to read file: {file_name} {e}"));
-        }
-        Ok(size) => {
-            if size != mem::size_of::<IMAGE_NT_HEADERS64>() {
-                return Err(anyhow!(
-                    "The return size: {size} is not equal mem::size_of::<IMAGE_NT_HEADERS64>()"
-                ));
-            }
-            let nt_header: &IMAGE_NT_HEADERS64 = unsafe { mem::transmute(data.as_ptr()) };
-            let time_data_stamp = nt_header.FileHeader.TimeDateStamp;
-            let image_size = if nt_header.FileHeader.SizeOfOptionalHeader
-                == mem::size_of::<IMAGE_NT_HEADERS64>() as u16
-            {
-                nt_header.OptionalHeader.SizeOfImage
-            } else {
-                let nt_header: &IMAGE_NT_HEADERS32 = unsafe { mem::transmute(data.as_ptr()) };
-                nt_header.OptionalHeader.SizeOfImage
-            };
-            Ok((image_size, time_data_stamp))
-        }
     }
 }
 
