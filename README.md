@@ -5,7 +5,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 # features
 - [x] more events
   - [x] public and unpublished. refer to [`monitor events`](#monitor-events)
-- [ ] more useful filter
+- [x] more useful filter
   - [x] filter one event with some filter condition
     - value: any string and number. i.e. `1234567` or `"system_monitor"`.
     - key-value: key is any column. i.e. `process_id` or `properties.xxx`. value is any string or number.
@@ -19,7 +19,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
     - key-value: key is any column. i.e. `process_id` or `properties.xxx`. value is any string or number.
     - express: can use `&& || ! ()` i.e `process_id = 4 && thread_id = 6`
   - [ ] mark result of query at scroll bar of TableView
-- [ ] call stack view
+- [x] call stack view
   - [x] record original module and monitor change
   - [x] convert the virtual address to the offset of module
   - [x] translate a module offset to the code location
