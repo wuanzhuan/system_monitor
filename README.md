@@ -6,15 +6,23 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [x] more events
   - [x] public and unpublished. refer to [`monitor events`](#monitor-events)
 - [ ] more useful filter
-  - [ ] filter one event with some filter condition
-  - [ ] filter two events by match some condition. i.e. handle create and close
+  - [x] filter one event with some filter condition
+    - value: any string and number. i.e. `1234567` or `"system_monitor"`.
+    - key-value: key is any column. i.e. `process_id` or `properties.xxx`. value is any string or number.
+    - express: can use `&& || ! ()` i.e `process_id = 4 && thread_id = 6`
+  - [x] filter two events by match some condition. i.e. handle create and close
+    - handle: match CreateHandle and CloseHandle and remove the tow events
+    - custom(event_display_name, opcode_name_first, opcode_name_second, path_for_match, ...) : can has multi path_for_match. match the opcode_name_first and opcode_name_second, and remove the two events.
 - [ ] find for events
   - [x] easy query language
+    - value: any string and number. i.e. `1234567` or `"system_monitor"`.
+    - key-value: key is any column. i.e. `process_id` or `properties.xxx`. value is any string or number.
+    - express: can use `&& || ! ()` i.e `process_id = 4 && thread_id = 6`
   - [ ] mark result of query at scroll bar of TableView
 - [ ] call stack view
   - [x] record original module and monitor change
   - [x] convert the virtual address to the offset of module
-  - [ ] translate a module offset to the code location
+  - [x] translate a module offset to the code location
 - easy of use
   - [ ] syntax highlight for filter expression
   - [ ] tips
