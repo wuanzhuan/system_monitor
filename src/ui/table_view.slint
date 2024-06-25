@@ -340,7 +340,7 @@ export component TableView {
                 }
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
-                    width: index < root.columns.length - 1 ? root.columns[index].width : parent.width;
+                    width: index < root.columns.length - 1 ? root.columns[index].width : 10000px;
                     text: cell.text;
                     index-row: idx;
                     index-column: index;
