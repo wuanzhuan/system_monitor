@@ -30,7 +30,7 @@ impl EventRecordModel {
 
     pub fn data_detail(&self) -> Option<SharedString> {
         Some(SharedString::from(
-            serde_json::to_string_pretty(&*self.array).unwrap_or_default(),
+            format!("{}\n{}", serde_json::to_string_pretty(&*self.array).unwrap_or_default(), self.process_path)
         ))
     }
 
@@ -97,7 +97,7 @@ impl EventRecordModel {
             }
             Columns::ProcessName => {
                 if let Value::Str(string) = value {
-                    if self.process_path.to_ascii_lowercase() == string.to_ascii_lowercase() {
+                    if self.get_process_name().to_ascii_lowercase() == string.to_ascii_lowercase() {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -267,7 +267,7 @@ impl EventRecordModel {
                     s.push_str(self.array.timestamp.0.to_string().as_str());
                 }
                 Columns::ProcessName => {
-                    s.push_str(self.process_path.as_str());
+                    s.push_str(self.get_process_name());
                 }
                 Columns::ProcessId => {
                     s.push_str(self.array.process_id.to_string().as_str());
