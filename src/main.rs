@@ -340,9 +340,10 @@ fn main() {
             let dir= Path::new(s.as_str());
             if let Err(e) = create_dir_all(dir) {
                 error!("{e}");
+            } else {
+                pdb::pdb_path_set(s.as_str());
+                app.set_pdb_directory(SharedString::from(s.as_str()))
             }
-
-            app.set_pdb_directory(SharedString::from(s.as_str()))
         }
     }
     app.on_edit_pdb_directory(|path| {

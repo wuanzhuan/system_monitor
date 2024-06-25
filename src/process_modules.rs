@@ -1,6 +1,9 @@
-use crate::event_trace::{EventRecordDecoded, Image, Process, StackAddress};
-use crate::third_extend::strings::{AsPcwstr, StringEx};
-use crate::utils::TimeStamp;
+use crate::{
+    event_trace::{EventRecordDecoded, Image, Process, StackAddress},
+    third_extend::strings::{AsPcwstr, StringEx},
+    utils::TimeStamp,
+    pdb::{ProcedureInfo, get_pdb_info_for_module}
+};
 use anyhow::{anyhow, Result};
 use ascii::AsciiChar;
 use indexmap::IndexMap;
@@ -11,9 +14,9 @@ use std::{
     fs::File,
     io::{Read, Seek, SeekFrom},
     mem, ptr, slice,
-    sync::{Arc, OnceLock},
+    sync::{Arc, OnceLock, Weak},
     time::Duration,
-    path::Path
+    path::Path, ops::Bound
 };
 use tracing::{error, warn};
 use widestring::*;
@@ -49,11 +52,41 @@ static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 pub struct ModuleInfo {
     pub file_name: String,
     pub time_data_stamp: u32,
+    weak_lock: FairMutex<Option<Weak<BTreeMap<u32, ProcedureInfo>>>>
 }
 
 impl ModuleInfo {
     pub fn get_module_name(&self) -> &str {
         get_file_name_from_path(self.file_name.as_str())
+    }
+
+    // offset: from module's image base
+    pub fn get_location_info(&self, offset: u32) -> String {
+        let mut pdb_info: Option<Arc<BTreeMap<u32, ProcedureInfo>>> = None;
+        if let Some(ref weak) = *self.weak_lock.lock() {
+            pdb_info = weak.upgrade();
+        }
+        if pdb_info.is_none() {
+            if let Some(arc) = get_pdb_info_for_module(Path::new(self.file_name.as_str()), self.time_data_stamp) {
+                let weak = Arc::downgrade(&arc);
+                *self.weak_lock.lock() = Some(weak);
+                pdb_info = Some(arc);
+            } else {
+                *self.weak_lock.lock() = None;
+            }
+        }
+        if let Some(pdb_info) = pdb_info {
+            let cursor = pdb_info.upper_bound(Bound::Included(&offset));
+            if let Some(procedure_info) = cursor.value() {
+                let cursor_line = procedure_info.line_map.upper_bound(Bound::Included(&offset));
+                if let Some(line_info) = cursor_line.value() {
+                    return format!("{}+{:#x} {line_info}", procedure_info.name, offset - procedure_info.offset);
+                } else {
+                    return format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset);
+                }
+            }
+        }
+        String::new()
     }
 }
 
@@ -83,8 +116,6 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 }
 
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
-    use std::ops::Bound;
-
     let process_module_mutex_option = if process_id != 0 && process_id != 4 {
         if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id) {
             Some(process_module_mutex.clone())
@@ -445,6 +476,7 @@ fn module_map_insert(
         let module_info_arc = Arc::new(ModuleInfo {
             file_name: file_name.clone(),
             time_data_stamp: time_date_stamp,
+            weak_lock: FairMutex::new(None)
         });
         let entry = module_lock.insert_full(
             (file_name.clone(), time_date_stamp),
@@ -698,6 +730,9 @@ fn is_kernel_session_space(_address: u64) -> bool {
 mod tests {
     use super::{DRIVE_LETTER_MAP, RUNNING_PROCESSES_MODULES_MAP};
     use windows::Win32::System::Threading::GetCurrentProcessId;
+    use std::path::Path;
+    use crate::pdb::pdb_path_set;
+    use parking_lot::FairMutex;
 
     #[test]
     fn store_process_modules() {
@@ -720,5 +755,16 @@ mod tests {
     #[test]
     fn enum_drivers() {
         super::enum_drivers();
+    }
+
+    #[test]
+    fn get_location_info() {
+        let out_dir = env!("CARGO_MANIFEST_DIR");
+        let pkg_name = env!("CARGO_PKG_NAME");
+        let (_, time_date_stamp) = super::get_image_info_from_file(Path::new(format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str())).unwrap();
+        pdb_path_set(format!("{out_dir}\\target\\debug").as_str());
+        let module_info = super::ModuleInfo{file_name: format!("{out_dir}\\target\\debug\\{pkg_name}.exe"), time_data_stamp: time_date_stamp, weak_lock: FairMutex::new(None)};
+        let r = module_info.get_location_info(0x2b6168);
+        println!("{r}");
     }
 }

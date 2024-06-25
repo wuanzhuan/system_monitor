@@ -57,9 +57,10 @@ impl EventRecordModel {
                 let s = if let Some(relative) = item.1.relative {
                     if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
                         let file_name = module_info.get_module_name();
+                        let location_info  = module_info.get_location_info(relative.1);
                         format!(
-                            "{}: {:#x} {}+{:#x}",
-                            item.0, item.1.raw, file_name, relative.1
+                            "{}: {:#x} {file_name}+{:#x} {location_info}",
+                            item.0, item.1.raw, relative.1
                         )
                     } else {
                         format!(
