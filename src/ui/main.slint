@@ -48,9 +48,7 @@ export component App inherits Window {
         }
     }
 
-    VerticalBox{
-        padding: 0px;
-
+    VerticalLayout {
         HorizontalBox {
             height: self.preferred-height;
             alignment: start;
@@ -82,9 +80,8 @@ export component App inherits Window {
                     }
                 }
             }
-            HorizontalBox {
+            HorizontalLayout {
                 spacing: 2mm;
-                padding: 0px;
                 height: 7mm;
 
                 FilterInput {
@@ -106,8 +103,7 @@ export component App inherits Window {
                 }
             }
         }
-        main := HorizontalBox {
-            padding: 0px;
+        main := HorizontalLayout {
             event-enables := EventsEnables{
                 width: self.preferred-width;
             }

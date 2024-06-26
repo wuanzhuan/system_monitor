@@ -24,15 +24,13 @@ export global EventsViewData  {
     callback row-find(string) -> {result: bool, indexes: [int], error: string};
 }
 
-export component EventsView inherits VerticalBox {
+export component EventsView inherits VerticalLayout {
     private property <string> row-data-detail-info;
     private property <StackWalkInfo> stacks-info;
 
     spacing: 2px;
-    padding: 0px;
     
-    HorizontalBox {
-        padding: 0px;
+    HorizontalLayout {
         alignment: end;
 
         FindBar {
