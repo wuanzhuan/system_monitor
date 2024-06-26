@@ -161,6 +161,7 @@ export component EventsView inherits VerticalLayout {
                             }
                             ListView {
                                 for item in root.stacks-info.stacks: Rectangle {
+                                    width: self.preferred-width;
                                     HorizontalLayout {
                                         padding-left: 12px;
                                         padding-right: 12px;
