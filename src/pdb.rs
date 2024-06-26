@@ -11,6 +11,7 @@ use linked_hash_map::LinkedHashMap;
 pub struct ProcedureInfo {
     pub name: String,
     pub offset: u32,
+    #[allow(unused)]
     pub global: bool,
     pub line_map: BTreeMap<u32, String>,
 }

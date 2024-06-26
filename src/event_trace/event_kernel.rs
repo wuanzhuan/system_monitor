@@ -2030,6 +2030,7 @@ pub mod event_property {
         pub image_base: u64,
         pub image_size: u32,
         pub process_id: u32,
+        #[allow(unused)]
         pub image_check_sum: u32,
         pub time_date_stamp: u32,
         pub default_base: u64,
@@ -2136,6 +2137,7 @@ pub mod event_property {
         }
     }
 
+    #[allow(unused)]
     #[derive(Debug, Default)]
     pub struct Process {
         pub unique_process_key: u64,

@@ -29,6 +29,8 @@ ascii = "1.1"
 regex = "1.10"
 const-default = { version = "1.0", features = ["derive"] }
 pdb = "0.8"
+ahash = "0.8.11" # for version conflict
+time = "0.3.36"  # for version conflict
 
 [dependencies.windows]
 version = "0.53"

@@ -8,6 +8,7 @@ pub trait AsPcwstr {
 }
 
 pub trait FromPcwstr {
+    #[allow(unused)]
     fn from_pcwstr<'a>(s: PCWSTR) -> &'a Self;
 }
 

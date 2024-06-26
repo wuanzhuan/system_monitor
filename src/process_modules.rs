@@ -77,9 +77,9 @@ impl ModuleInfo {
         }
         if let Some(pdb_info) = pdb_info {
             let cursor = pdb_info.upper_bound(Bound::Included(&offset));
-            if let Some(procedure_info) = cursor.value() {
+            if let Some((offset, procedure_info)) = cursor.peek_prev() {
                 let cursor_line = procedure_info.line_map.upper_bound(Bound::Included(&offset));
-                if let Some(line_info) = cursor_line.value() {
+                if let Some((offset, line_info)) = cursor_line.peek_prev() {
                     return format!("{}+{:#x} {line_info}", procedure_info.name, offset - procedure_info.offset);
                 } else {
                     return format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset);
@@ -96,7 +96,9 @@ pub struct ModuleInfoRunning {
     pub module_info: Arc<ModuleInfo>,
     pub base_of_dll: u64,
     pub size_of_image: u32,
+    #[allow(unused)]
     pub entry_point: u64,
+    #[allow(unused)]
     pub start: TimeStamp,
 }
 
@@ -139,7 +141,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                 // todo:
             } else {
                 let cursor = kernel_module_lock.upper_bound(Bound::Included(&address));
-                if let Some(module_info_running) = cursor.value() {
+                if let Some((_, module_info_running)) = cursor.peek_prev() {
                     if address
                         >= module_info_running.base_of_dll
                             + module_info_running.size_of_image as u64
@@ -162,7 +164,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                 let cursor = process_info
                     .modules_map
                     .upper_bound(Bound::Included(&address));
-                if let Some(module_info_running) = cursor.value() {
+                if let Some((_, module_info_running)) = cursor.peek_prev() {
                     if address
                         >= module_info_running.base_of_dll
                             + module_info_running.size_of_image as u64
