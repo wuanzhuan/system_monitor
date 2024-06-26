@@ -219,14 +219,14 @@ export component TableView {
     callback current-row-changed(/* current-row */ int);
     callback row-double-clicked(/* row-index */ int);
 
-    private property <length> item-height: i-scroll-view.viewport-height / rows.length;
-    private property <length> current-item-y: i-scroll-view.viewport-y + current-row * item-height;
+    private property <length> item-height: list_view.viewport-height / rows.length;
+    private property <length> current-item-y: list_view.viewport-y + current-row * item-height;
     private property <int> has-hover-row: -1;
 
+    // the two properties can enable the width match the parent
     min-width: 400px;
-    min-height: 200px;
-    horizontal-stretch: 1;
-    vertical-stretch: 1;
+    min-height: 200px; 
+
     forward-focus: i-focus-scope;
 
     public function set-current-row(index: int) {
@@ -238,11 +238,11 @@ export component TableView {
         current-row-changed(current-row);
 
         if (current-item-y < 0) {
-            i-scroll-view.viewport-y += 0 - current-item-y;
+            list_view.viewport-y += 0 - current-item-y;
         }
 
-        if (current-item-y + item-height > i-scroll-view.visible-height) {
-            i-scroll-view.viewport-y -= current-item-y + item-height - i-scroll-view.visible-height;
+        if (current-item-y + item-height > list_view.visible-height) {
+            list_view.viewport-y -= current-item-y + item-height - list_view.visible-height;
         }
     }
 
@@ -263,17 +263,11 @@ export component TableView {
     }
 
     VerticalLayout {
-        padding: 0px;
-        spacing: 0px;
 
-        VerticalBox {
-            padding: 0px;
-            spacing: 0px;
+        VerticalLayout {
             height: self.preferred-height;
 
             i-header-layout := HorizontalLayout {
-                padding: 0px;
-
                 private property <length> min_column_width: 3rem;
     
                 if has-order-number : TableViewColumn {
@@ -288,7 +282,7 @@ export component TableView {
                 for column[index] in root.columns : TableViewColumn {
                     sort-order: column.sort-order;
                     horizontal-stretch: column.horizontal-stretch;
-                    width: index < root.columns.length - 1 ? root.columns[index].width : 10000px;
+                    width: index < root.columns.length - 1 ? root.columns[index].width : 2000px;
                     text: column.title;
                     index-column: index;
     
@@ -305,8 +299,9 @@ export component TableView {
                 height: 1phx;
             }
         }
-        i-scroll-view := ListView {
+        list_view := ListView {
             for row[idx] in root.rows : row_element := TableViewRow {
+                width: self.preferred-width;
                 selected: idx == root.current-row;
                 has-hover: idx == has-hover-row;
                 even: mod(idx, 2) == 0;
@@ -340,7 +335,7 @@ export component TableView {
                 }
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
-                    width: index < root.columns.length - 1 ? root.columns[index].width : 10000px;
+                    width: index < root.columns.length - 1 ? root.columns[index].width : self.preferred-width;
                     text: cell.text;
                     index-row: idx;
                     index-column: index;
