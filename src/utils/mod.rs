@@ -9,8 +9,8 @@ pub struct TimeStamp(pub i64);
 
 impl TimeStamp {
     pub fn to_datetime_local(&self) -> DateTime<Local> {
-        let duration = Utc.ymd(1970, 1, 1) - Utc.ymd(1601, 1, 1);
-        let dt_utc = Utc.timestamp_millis(self.0 / 10 / 1000 - duration.num_milliseconds());
+        let duration = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap() - Utc.with_ymd_and_hms(1601, 1, 1, 0, 0, 0).unwrap();
+        let dt_utc = Utc.timestamp_millis_opt(self.0 / 10 / 1000 - duration.num_milliseconds()).single().unwrap_or_default();
         DateTime::<Local>::from(dt_utc)
     }
 
@@ -52,7 +52,7 @@ pub struct TimeDateStamp(pub u32);
 
 impl TimeDateStamp {
     pub fn to_datetime_local(&self) -> DateTime<Local> {
-        let dt_utc = Utc.timestamp(self.0 as i64, 0);
+        let dt_utc = Utc.timestamp_opt(self.0 as i64, 0).single().unwrap_or_default();
         DateTime::<Local>::from(dt_utc)
     }
 
