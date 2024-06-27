@@ -299,7 +299,7 @@ export component TableView {
         }
         list_view := ListView {
             for row[idx] in root.rows : row_element := TableViewRow {
-                width: self.preferred-width;
+                width: max(self.preferred-width, list-view.viewport-width);
                 selected: idx == root.current-row;
                 has-hover: idx == has-hover-row;
                 even: mod(idx, 2) == 0;
@@ -331,9 +331,11 @@ export component TableView {
                         root.row-double-clicked(idx);
                     }
                 }
+
                 for cell[index] in row : TableViewCell {
                     horizontal-stretch: root.columns[index].horizontal-stretch;
-                    width: index < root.columns.length - 1 ? root.columns[index].width : self.preferred-width;
+                    min-width: index < root.columns.length - 1 ? root.columns[index].width : self.preferred-width;
+                    max-width: index < root.columns.length - 1 ? root.columns[index].width : list_view.viewport-width;
                     text: cell.text;
                     index-row: idx;
                     index-column: index;
