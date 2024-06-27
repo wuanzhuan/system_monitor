@@ -38,9 +38,12 @@ static PDBS_LOADED: Lazy<FairMutex<LinkedHashMap<(PathBuf, u32), Option<Arc<BTre
 pub fn get_pdb_info_for_module(module_name: &Path, module_time_date_stamp: u32) -> Option<Arc<BTreeMap<u32, ProcedureInfo>>> {
     let mut lock = PDBS_LOADED.lock();
     if let Some(pdb_info) = lock.get(&(module_name.to_path_buf(), module_time_date_stamp)) {
-        return pdb_info.clone();
+        if pdb_info.is_some() {
+            return pdb_info.clone();
+        }
+    } else {
+        lock.insert((module_name.to_path_buf(), module_time_date_stamp), None);
     }
-    lock.insert((module_name.to_path_buf(), module_time_date_stamp), None);
     drop(lock);
 
     match get_pdb_info_from_pdb_file(module_name, module_time_date_stamp) {
