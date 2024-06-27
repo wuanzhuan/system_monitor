@@ -52,32 +52,45 @@ impl EventRecordModel {
 
     pub fn stack_walk(&self) -> StackWalkInfo {
         if let Some(sw) = self.stack_walk.get() {
-            let vec = VecModel::<SharedString>::default();
+            let vec = VecModel::default();
             for item in sw.stacks.iter() {
-                let s = if let Some(relative) = item.1.relative {
+                let model_rc = if let Some(relative) = item.1.relative {
                     if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
                         let file_name = module_info.get_module_name();
-                        let location_info  = module_info.get_location_info(relative.1);
-                        format!(
-                            "{}: {:#x} {file_name}+{:#x} {location_info}",
-                            item.0, item.1.raw, relative.1
-                        )
+                        let (function_offset, line_offset)  = module_info.get_location_info(relative.1);
+
+                        ModelRc::from([
+                            StandardListViewItem::from(SharedString::from(&item.0)),
+                            StandardListViewItem::from(SharedString::from(format!("{:#x}", item.1.raw))),
+                            StandardListViewItem::from(SharedString::from(format!("{file_name}+{:#x}", relative.1))),
+                            StandardListViewItem::from(SharedString::from(function_offset)),
+                            StandardListViewItem::from(SharedString::from(line_offset)),
+                            ])
                     } else {
-                        format!(
-                            "{}: {:#x} {}+{:#x}",
-                            item.0, item.1.raw, relative.0, relative.1
-                        )
+                        ModelRc::from([
+                            StandardListViewItem::from(SharedString::from(&item.0)),
+                            StandardListViewItem::from(SharedString::from(format!("{:#x}", item.1.raw))),
+                            StandardListViewItem::from(SharedString::from(format!("{:#x}", relative.0))),
+                            StandardListViewItem::from(SharedString::from(format!("{:#x}", relative.1))),
+                            StandardListViewItem::from(SharedString::new()),
+                            ])
                     }
                 } else {
-                    format!("{}: {:#x}", item.0, item.1.raw)
+                    ModelRc::from([
+                        StandardListViewItem::from(SharedString::from(&item.0)),
+                        StandardListViewItem::from(SharedString::from(format!("{:#x}", item.1.raw))),
+                        StandardListViewItem::from(SharedString::new()),
+                        StandardListViewItem::from(SharedString::new()),
+                        StandardListViewItem::from(SharedString::new()),
+                        ])
                 };
-                vec.push(SharedString::from(s.as_str()))
+                vec.push(model_rc);
             }
             StackWalkInfo {
                 event_timestamp: SharedString::from(sw.event_timestamp.to_string()),
                 process_id: SharedString::from(format!("{}", sw.stack_process as i32)),
                 thread_id: SharedString::from(format!("{}", sw.stack_thread as i32)),
-                stacks: ModelRc::<SharedString>::new(vec),
+                stacks: ModelRc::new(vec),
             }
         } else {
             StackWalkInfo::default()

@@ -11,7 +11,7 @@ export struct StackWalkInfo {
     event_timestamp: string,
     process_id: string,
     thread_id: string,
-    stacks: [string]
+    stacks: [[StandardListViewItem]]
 }
 
 export global EventsViewData  {
@@ -74,12 +74,12 @@ export component EventsView inherits VerticalLayout {
 
     popup := PopupWindow {
         private property <length> font-size: 1.2rem;
-        x: table_view.order-column-width + 15px;
-        y: table_view.y + table_view.header-height + 12px;
-        width: root.width * 50%;
-        height: root.height * 60%;
-        min-width: font-size * 20;
-        min-height: font-size * 30;
+        x: table_view.x + table_view.width * 20%;
+        y: table_view.y + table_view.height * 20%;
+        width: table_view.width * 60%;
+        height: table_view.height * 60%;
+        min-width: font-size * 50;
+        min-height: font-size * 40;
         close-on-click: false;
 
         Rectangle {
@@ -159,27 +159,15 @@ export component EventsView inherits VerticalLayout {
                                     font-size: 1.2rem;
                                 }
                             }
-                            ListView {
-                                for item in root.stacks-info.stacks: Rectangle {
-                                    width: self.preferred-width;
-                                    HorizontalLayout {
-                                        padding-left: 12px;
-                                        padding-right: 12px;
-                                        padding-top: 9px;
-                                        padding-bottom: 9px;
-                                
-                                        main-text := TextCopiable {
-                                            width: 100%;
-                                            height: 100%;
-                                            horizontal-alignment: left;
-                                            vertical-alignment: center;
-                                            text: item;
-                                            font-weight: 500;
-                                            font-size: 1.2rem;
-                                            single-line: true;
-                                        }
-                                    }
-                                }
+                            TableView {
+                                columns: [
+                                    {title: @tr("StackOrder"), width: 10rem},
+                                    {title: @tr("Address"), width: 11rem},
+                                    {title: @tr("ModuleOffset"), width: 20rem},
+                                    {title: @tr("FunctionOffset."), width: 20rem},
+                                    {title: @tr("CodeLine"), width: 30rem},
+                                ];
+                                rows: stacks-info.stacks;
                             }
                         }
                     }

@@ -61,7 +61,7 @@ impl ModuleInfo {
     }
 
     // offset: from module's image base
-    pub fn get_location_info(&self, offset: u32) -> String {
+    pub fn get_location_info(&self, offset: u32) -> (/*function_offset*/String, /*line_offset*/String) {
         let mut pdb_info: Option<Arc<BTreeMap<u32, ProcedureInfo>>> = None;
         if let Some(ref weak) = *self.weak_lock.lock() {
             pdb_info = weak.upgrade();
@@ -80,13 +80,13 @@ impl ModuleInfo {
             if let Some((offset, procedure_info)) = cursor.peek_prev() {
                 let cursor_line = procedure_info.line_map.upper_bound(Bound::Included(&offset));
                 if let Some((offset, line_info)) = cursor_line.peek_prev() {
-                    return format!("{}+{:#x} {line_info}", procedure_info.name, offset - procedure_info.offset);
+                    return (format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset), format!("{line_info}"));
                 } else {
-                    return format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset);
+                    return (format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset), String::new());
                 }
             }
         }
-        String::new()
+        (String::new(), String::new())
     }
 }
 
@@ -122,7 +122,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
         if let Some(process_module_mutex) = RUNNING_PROCESSES_MODULES_MAP.lock().get(&process_id) {
             Some(process_module_mutex.clone())
         } else {
-            warn!("Don't find process_id: {process_id} in RUNNING_PROCESSES_MODULES_MAP");
+            warn!("Don't find process: {process_id} in RUNNING_PROCESSES_MODULES_MAP");
             None
         }
     } else {
@@ -211,7 +211,7 @@ pub fn get_process_path_by_id(process_id: u32) -> String {
         let process_info_mutex = process_info_arc.lock();
         process_info_mutex.path.clone()
     } else {
-        error!("Don't find the process:{process_id} when get process path");
+        error!("Don't find the process: {process_id} when getting process path");
         String::new()
     }
 }
