@@ -206,12 +206,12 @@ component TableViewRow inherits Rectangle {
 
 export component TableView {
     in property <[[StandardListViewItem]]> rows;
+    in property <bool> has_order_number: true;
+    out property <length> header-height: i-header-layout.height;
     out property <int> current-sort-column: -1;
     in-out property <[TableColumn]> columns;
     in-out property <int> current-row: -1;
     in-out property <length> order-column-width: 6rem;
-    in property <bool> has_order_number: true;
-    out property <length> header-height: i-header-layout.height;
 
     callback sort-ascending(/* column-index */ int);
     callback sort-descending(/* column-index */ int);
