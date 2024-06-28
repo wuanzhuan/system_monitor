@@ -2,15 +2,14 @@ use super::event_trace::{EventRecordDecoded, PropertyDecoded, StackWalk};
 use crate::filter::{Path, Value};
 use crate::process_modules;
 use crate::StackWalkInfo;
-use anyhow::{anyhow, Result, Error};
+use anyhow::{anyhow, Error, Result};
 use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
 use std::{
+    str::FromStr,
     sync::{Arc, OnceLock},
-    str::FromStr
 };
+use strum::{AsRefStr, VariantArray};
 use tracing::error;
-use strum::{VariantArray, AsRefStr};
-
 
 #[derive(Clone)]
 pub struct EventRecordModel {
@@ -26,14 +25,16 @@ impl EventRecordModel {
             array: Arc::new(event_record),
             process_path,
             stack_walk: OnceLock::new(),
-            stack_walk_2: OnceLock::new()
+            stack_walk_2: OnceLock::new(),
         }
     }
 
     pub fn data_detail(&self) -> Option<SharedString> {
-        Some(SharedString::from(
-            format!("{}\n{}", serde_json::to_string_pretty(&*self.array).unwrap_or_default(), self.process_path)
-        ))
+        Some(SharedString::from(format!(
+            "{}\n{}",
+            serde_json::to_string_pretty(&*self.array).unwrap_or_default(),
+            self.process_path
+        )))
     }
 
     /// Returns true if the `stack_walk` is None
@@ -74,32 +75,51 @@ impl EventRecordModel {
                 let model_rc = if let Some(relative) = item.1.relative {
                     if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
                         let file_name = module_info.get_module_name();
-                        let (function_offset, line_offset)  = module_info.get_location_info(relative.1);
+                        let (function_offset, line_offset) =
+                            module_info.get_location_info(relative.1);
 
                         ModelRc::from([
                             StandardListViewItem::from(SharedString::from(&item.0)),
-                            StandardListViewItem::from(SharedString::from(format!("{:#x}", item.1.raw))),
-                            StandardListViewItem::from(SharedString::from(format!("{file_name}+{:#x}", relative.1))),
+                            StandardListViewItem::from(SharedString::from(format!(
+                                "{:#x}",
+                                item.1.raw
+                            ))),
+                            StandardListViewItem::from(SharedString::from(format!(
+                                "{file_name}+{:#x}",
+                                relative.1
+                            ))),
                             StandardListViewItem::from(SharedString::from(function_offset)),
                             StandardListViewItem::from(SharedString::from(line_offset)),
-                            ])
+                        ])
                     } else {
                         ModelRc::from([
                             StandardListViewItem::from(SharedString::from(&item.0)),
-                            StandardListViewItem::from(SharedString::from(format!("{:#x}", item.1.raw))),
-                            StandardListViewItem::from(SharedString::from(format!("{:#x}", relative.0))),
-                            StandardListViewItem::from(SharedString::from(format!("{:#x}", relative.1))),
+                            StandardListViewItem::from(SharedString::from(format!(
+                                "{:#x}",
+                                item.1.raw
+                            ))),
+                            StandardListViewItem::from(SharedString::from(format!(
+                                "{:#x}",
+                                relative.0
+                            ))),
+                            StandardListViewItem::from(SharedString::from(format!(
+                                "{:#x}",
+                                relative.1
+                            ))),
                             StandardListViewItem::from(SharedString::new()),
-                            ])
+                        ])
                     }
                 } else {
                     ModelRc::from([
                         StandardListViewItem::from(SharedString::from(&item.0)),
-                        StandardListViewItem::from(SharedString::from(format!("{:#x}", item.1.raw))),
+                        StandardListViewItem::from(SharedString::from(format!(
+                            "{:#x}",
+                            item.1.raw
+                        ))),
                         StandardListViewItem::from(SharedString::new()),
                         StandardListViewItem::from(SharedString::new()),
                         StandardListViewItem::from(SharedString::new()),
-                        ])
+                    ])
                 };
                 vec.push(model_rc);
             }
@@ -154,7 +174,9 @@ impl EventRecordModel {
             }
             Columns::EventName => {
                 if let Value::Str(string) = value {
-                    if self.array.get_event_display_name().to_ascii_lowercase() == string.to_ascii_lowercase() {
+                    if self.array.get_event_display_name().to_ascii_lowercase()
+                        == string.to_ascii_lowercase()
+                    {
                         return Ok(true);
                     }
                     return Ok(false);
@@ -343,7 +365,6 @@ impl EventRecordModel {
     pub fn get_process_name(&self) -> &str {
         process_modules::get_file_name_from_path(self.process_path.as_str())
     }
-
 }
 
 impl Model for EventRecordModel {
@@ -362,7 +383,7 @@ impl Model for EventRecordModel {
                 self.array.timestamp.to_datetime_detail(),
             ))),
             Columns::ProcessName => Some(StandardListViewItem::from(SharedString::from(
-                self.get_process_name()
+                self.get_process_name(),
             ))),
             Columns::ProcessId => Some(StandardListViewItem::from(SharedString::from(
                 (self.array.process_id as i32).to_string(),
@@ -422,9 +443,8 @@ impl FromStr for Columns {
     }
 }
 
-
 #[cfg(test)]
-mod tests{
+mod tests {
     use super::*;
 
     #[test]

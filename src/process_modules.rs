@@ -1,8 +1,8 @@
 use crate::{
     event_trace::{EventRecordDecoded, Image, Process, StackAddress},
+    pdb::{get_pdb_info_for_module, ProcedureInfo},
     third_extend::strings::{AsPcwstr, StringEx},
     utils::TimeStamp,
-    pdb::{ProcedureInfo, get_pdb_info_for_module}
 };
 use anyhow::{anyhow, Result};
 use ascii::AsciiChar;
@@ -13,10 +13,12 @@ use std::{
     collections::{BTreeMap, HashMap},
     fs::File,
     io::{Read, Seek, SeekFrom},
-    mem, ptr, slice,
+    mem,
+    ops::Bound,
+    path::Path,
+    ptr, slice,
     sync::{Arc, OnceLock, Weak},
     time::Duration,
-    path::Path, ops::Bound
 };
 use tracing::{error, warn};
 use widestring::*;
@@ -52,7 +54,7 @@ static DRIVE_LETTER_MAP: OnceLock<HashMap<String, AsciiChar>> = OnceLock::new();
 pub struct ModuleInfo {
     pub file_name: String,
     pub time_data_stamp: u32,
-    weak_lock: FairMutex<Option<Weak<BTreeMap<u32, ProcedureInfo>>>>
+    weak_lock: FairMutex<Option<Weak<BTreeMap<u32, ProcedureInfo>>>>,
 }
 
 impl ModuleInfo {
@@ -61,13 +63,18 @@ impl ModuleInfo {
     }
 
     // offset: from module's image base
-    pub fn get_location_info(&self, offset: u32) -> (/*function_offset*/String, /*line_offset*/String) {
+    pub fn get_location_info(
+        &self,
+        offset: u32,
+    ) -> (/*function_offset*/ String, /*line_offset*/ String) {
         let mut pdb_info: Option<Arc<BTreeMap<u32, ProcedureInfo>>> = None;
         if let Some(ref weak) = *self.weak_lock.lock() {
             pdb_info = weak.upgrade();
         }
         if pdb_info.is_none() {
-            if let Some(arc) = get_pdb_info_for_module(Path::new(self.file_name.as_str()), self.time_data_stamp) {
+            if let Some(arc) =
+                get_pdb_info_for_module(Path::new(self.file_name.as_str()), self.time_data_stamp)
+            {
                 let weak = Arc::downgrade(&arc);
                 *self.weak_lock.lock() = Some(weak);
                 pdb_info = Some(arc);
@@ -78,11 +85,27 @@ impl ModuleInfo {
         if let Some(pdb_info) = pdb_info {
             let cursor = pdb_info.upper_bound(Bound::Included(&offset));
             if let Some((offset, procedure_info)) = cursor.peek_prev() {
-                let cursor_line = procedure_info.line_map.upper_bound(Bound::Included(&offset));
+                let cursor_line = procedure_info
+                    .line_map
+                    .upper_bound(Bound::Included(&offset));
                 if let Some((offset, line_info)) = cursor_line.peek_prev() {
-                    return (format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset), format!("{line_info}"));
+                    return (
+                        format!(
+                            "{}+{:#x}",
+                            procedure_info.name,
+                            offset - procedure_info.offset
+                        ),
+                        format!("{line_info}"),
+                    );
                 } else {
-                    return (format!("{}+{:#x}", procedure_info.name, offset - procedure_info.offset), String::new());
+                    return (
+                        format!(
+                            "{}+{:#x}",
+                            procedure_info.name,
+                            offset - procedure_info.offset
+                        ),
+                        String::new(),
+                    );
                 }
             }
         }
@@ -108,7 +131,6 @@ pub struct ProcessInfo {
     init_error: Option<String>,
     modules_map: BTreeMap<u64, ModuleInfoRunning>,
 }
-
 
 pub fn init(selected_process_ids: &Vec<u32>) {
     drive_letter_map_init();
@@ -410,13 +432,14 @@ fn enum_drivers() {
         } else {
             file_name
         };
-        let (image_size, time_date_stamp) = match get_image_info_from_file(Path::new(file_name.as_str())) {
-            Err(e) => {
-                warn!("Failed to get_image_info_from_file: {file_name} {e}");
-                continue;
-            }
-            Ok(info) => info,
-        };
+        let (image_size, time_date_stamp) =
+            match get_image_info_from_file(Path::new(file_name.as_str())) {
+                Err(e) => {
+                    warn!("Failed to get_image_info_from_file: {file_name} {e}");
+                    continue;
+                }
+                Ok(info) => info,
+            };
 
         let (id, module_info_arc) = module_map_insert(file_name, time_date_stamp);
         let module_info_running = ModuleInfoRunning {
@@ -478,7 +501,7 @@ fn module_map_insert(
         let module_info_arc = Arc::new(ModuleInfo {
             file_name: file_name.clone(),
             time_data_stamp: time_date_stamp,
-            weak_lock: FairMutex::new(None)
+            weak_lock: FairMutex::new(None),
         });
         let entry = module_lock.insert_full(
             (file_name.clone(), time_date_stamp),
@@ -599,7 +622,8 @@ fn process_init(process_id: u32) {
             if let Err(e) = r {
                 warn!("Failed to GetModuleInformation: {}", e);
             }
-            let (_, time_date_stamp) = match get_image_info_from_file(Path::new(file_name.as_str())) {
+            let (_, time_date_stamp) = match get_image_info_from_file(Path::new(file_name.as_str()))
+            {
                 Ok(info) => info,
                 Err(e) => {
                     warn!("Failed to get_image_info_from_file: {e}");
@@ -731,10 +755,10 @@ fn is_kernel_session_space(_address: u64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{DRIVE_LETTER_MAP, RUNNING_PROCESSES_MODULES_MAP};
-    use windows::Win32::System::Threading::GetCurrentProcessId;
-    use std::path::Path;
     use crate::pdb::pdb_path_set;
     use parking_lot::FairMutex;
+    use std::path::Path;
+    use windows::Win32::System::Threading::GetCurrentProcessId;
 
     #[test]
     fn store_process_modules() {
@@ -763,9 +787,16 @@ mod tests {
     fn get_location_info() {
         let out_dir = env!("CARGO_MANIFEST_DIR");
         let pkg_name = env!("CARGO_PKG_NAME");
-        let (_, time_date_stamp) = super::get_image_info_from_file(Path::new(format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str())).unwrap();
+        let (_, time_date_stamp) = super::get_image_info_from_file(Path::new(
+            format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str(),
+        ))
+        .unwrap();
         pdb_path_set(format!("{out_dir}\\target\\debug").as_str());
-        let module_info = super::ModuleInfo{file_name: format!("{out_dir}\\target\\debug\\{pkg_name}.exe"), time_data_stamp: time_date_stamp, weak_lock: FairMutex::new(None)};
+        let module_info = super::ModuleInfo {
+            file_name: format!("{out_dir}\\target\\debug\\{pkg_name}.exe"),
+            time_data_stamp: time_date_stamp,
+            weak_lock: FairMutex::new(None),
+        };
         let r = module_info.get_location_info(0x2b6168);
         println!("{r}");
     }

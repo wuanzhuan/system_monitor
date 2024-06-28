@@ -504,7 +504,8 @@ impl ExpressionForPair {
                             if path.key != Columns::Properties {
                                 if path.field.is_some() {
                                     err_string.push_str(
-                                        format!("The path {} no field\n", path.key.as_ref()).as_str(),
+                                        format!("The path {} no field\n", path.key.as_ref())
+                                            .as_str(),
                                     );
                                 }
                             } else {

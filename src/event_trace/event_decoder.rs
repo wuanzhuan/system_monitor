@@ -550,7 +550,7 @@ pub struct EventRecordDecoded {
     pub level_name: String,
     pub channel_name: String,
     pub keywords_name: String,
-        event_display_name: Option<String>,
+    event_display_name: Option<String>,
     pub event_name: String,
     pub opcode_name: String,
     pub event_message: String,

@@ -1,6 +1,6 @@
+use const_default::ConstDefault;
 pub use strum::*;
 use windows::{core::*, Win32::System::Diagnostics::Etw::*};
-use const_default::ConstDefault;
 
 /*
    reference:
@@ -1687,12 +1687,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::None as u32,
             ..MajorDescribe::DEFAULT
         },
-        minors: &[
-            MinorDescribe {
-                name: "Stack",
-                op_code: 32,
-            },
-        ],
+        minors: &[MinorDescribe {
+            name: "Stack",
+            op_code: 32,
+        }],
         guid: STACK_WALK_GUID,
         ..EventsDescribe::DEFAULT
     },
@@ -1707,7 +1705,12 @@ pub struct EventsDescribe {
 }
 
 impl ConstDefault for EventsDescribe {
-    const DEFAULT: Self = Self { configurable: true, major: MajorDescribe::DEFAULT, minors: &[], guid: GUID::zeroed() };
+    const DEFAULT: Self = Self {
+        configurable: true,
+        major: MajorDescribe::DEFAULT,
+        minors: &[],
+        guid: GUID::zeroed(),
+    };
 }
 
 #[derive(Debug, ConstDefault)]
@@ -1930,7 +1933,6 @@ pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430
 /// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
 pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
 pub const LOST_EVENT_GUID: GUID = GUID::from_u128(0x6a399ae0_4bc6_4de9_870b_3657f8947e7e);
-
 
 pub mod event_property {
     use crate::event_trace::event_decoder;

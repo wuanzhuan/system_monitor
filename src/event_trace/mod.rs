@@ -277,7 +277,7 @@ impl Controller {
             er.EventHeader.ProviderId == ImageLoadGuid || er.EventHeader.ProviderId == ProcessGuid;
         let is_lost_event = er.EventHeader.ProviderId == LOST_EVENT_GUID;
         let is_auto_generated = er.EventHeader.ProviderId == EventTraceGuid;
-        
+
         let context_mg = CONTEXT.lock();
         let event_indexes = match get_event_indexes(er, Some(&context_mg)) {
             Ok(indexes) => indexes,
@@ -337,7 +337,10 @@ impl Controller {
                 }
             },
             Err(e) => {
-                warn!("Faild to Decoder::new: {e} EventRecord: {}", EventRecord(er));
+                warn!(
+                    "Faild to Decoder::new: {e} EventRecord: {}",
+                    EventRecord(er)
+                );
                 event_decoder::decode_kernel_event(
                     er,
                     event_kernel::EVENTS_DESC[event_indexes.0].major.name,
@@ -405,7 +408,6 @@ impl Controller {
                 get(er, &context_mg)
             }
         }
-
     }
 
     fn update_config(&self) -> Result<()> {

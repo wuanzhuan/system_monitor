@@ -2,16 +2,16 @@ use anyhow::Result;
 use intrusive_collections::intrusive_adapter;
 use intrusive_collections::linked_list::CursorMut;
 use intrusive_collections::{linked_list::Cursor, LinkedList, LinkedListLink};
+use once_cell::sync::OnceCell;
 use parking_lot::FairMutex;
 use std::{
-    ptr,
     cell::SyncUnsafeCell,
+    ptr,
     sync::{
-        atomic::{AtomicUsize, AtomicU64, Ordering},
+        atomic::{AtomicU64, AtomicUsize, Ordering},
         Arc,
     },
 };
-use once_cell::sync::OnceCell;
 
 #[derive(Clone)]
 pub struct Node<T: Clone + Send + Sync> {
@@ -47,9 +47,12 @@ impl<T: Clone + Send + Sync> NodeArc<T> {
         }
     }
 
-    fn get_cursor<'a>(&self, list: &'a LinkedList<NodeAdapter<T>>) -> Option<Cursor<'a, NodeAdapter<T>>> {
+    fn get_cursor<'a>(
+        &self,
+        list: &'a LinkedList<NodeAdapter<T>>,
+    ) -> Option<Cursor<'a, NodeAdapter<T>>> {
         if let Some(ref node) = self.node {
-            let cursor = unsafe{ list.cursor_from_ptr(node.as_ref()) };
+            let cursor = unsafe { list.cursor_from_ptr(node.as_ref()) };
             Some(cursor)
         } else {
             None
@@ -99,17 +102,18 @@ impl<T: Clone + Send + Sync> EventList<T> {
         if index_to >= list_len {
             return None;
         }
-        
+
         // i.e. the cursor is null at start
-        let (mut cursor, cursor_index) = if let Some(cursor) = list_except_last_lock.get_cursor(self.get_list()) {
-            (cursor, list_except_last_lock.index)
-        } else {
-            let cursor = self.get_list().front();
-            if cursor.is_null() {
-                return None;
-            }
-            (cursor, 0usize)
-        };
+        let (mut cursor, cursor_index) =
+            if let Some(cursor) = list_except_last_lock.get_cursor(self.get_list()) {
+                (cursor, list_except_last_lock.index)
+            } else {
+                let cursor = self.get_list().front();
+                if cursor.is_null() {
+                    return None;
+                }
+                (cursor, 0usize)
+            };
 
         if cursor_index == index_to {
             list_except_last_lock.set(cursor.clone_pointer(), index_to);
@@ -140,7 +144,7 @@ impl<T: Clone + Send + Sync> EventList<T> {
         }
 
         // the function should be success
-        fn move_next_to_uncheck<'a, T: Clone + Send + Sync> (
+        fn move_next_to_uncheck<'a, T: Clone + Send + Sync>(
             cursor: &mut Cursor<'a, NodeAdapter<T>>,
             current_index: usize,
             index_to: usize,
@@ -197,8 +201,8 @@ impl<T: Clone + Send + Sync> EventList<T> {
     /// Remove the row by a arc
     pub fn remove(&self, node_arc: Arc<Node<T>>) {
         let mut list_except_last_lock = self.list_except_last_lock.lock(); // lock before remove
-        let mut cursor = self.get_cursor_mut_from_node(node_arc.as_ref());  // the node_arc may be modify by other 
-        // the remove and push is called in same thread
+        let mut cursor = self.get_cursor_mut_from_node(node_arc.as_ref()); // the node_arc may be modify by other
+                                                                           // the remove and push is called in same thread
         let node_arc_removed = cursor.remove();
         if let Some(node_arc_removed) = &node_arc_removed {
             self.list_len.fetch_sub(1, Ordering::Release);
@@ -207,7 +211,9 @@ impl<T: Clone + Send + Sync> EventList<T> {
                     let index = list_except_last_lock.index;
                     list_except_last_lock.set(cursor.as_cursor().clone_pointer(), index);
                 } else {
-                    if node_arc_removed.serial_number.get().unwrap() <= cursor_last_read.serial_number.get().unwrap() {
+                    if node_arc_removed.serial_number.get().unwrap()
+                        <= cursor_last_read.serial_number.get().unwrap()
+                    {
                         if list_except_last_lock.index != 0 {
                             list_except_last_lock.index -= 1;
                         }
@@ -218,15 +224,14 @@ impl<T: Clone + Send + Sync> EventList<T> {
     }
 
     fn get_list(&self) -> &LinkedList<NodeAdapter<T>> {
-        unsafe{ &*self.list.get() }
+        unsafe { &*self.list.get() }
     }
 
     fn get_list_mut(&self) -> &mut LinkedList<NodeAdapter<T>> {
-        unsafe{ &mut *self.list.get() }
+        unsafe { &mut *self.list.get() }
     }
 
     fn get_cursor_mut_from_node(&self, node: &Node<T>) -> CursorMut<NodeAdapter<T>> {
         unsafe { self.get_list_mut().cursor_mut_from_ptr(node) }
     }
-
 }

@@ -1,11 +1,16 @@
 use crate::utils::TimeDateStamp;
 use anyhow::{anyhow, Context, Result};
+use linked_hash_map::LinkedHashMap;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use pdb::{FallibleIterator, SymbolData, PDB};
-use std::{collections::BTreeMap, fs::File, path::{Path, PathBuf}, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    fs::File,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 use tracing::error;
-use linked_hash_map::LinkedHashMap;
 
 #[derive(Debug)]
 pub struct ProcedureInfo {
@@ -31,11 +36,14 @@ pub fn pdb_path_get() -> String {
     PDB_PATH.lock().clone()
 }
 
-static PDBS_LOADED: Lazy<FairMutex<LinkedHashMap<(PathBuf, u32), Option<Arc<BTreeMap<u32, ProcedureInfo>>>>>> = Lazy::new(|| {
-    FairMutex::new(LinkedHashMap::new())
-});
+static PDBS_LOADED: Lazy<
+    FairMutex<LinkedHashMap<(PathBuf, u32), Option<Arc<BTreeMap<u32, ProcedureInfo>>>>>,
+> = Lazy::new(|| FairMutex::new(LinkedHashMap::new()));
 
-pub fn get_pdb_info_for_module(module_name: &Path, module_time_date_stamp: u32) -> Option<Arc<BTreeMap<u32, ProcedureInfo>>> {
+pub fn get_pdb_info_for_module(
+    module_name: &Path,
+    module_time_date_stamp: u32,
+) -> Option<Arc<BTreeMap<u32, ProcedureInfo>>> {
     let mut lock = PDBS_LOADED.lock();
     if let Some(pdb_info) = lock.get(&(module_name.to_path_buf(), module_time_date_stamp)) {
         if pdb_info.is_some() {
@@ -48,14 +56,20 @@ pub fn get_pdb_info_for_module(module_name: &Path, module_time_date_stamp: u32) 
 
     match get_pdb_info_from_pdb_file(module_name, module_time_date_stamp) {
         Err(e) => {
-            error!("Faile to get_pdb_info_from_pdb_file for {}-{module_time_date_stamp} {e}", module_name.display());
+            error!(
+                "Faile to get_pdb_info_from_pdb_file for {}-{module_time_date_stamp} {e}",
+                module_name.display()
+            );
             None
         }
         Ok(pdb_info) => {
             let arc = Arc::new(pdb_info);
             let mut lock = PDBS_LOADED.lock();
-            let _ = lock.get_mut(&(module_name.to_path_buf(), module_time_date_stamp)).unwrap().insert(arc.clone());
-        
+            let _ = lock
+                .get_mut(&(module_name.to_path_buf(), module_time_date_stamp))
+                .unwrap()
+                .insert(arc.clone());
+
             Some(arc)
         }
     }
@@ -64,7 +78,7 @@ pub fn get_pdb_info_for_module(module_name: &Path, module_time_date_stamp: u32) 
 // module_name: file name i.e. system_monitor.exe
 fn get_pdb_info_from_pdb_file(
     module_name: &Path,
-    module_time_date_stamp: u32
+    module_time_date_stamp: u32,
 ) -> Result<BTreeMap<u32, ProcedureInfo>> {
     let module_file_name = if let Some(module_file_name) = module_name.file_name() {
         module_file_name
@@ -76,9 +90,8 @@ fn get_pdb_info_from_pdb_file(
         .join(module_file_name)
         .with_extension("pdb");
 
-    let file = File::open(pdb_path.as_path()).with_context(|| {
-        format!("Failed to open {}", pdb_path.display())
-    })?;
+    let file = File::open(pdb_path.as_path())
+        .with_context(|| format!("Failed to open {}", pdb_path.display()))?;
     let mut pdb = PDB::open(file)?;
     let pdb_info = pdb.pdb_information()?;
 
@@ -150,16 +163,22 @@ fn get_pdb_info_from_pdb_file(
 
 #[cfg(test)]
 mod tests {
-    use std::{ops::Bound, path::Path};
     use crate::process_modules::get_image_info_from_file;
+    use std::{ops::Bound, path::Path};
 
     #[test]
     fn get_pdb_info_from_pdb_file() {
         let out_dir = env!("CARGO_MANIFEST_DIR");
         let pkg_name = env!("CARGO_PKG_NAME");
-        let module_info = get_image_info_from_file(Path::new(format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str())).unwrap();
+        let module_info = get_image_info_from_file(Path::new(
+            format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str(),
+        ))
+        .unwrap();
         super::pdb_path_set(format!("{out_dir}\\target\\debug\\pdb").as_str());
-        let r = super::get_pdb_info_from_pdb_file(&Path::new(format!("{pkg_name}.exe").as_str()), module_info.1);
+        let r = super::get_pdb_info_from_pdb_file(
+            &Path::new(format!("{pkg_name}.exe").as_str()),
+            module_info.1,
+        );
         match r {
             Ok(map) => {
                 let address: u32 = 0x2b6168;
@@ -181,9 +200,15 @@ mod tests {
     fn get_pdb_info_for_module() {
         let out_dir = env!("CARGO_MANIFEST_DIR");
         let pkg_name = env!("CARGO_PKG_NAME");
-        let module_info = get_image_info_from_file(Path::new(format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str())).unwrap();
+        let module_info = get_image_info_from_file(Path::new(
+            format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str(),
+        ))
+        .unwrap();
         super::pdb_path_set(format!("{out_dir}\\target\\debug\\pdb").as_str());
-        if let Some(arc) = super::get_pdb_info_for_module(&Path::new(format!("{pkg_name}.exe").as_str()), module_info.1) {
+        if let Some(arc) = super::get_pdb_info_for_module(
+            &Path::new(format!("{pkg_name}.exe").as_str()),
+            module_info.1,
+        ) {
             let address: u32 = 0x2b6168;
             let cursor = arc.upper_bound(Bound::Included(&address));
             if let Some(info) = cursor.value() {
