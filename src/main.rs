@@ -7,7 +7,7 @@ use linked_hash_map::LinkedHashMap;
 use slint::{
     Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel,
 };
-use std::{cell::SyncUnsafeCell, rc::Rc, sync::Arc, path::Path, fs::create_dir_all};
+use std::{cell::SyncUnsafeCell, fs::create_dir_all, path::Path, rc::Rc, sync::Arc};
 use strum::VariantArray;
 use tracing::{error, info, warn};
 
@@ -19,11 +19,10 @@ mod event_list_model;
 mod event_record_model;
 mod event_trace;
 mod filter;
+mod pdb;
 mod process_modules;
 mod third_extend;
 mod utils;
-mod pdb;
-
 
 slint::include_modules!();
 
@@ -222,6 +221,10 @@ fn main() {
             (u32, i64),
             Option<Arc<event_list::Node<EventRecordModel>>>,
         >::with_capacity(50));
+        let mut stack_walk_delay_remove_map = SyncUnsafeCell::new(LinkedHashMap::<
+            (u32, i64),
+            Option<Arc<event_list::Node<EventRecordModel>>>,
+        >::with_capacity(50));
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
@@ -236,7 +239,7 @@ fn main() {
                         .get_mut()
                         .remove(&(sw.stack_thread, sw.event_timestamp))
                     {
-                        if let Some(some_node) = some_row {
+                        if let Some(ref some_node) = some_row {
                             process_modules::convert_to_module_offset(
                                 sw.stack_process,
                                 sw.stacks.as_mut_slice(),
@@ -248,18 +251,72 @@ fn main() {
                                 .unwrap();
                             erm.set_stack_walk(sw.clone());
                         }
+                        stack_walk_delay_remove_map
+                            .get_mut()
+                            .insert((sw.stack_thread, sw.event_timestamp), some_row);
                     } else {
-                        error!(
-                            "Can't find event for the stack walk: {}:{}:{timestamp}  {}:{}:{} {:?}",
-                            process_id as i32,
-                            thread_id as i32,
-                            sw.stack_process,
-                            sw.stack_thread as i32,
-                            sw.event_timestamp,
-                            sw.stacks
-                        );
+                        if let Some(some_row) = stack_walk_delay_remove_map
+                            .get_mut()
+                            .remove(&(sw.stack_thread, sw.event_timestamp))
+                        {
+                            // set second stack for event
+                        } else {
+                            error!(
+                                "Can't find event for the stack walk: {}:{}:{timestamp}  {}:{}:{} {:?}",
+                                process_id as i32,
+                                thread_id as i32,
+                                sw.stack_process,
+                                sw.stack_thread as i32,
+                                sw.event_timestamp,
+                                sw.stacks
+                            );
+                        }
                     }
+
+                    // clear stack_walk_delay_remove_map. because insert a item when is stack walk event. so keep the map len
+                    let map = stack_walk_delay_remove_map.get_mut();
+                    map_pop_front(map, timestamp, 10, 10, true);
                     return;
+                } else {
+                    // clear stack_walk_map. because insert a item when is a non stack walk event. so keep the map len
+                    let map = stack_walk_map.get_mut();
+                    map_pop_front(map, timestamp, 10, 30, false);
+                }
+
+                fn map_pop_front(map: &mut LinkedHashMap<(u32, i64), Option<Arc<event_list::Node<EventRecordModel>>>>, current_timestamp: i64, count: usize, num_seconds: i64, is_delay_remove_map: bool) {
+                    let count = if count < map.len() { count } else {map.len() };
+                    for _index in 0..count {
+                        let is_pop = if let Some((key, _value)) = map.front() {
+                            let dt_prev = utils::TimeStamp(key.1).to_datetime_local();
+                            let duration = utils::TimeStamp(current_timestamp).to_datetime_local() - dt_prev;
+                            if duration.num_seconds() > num_seconds {
+                                true
+                            } else {
+                                break;
+                            }
+                        } else {
+                            break;
+                        };
+
+                        if is_pop {
+                            let (key, value) = map.pop_front().unwrap();
+                            let dt_prev = utils::TimeStamp(key.1).to_datetime_local();
+                            let message: String = if let Some(arc) = value {
+                                let erm = arc
+                                .value
+                                .as_any()
+                                .downcast_ref::<event_record_model::EventRecordModel>()
+                                .unwrap();
+                                format!("{:?}", *erm.array)
+                            } else {
+                                format!("Not push to list")
+                            };
+
+                            if !is_delay_remove_map {
+                                warn!("No stack walk for the event: process: {} {}  {message}.", key.0, dt_prev.to_string())
+                            }
+                        }
+                    }
                 }
 
                 process_modules::handle_event_for_module(&mut event_record);
@@ -338,7 +395,7 @@ fn main() {
         Err(e) => warn!("{e}"),
         Ok(path) => {
             let s = format!("{path}\\pdb");
-            let dir= Path::new(s.as_str());
+            let dir = Path::new(s.as_str());
             if let Err(e) = create_dir_all(dir) {
                 error!("{e}");
             } else {
