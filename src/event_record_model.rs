@@ -68,29 +68,50 @@ impl EventRecordModel {
         }
     }
 
-    pub fn stack_walk(&self) -> StackWalkInfo {
-        if let Some(sw) = self.stack_walk.get() {
-            let vec = VecModel::default();
-            for item in sw.stacks.iter() {
-                let model_rc = if let Some(relative) = item.1.relative {
-                    if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
-                        let file_name = module_info.get_module_name();
-                        let (function_offset, line_offset) =
-                            module_info.get_location_info(relative.1);
+    pub fn stack_walk(&self) -> (/*stacks*/StackWalkInfo, /*stacks_2*/StackWalkInfo) {
+        return (get_stack_walk_info(self.stack_walk.get()), get_stack_walk_info(self.stack_walk_2.get()));
 
-                        ModelRc::from([
-                            StandardListViewItem::from(SharedString::from(&item.0)),
-                            StandardListViewItem::from(SharedString::from(format!(
-                                "{:#x}",
-                                item.1.raw
-                            ))),
-                            StandardListViewItem::from(SharedString::from(format!(
-                                "{file_name}+{:#x}",
-                                relative.1
-                            ))),
-                            StandardListViewItem::from(SharedString::from(function_offset)),
-                            StandardListViewItem::from(SharedString::from(line_offset)),
-                        ])
+        fn get_stack_walk_info(stack_op: Option<&Arc<StackWalk>>) -> StackWalkInfo {
+            if let Some(stack_arc) = stack_op {
+                let vec = VecModel::default();
+                for item in stack_arc.stacks.iter() {
+                    let model_rc = if let Some(relative) = item.1.relative {
+                        if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
+                            let file_name = module_info.get_module_name();
+                            let (function_offset, line_offset) =
+                                module_info.get_location_info(relative.1);
+    
+                            ModelRc::from([
+                                StandardListViewItem::from(SharedString::from(&item.0)),
+                                StandardListViewItem::from(SharedString::from(format!(
+                                    "{:#x}",
+                                    item.1.raw
+                                ))),
+                                StandardListViewItem::from(SharedString::from(format!(
+                                    "{file_name}+{:#x}",
+                                    relative.1
+                                ))),
+                                StandardListViewItem::from(SharedString::from(function_offset)),
+                                StandardListViewItem::from(SharedString::from(line_offset)),
+                            ])
+                        } else {
+                            ModelRc::from([
+                                StandardListViewItem::from(SharedString::from(&item.0)),
+                                StandardListViewItem::from(SharedString::from(format!(
+                                    "{:#x}",
+                                    item.1.raw
+                                ))),
+                                StandardListViewItem::from(SharedString::from(format!(
+                                    "{:#x}",
+                                    relative.0
+                                ))),
+                                StandardListViewItem::from(SharedString::from(format!(
+                                    "{:#x}",
+                                    relative.1
+                                ))),
+                                StandardListViewItem::from(SharedString::new()),
+                            ])
+                        }
                     } else {
                         ModelRc::from([
                             StandardListViewItem::from(SharedString::from(&item.0)),
@@ -98,39 +119,22 @@ impl EventRecordModel {
                                 "{:#x}",
                                 item.1.raw
                             ))),
-                            StandardListViewItem::from(SharedString::from(format!(
-                                "{:#x}",
-                                relative.0
-                            ))),
-                            StandardListViewItem::from(SharedString::from(format!(
-                                "{:#x}",
-                                relative.1
-                            ))),
+                            StandardListViewItem::from(SharedString::new()),
+                            StandardListViewItem::from(SharedString::new()),
                             StandardListViewItem::from(SharedString::new()),
                         ])
-                    }
-                } else {
-                    ModelRc::from([
-                        StandardListViewItem::from(SharedString::from(&item.0)),
-                        StandardListViewItem::from(SharedString::from(format!(
-                            "{:#x}",
-                            item.1.raw
-                        ))),
-                        StandardListViewItem::from(SharedString::new()),
-                        StandardListViewItem::from(SharedString::new()),
-                        StandardListViewItem::from(SharedString::new()),
-                    ])
-                };
-                vec.push(model_rc);
+                    };
+                    vec.push(model_rc);
+                }
+                StackWalkInfo {
+                    event_timestamp: SharedString::from(stack_arc.event_timestamp.to_string()),
+                    process_id: SharedString::from(format!("{}", stack_arc.stack_process as i32)),
+                    thread_id: SharedString::from(format!("{}", stack_arc.stack_thread as i32)),
+                    stacks: ModelRc::new(vec),
+                }
+            } else {
+                StackWalkInfo::default()
             }
-            StackWalkInfo {
-                event_timestamp: SharedString::from(sw.event_timestamp.to_string()),
-                process_id: SharedString::from(format!("{}", sw.stack_process as i32)),
-                thread_id: SharedString::from(format!("{}", sw.stack_thread as i32)),
-                stacks: ModelRc::new(vec),
-            }
-        } else {
-            StackWalkInfo::default()
         }
     }
 

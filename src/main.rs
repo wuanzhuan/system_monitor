@@ -112,7 +112,7 @@ fn main() {
                     return row_item.stack_walk();
                 }
             }
-            StackWalkInfo::default()
+            (StackWalkInfo::default(), StackWalkInfo::default())
         });
     app.global::<EventsViewData>().on_row_find(move |text| {
         if text.is_empty() {
