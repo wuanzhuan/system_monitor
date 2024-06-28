@@ -17,6 +17,7 @@ pub struct EventRecordModel {
     pub array: Arc<EventRecordDecoded>,
     pub process_path: String,
     stack_walk: OnceLock<Arc<StackWalk>>,
+    stack_walk_2: OnceLock<Arc<StackWalk>>, // occasionally there is second stack on other process
 }
 
 impl EventRecordModel {
@@ -25,6 +26,7 @@ impl EventRecordModel {
             array: Arc::new(event_record),
             process_path,
             stack_walk: OnceLock::new(),
+            stack_walk_2: OnceLock::new()
         }
     }
 
@@ -44,7 +46,22 @@ impl EventRecordModel {
             let thread_id = self.array.thread_id as i32;
             let timestamp = self.array.timestamp.0;
             error!(
-                "Stalkwalk event had been set! {process_id}:{thread_id}:{timestamp}  {}:{}:{}",
+                "stack_walk had been set! {process_id}:{thread_id}:{timestamp}. new: {}:{}:{}",
+                stack_process, stack_thread as i32, event_timestamp
+            );
+        }
+    }
+
+    pub fn set_stack_walk_2(&self, sw: StackWalk) {
+        let stack_process = sw.stack_process;
+        let stack_thread = sw.stack_thread as i32;
+        let event_timestamp = sw.event_timestamp;
+        if self.stack_walk_2.set(Arc::new(sw)).is_err() {
+            let process_id = self.array.process_id as i32;
+            let thread_id = self.array.thread_id as i32;
+            let timestamp = self.array.timestamp.0;
+            error!(
+                "stack_walk_2 event had been set! {process_id}:{thread_id}:{timestamp}. new: {}:{}:{}",
                 stack_process, stack_thread as i32, event_timestamp
             );
         }

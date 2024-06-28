@@ -259,7 +259,18 @@ fn main() {
                             .get_mut()
                             .remove(&(sw.stack_thread, sw.event_timestamp))
                         {
-                            // set second stack for event
+                            if let Some(ref some_node) = some_row {
+                                process_modules::convert_to_module_offset(
+                                    sw.stack_process,
+                                    sw.stacks.as_mut_slice(),
+                                );
+                                let erm = some_node
+                                    .value
+                                    .as_any()
+                                    .downcast_ref::<event_record_model::EventRecordModel>()
+                                    .unwrap();
+                                erm.set_stack_walk_2(sw);
+                            }
                         } else {
                             error!(
                                 "Can't find event for the stack walk: {}:{}:{timestamp}  {}:{}:{} {:?}",
