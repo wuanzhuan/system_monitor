@@ -221,10 +221,6 @@ export component TableView {
     private property <length> current-item-y: list_view.viewport-y + current-row * item-height;
     private property <int> has-hover-row: -1;
 
-    // the two properties can enable the width match the parent
-    min-width: 400px;
-    min-height: 200px; 
-
     forward-focus: i-focus-scope;
 
     public function set-current-row(index: int) {
@@ -261,40 +257,49 @@ export component TableView {
     }
 
     VerticalLayout {
+        Flickable {
+            padding: 0px;
+            height: i-header-layout.preferred-height + 1px;
+            min-width: order-column-width + 2cm;
+            viewport-width: max(list_view.width, self.width);
+            viewport-height: self.height;
+            viewport-x: list-view.viewport-x;
 
-        VerticalLayout {
-            height: self.preferred-height;
+            i-header-layout := VerticalLayout {
+                height: self.preferred-height;
 
-            i-header-layout := HorizontalLayout {
-                private property <length> min_column_width: 3rem;
-    
-                if has-order-number : TableViewColumn {
-                    width: root.order-column-width;
-                    text: @tr("No.");
-                    index-column: 0;
-    
-                    adjust_size(diff) => {
-                        root.order-column-width = max(min_column_width, self.width + diff);
+                HorizontalLayout {
+                    private property <length> min_column_width: 3rem;
+        
+                    if has-order-number : TableViewColumn {
+                        width: order-column-width;
+                        text: @tr("No.");
+                        index-column: 0;
+        
+                        adjust_size(diff) => {
+                            root.order-column-width = max(min_column_width, self.width + diff);
+                        }
+                    }
+                    for column[index] in root.columns : TableViewColumn {
+                        sort-order: column.sort-order;
+                        horizontal-stretch: column.horizontal-stretch;
+                        width: index < root.columns.length - 1 ? root.columns[index].width : 2000px;
+                        text: column.title;
+                        index-column: index;
+        
+                        clicked => {
+                            root.sort(index);
+                        }
+                        adjust_size(diff) => {
+                            column.width = max(min_column_width, self.width + diff);
+                        }
                     }
                 }
-                for column[index] in root.columns : TableViewColumn {
-                    sort-order: column.sort-order;
-                    horizontal-stretch: column.horizontal-stretch;
-                    width: index < root.columns.length - 1 ? root.columns[index].width : 2000px;
-                    text: column.title;
-                    index-column: index;
-    
-                    clicked => {
-                        root.sort(index);
-                    }
-                    adjust_size(diff) => {
-                        column.width = max(min_column_width, self.width + diff);
-                    }
+
+                Rectangle {
+                    background: Palette.border; 
+                    height: 1px;
                 }
-            }
-            Rectangle {
-                background: Palette.border; 
-                height: 1phx;
             }
         }
         list_view := ListView {
