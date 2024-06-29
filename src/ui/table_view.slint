@@ -68,24 +68,23 @@ component TableViewColumn {
             width: 9px;
             background: Palette.background;
 
-            HorizontalLayout {
-                alignment: end;
-    
-                Rectangle {
-                    width: 1phx;
-                    background: Palette.border;
-            
-                    animate background { duration: 150ms; }
-            
-                    states [
-                        hover when i-movable-touch-area.has-hover: {
-                            background: Palette.accent-background;
-                        }
-                        pressed when i-movable-touch-area.pressed: {
-                            background: Palette.accent-background;
-                        }
-                    ]
-                }
+            Rectangle {
+                width: 2px;
+                height: rect_text.preferred-height * 50%;
+                background: Palette.border;
+                x: parent.width - self.width;
+                y: (parent.height - self.height) / 2;
+        
+                animate background { duration: 150ms; }
+        
+                states [
+                    hover when i-movable-touch-area.has-hover: {
+                        background: Palette.accent-background;
+                    }
+                    pressed when i-movable-touch-area.pressed: {
+                        background: Palette.accent-background;
+                    }
+                ]
             }
 
             i-movable-touch-area := TouchArea {
