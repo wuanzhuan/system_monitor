@@ -223,6 +223,17 @@ impl<T: Clone + Send + Sync> EventList<T> {
         }
     }
 
+    pub fn clear(&self) {
+        let mut list_except_last_lock = self.list_except_last_lock.lock(); // always lock before list_last_lock
+        let _list_last_lock = self.list_last_lock.lock();
+
+        let list = unsafe{ &mut *self.list.get() };
+        list.clear();
+        self.list_len.store(0, Ordering::Relaxed);
+        self.serial_number.store(0, Ordering::Relaxed);
+        *list_except_last_lock = NodeArc::new();
+    }
+
     fn get_list(&self) -> &LinkedList<NodeAdapter<T>> {
         unsafe { &*self.list.get() }
     }

@@ -51,14 +51,17 @@ impl ListModel {
         }
     }
 
+    pub fn clear(&self) {
+        self.list.clear();
+        self.notify_reset();
+    }
+
     /// Add a row at the end of the model
     pub fn notify_push(&self, index: usize, count: usize) {
         self.notify.row_added(index, count);
     }
 
-    /// Remove the row at the given index from the model
-    #[allow(unused)]
-    pub fn notify_remove(&self) {
+    pub fn notify_reset(&self) {
         self.notify.reset();
     }
 

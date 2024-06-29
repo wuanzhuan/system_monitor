@@ -23,6 +23,7 @@ export component App inherits Window {
     callback set_filter_expression_for_one(string) -> {result: bool, message: string};
     callback set_filter_expression_for_pair(string) -> {result: bool, message: string};
     callback edit_pdb_directory(string) -> {is_ok: bool, err: string};
+    callback clear();
 
     private property <{ok: bool, message: string}> result_start;
 
@@ -65,24 +66,37 @@ export component App inherits Window {
             padding-bottom: 0px;
             spacing: 1cm;
 
-            Switch {
-                text: @tr("On/Off");
-                checked: false;
-                toggled => {
-                    if (self.checked) {
-                        root.result-start = trace_start();
-                        if (!root.result-start.ok) {
-                            switch_popup.show();
-                            self.checked = false;
+            HorizontalLayout {
+                height: 7mm;
+                spacing: 2mm;
+                Switch {
+                    text: @tr("On/Off");
+                    checked: false;
+                    toggled => {
+                        if (self.checked) {
+                            root.result-start = trace_start();
+                            if (!root.result-start.ok) {
+                                switch_popup.show();
+                                self.checked = false;
+                            }
+                        } else {
+                            trace_stop()
                         }
-                    } else {
-                        trace_stop()
+                    }
+                }
+                Button {
+                    
+                    text: @tr("Clear");
+
+                    clicked => {
+                        clear()
                     }
                 }
             }
+
             HorizontalLayout {
-                spacing: 2mm;
                 height: 7mm;
+                spacing: 2mm;
 
                 FilterInput {
                     placeholder-text: @tr("filter one: process_id = 4");

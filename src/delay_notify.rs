@@ -106,7 +106,7 @@ impl DelayNotify {
                 let rows = row_data.as_any().downcast_ref::<ListModel>().unwrap();
                 match notify {
                     Notify::Push(index, count) => rows.notify_push(index, count),
-                    Notify::Remove => rows.notify_remove(),
+                    Notify::Remove => rows.notify_reset(),
                 }
             })
             .unwrap();

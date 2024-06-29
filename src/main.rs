@@ -67,6 +67,7 @@ fn main() {
     let event_list_model_rc_1 = event_list_model_rc.clone();
     let event_list_model_rc_2 = event_list_model_rc.clone();
     let event_list_model_rc_3 = event_list_model_rc.clone();
+    let event_list_model_rc_4 = event_list_model_rc.clone();
 
     let row_data: ModelRc<ModelRc<StandardListViewItem>> = ModelRc::from(event_list_model_rc);
     let column_names_rc = Rc::new(VecModel::default());
@@ -236,6 +237,10 @@ fn main() {
         }
         pdb::pdb_path_set(path.as_str());
         (SharedString::new(), true)
+    });
+
+    app.on_clear(move || {
+        event_list_model_rc_4.clear();
     });
 
     let app_weak = app.as_weak();
