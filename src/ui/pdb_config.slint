@@ -15,56 +15,63 @@ export component PdbConfig {
     }
 
     popup := PopupWindow {
-        y: button.height + 2mm;
+        y: button.height + 4mm;
         close-on-click: false;
 
         Rectangle {
             background: Palette.background;
-            VerticalBox {
-                HorizontalBox {
+            border-width: 2px;
+            border-color: Palette.border;
+
+            VerticalLayout {
+                HorizontalLayout {
+                    height: self.preferred-height;
                     alignment: end;
 
                     Button {
                         padding: 0px;
                         width: self.preferred-width;
                         height: self.preferred-height;
-                        text: @tr("x");
-
+                        text: "X";
 
                         clicked => {
                             popup.close();
                         }
                     }
                 }
-                HorizontalBox {
-                    alignment: start;
-                    property <{is_ok: bool, err: string}> result;
-
-                    states [
-                        ok when result.is-ok: {
-                            result_text.color: #90ee90;
-                            result_text.text: @tr("\u{a99}");
-
+                VerticalBox {
+                    HorizontalBox {
+                        height: self.preferred-height;
+                        alignment: start;
+                        property <{is_ok: bool, err: string}> result;
+    
+                        states [
+                            ok when result.is-ok: {
+                                result_text.color: #90ee90;
+                                result_text.text: @tr("\u{a99}");
+    
+                            }
+                            err when !result.is-ok: {
+                                result_text.color: #ec5353;
+                                result_text.text: result.err;
+                            }
+                        ]
+    
+                        Text {
+                            vertical-alignment: center;
+                            text: @tr("pdb directory: ");
                         }
-                        err when !result.is-ok: {
-                            result_text.color: #ec5353;
-                            result_text.text: result.err;
+    
+                        LineEdit {
+                            min-width: max(500px, self.preferred-width);
+                            text: pdb_directory;
+    
+                            edited(text) => {
+                                result = edit_pdb_directory(text);
+                            }
                         }
-                    ]
-
-                    Text {
-                        vertical-alignment: center;
-                        text: @tr("pdb directory: ");
+                        result_text := Text {}
                     }
-
-                    LineEdit {
-                        text: pdb_directory;
-
-                        edited(text) => {
-                            result = edit_pdb_directory(text);
-                        }
-                    }
-                    result_text := Text {}
                 }
             }
         }

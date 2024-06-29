@@ -86,11 +86,10 @@ export component EventsView inherits VerticalLayout {
             clip: true;
             background: Palette.background;
             border-color: Palette.border;
-            border-width: 1phx;
+            border-width: 2px;
 
-            VerticalBox {
-                HorizontalBox {
-                    preferred-height: 1.2rem;
+            VerticalLayout {
+                HorizontalLayout {
                     alignment: end;
                     spacing: 1.5cm;
                     Text {
@@ -98,7 +97,10 @@ export component EventsView inherits VerticalLayout {
                         text: @tr("There may be a senond stack for one event!");
                     }
                     Button {
-                        text: "close";
+                        padding: 0px;
+                        width: self.preferred-width;
+                        height: self.preferred-height;
+                        text: "X";
                         clicked => {
                             popup.close();
                         }
