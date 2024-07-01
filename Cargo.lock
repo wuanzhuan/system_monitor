@@ -3807,6 +3807,7 @@ dependencies = [
  "slint-build",
  "smol",
  "strum",
+ "thiserror",
  "time",
  "tracing",
  "tracing-appender",

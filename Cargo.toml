@@ -22,6 +22,7 @@ intrusive-collections = "0.9.6"
 parking_lot = "0.12"
 smol = "2.0"
 anyhow = "1.0"
+thiserror = "1.0"
 chumsky = { git = "https://github.com/zesterer/chumsky.git" }
 once_cell = "1.19"
 indexmap = "2.2"
