@@ -155,8 +155,62 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "FileIoName",
-            flag: Major::FileIoName as u32,
+            name: "DiskIoInit",
+            flag: Major::DiskIoInit as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "ReadInit",
+                op_code: 12,
+            },
+            MinorDescribe {
+                name: "WriteInit",
+                op_code: 13,
+            },
+            MinorDescribe {
+                name: "FlushInit",
+                op_code: 15,
+            },
+        ],
+        guid: DiskIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "DiskIoDriver",
+            flag: Major::Driver as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "DrvMjFnCall",
+                op_code: 34,
+            },
+            MinorDescribe {
+                name: "DrvMjFnRet",
+                op_code: 35,
+            },
+            MinorDescribe {
+                name: "DrvComplRout",
+                op_code: 37,
+            },
+            MinorDescribe {
+                name: "DrvComplReq",
+                op_code: 52,
+            },
+            MinorDescribe {
+                name: "DrvComplReqRet",
+                op_code: 53,
+            },
+        ],
+        guid: DiskIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            flag: Major::DiskFileIo as u32,
+            name: "FileIo",
             ..MajorDescribe::DEFAULT
         },
         minors: &[
@@ -194,25 +248,78 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "DiskIoInit",
-            flag: Major::DiskIoInit as u32,
+            name: "FileIo",
+            flag: Major::FileIo as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[MinorDescribe {
+            name: "OperationEnd",
+            op_code: 76,
+        }],
+        guid: FileIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "FileIoInit",
+            flag: Major::FileIoInit as u32,
             ..MajorDescribe::DEFAULT
         },
         minors: &[
             MinorDescribe {
-                name: "ReadInit",
-                op_code: 12,
+                name: "Create",
+                op_code: 64,
             },
             MinorDescribe {
-                name: "WriteInit",
-                op_code: 13,
+                name: "DirEnum",
+                op_code: 72,
             },
             MinorDescribe {
-                name: "FlushInit",
-                op_code: 15,
+                name: "DirNotify",
+                op_code: 77,
+            },
+            MinorDescribe {
+                name: "SetInfo",
+                op_code: 69,
+            },
+            MinorDescribe {
+                name: "Delete",
+                op_code: 70,
+            },
+            MinorDescribe {
+                name: "Rename",
+                op_code: 71,
+            },
+            MinorDescribe {
+                name: "QueryInfo",
+                op_code: 74,
+            },
+            MinorDescribe {
+                name: "FSControl",
+                op_code: 75,
+            },
+            MinorDescribe {
+                name: "Read",
+                op_code: 67,
+            },
+            MinorDescribe {
+                name: "Write",
+                op_code: 68,
+            },
+            MinorDescribe {
+                name: "Cleanup",
+                op_code: 65,
+            },
+            MinorDescribe {
+                name: "Close",
+                op_code: 66,
+            },
+            MinorDescribe {
+                name: "Flush",
+                op_code: 73,
             },
         ],
-        guid: DiskIoGuid,
+        guid: FileIoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -568,82 +675,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         },
         ..EventsDescribe::DEFAULT
     },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "FileIo",
-            flag: Major::FileIo as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[MinorDescribe {
-            name: "OperationEnd",
-            op_code: 76,
-        }],
-        guid: FileIoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "FileIoInit",
-            flag: Major::FileIoInit as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "Create",
-                op_code: 64,
-            },
-            MinorDescribe {
-                name: "DirEnum",
-                op_code: 72,
-            },
-            MinorDescribe {
-                name: "DirNotify",
-                op_code: 77,
-            },
-            MinorDescribe {
-                name: "SetInfo",
-                op_code: 69,
-            },
-            MinorDescribe {
-                name: "Delete",
-                op_code: 70,
-            },
-            MinorDescribe {
-                name: "Rename",
-                op_code: 71,
-            },
-            MinorDescribe {
-                name: "QueryInfo",
-                op_code: 74,
-            },
-            MinorDescribe {
-                name: "FSControl",
-                op_code: 75,
-            },
-            MinorDescribe {
-                name: "Read",
-                op_code: 67,
-            },
-            MinorDescribe {
-                name: "Write",
-                op_code: 68,
-            },
-            MinorDescribe {
-                name: "Cleanup",
-                op_code: 65,
-            },
-            MinorDescribe {
-                name: "Close",
-                op_code: 66,
-            },
-            MinorDescribe {
-                name: "Flush",
-                op_code: 73,
-            },
-        ],
-        guid: FileIoGuid,
-        ..EventsDescribe::DEFAULT
-    },
     // Don't use, replace by masks[6] of Major
     // EventsDescribe{
     // 	major: MajorDescribe{name: "NoSysConfig", flag: Major::NoSysConfig as u32},
@@ -692,37 +723,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::FootPrint as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "DiskIoDriver",
-            flag: Major::Driver as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "DrvMjFnCall",
-                op_code: 34,
-            },
-            MinorDescribe {
-                name: "DrvMjFnRet",
-                op_code: 35,
-            },
-            MinorDescribe {
-                name: "DrvComplRout",
-                op_code: 37,
-            },
-            MinorDescribe {
-                name: "DrvComplReq",
-                op_code: 52,
-            },
-            MinorDescribe {
-                name: "DrvComplReqRet",
-                op_code: 53,
-            },
-        ],
-        guid: DiskIoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1737,8 +1737,10 @@ pub enum Major {
     ImageLoad = EVENT_TRACE_FLAG_IMAGE_LOAD.0,
     ProcessCounters = EVENT_TRACE_FLAG_PROCESS_COUNTERS.0,
     DiskIo = EVENT_TRACE_FLAG_DISK_IO.0,
-    FileIoName = EVENT_TRACE_FLAG_DISK_FILE_IO.0 | EVENT_TRACE_FLAG_DISK_IO.0,
     DiskIoInit = EVENT_TRACE_FLAG_DISK_IO_INIT.0,
+    DiskFileIo = EVENT_TRACE_FLAG_DISK_FILE_IO.0,
+    FileIo = EVENT_TRACE_FLAG_FILE_IO.0,
+    FileIoInit = EVENT_TRACE_FLAG_FILE_IO_INIT.0,
     MemoryPageFaults = EVENT_TRACE_FLAG_MEMORY_PAGE_FAULTS.0,
     MemoryHardFaults = EVENT_TRACE_FLAG_MEMORY_HARD_FAULTS.0,
     VaMap = EVENT_TRACE_FLAG_VAMAP.0,
@@ -1749,8 +1751,6 @@ pub enum Major {
     Alpc = EVENT_TRACE_FLAG_ALPC.0,
     SplitIo = EVENT_TRACE_FLAG_SPLIT_IO.0,
     DebugEvents = EVENT_TRACE_FLAG_DEBUG_EVENTS,
-    FileIo = EVENT_TRACE_FLAG_FILE_IO.0,
-    FileIoInit = EVENT_TRACE_FLAG_FILE_IO_INIT.0,
     NoSysConfig = EVENT_TRACE_FLAG_NO_SYSCONFIG.0,
 
     // Mask[1]
