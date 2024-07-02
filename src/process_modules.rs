@@ -1,6 +1,6 @@
 use crate::{
     event_trace::{EventRecordDecoded, Image, Process, StackAddress},
-    pdb::{get_pdb_info_for_module, ProcedureInfo},
+    pdb::get_location_info as get_location_info_from_pdb,
     third_extend::strings::{AsPcwstr, StringEx},
     utils::TimeStamp,
 };
@@ -17,7 +17,7 @@ use std::{
     ops::Bound,
     path::Path,
     ptr, slice,
-    sync::{Arc, OnceLock, Weak},
+    sync::{Arc, OnceLock},
     time::Duration,
 };
 use tracing::{error, warn};
@@ -109,7 +109,6 @@ impl RunningProcessesModules {
 pub struct ModuleInfo {
     pub file_name: String,
     pub time_data_stamp: u32,
-    weak_lock: FairMutex<Option<Weak<BTreeMap<u32, ProcedureInfo>>>>,
 }
 
 impl ModuleInfo {
@@ -122,49 +121,13 @@ impl ModuleInfo {
         &self,
         offset: u32,
     ) -> (/*function_offset*/ String, /*line_offset*/ String) {
-        let mut pdb_info: Option<Arc<BTreeMap<u32, ProcedureInfo>>> = None;
-        if let Some(ref weak) = *self.weak_lock.lock() {
-            pdb_info = weak.upgrade();
-        }
-        if pdb_info.is_none() {
-            if let Some(arc) =
-                get_pdb_info_for_module(Path::new(self.file_name.as_str()), self.time_data_stamp)
-            {
-                let weak = Arc::downgrade(&arc);
-                *self.weak_lock.lock() = Some(weak);
-                pdb_info = Some(arc);
-            } else {
-                *self.weak_lock.lock() = None;
+        match get_location_info_from_pdb(Path::new(self.file_name.as_str()), self.time_data_stamp, offset) {
+            Err(e) => {
+                error!("{e}");
+                (String::new(), String::new())
             }
+            Ok(info) => info
         }
-        if let Some(pdb_info) = pdb_info {
-            let cursor = pdb_info.upper_bound(Bound::Included(&offset));
-            if let Some((offset, procedure_info)) = cursor.peek_prev() {
-                let cursor_line = procedure_info
-                    .line_map
-                    .upper_bound(Bound::Included(&offset));
-                if let Some((offset, line_info)) = cursor_line.peek_prev() {
-                    return (
-                        format!(
-                            "{}+{:#x}",
-                            procedure_info.name,
-                            offset - procedure_info.offset
-                        ),
-                        format!("{line_info}"),
-                    );
-                } else {
-                    return (
-                        format!(
-                            "{}+{:#x}",
-                            procedure_info.name,
-                            offset - procedure_info.offset
-                        ),
-                        String::new(),
-                    );
-                }
-            }
-        }
-        (String::new(), String::new())
     }
 }
 
@@ -563,7 +526,6 @@ fn module_map_insert(
         let module_info_arc = Arc::new(ModuleInfo {
             file_name: file_name.clone(),
             time_data_stamp: time_date_stamp,
-            weak_lock: FairMutex::new(None),
         });
         let entry = module_lock.insert_full(
             (file_name.clone(), time_date_stamp),
@@ -819,7 +781,6 @@ fn is_kernel_session_space(_address: u64) -> bool {
 mod tests {
     use super::{DRIVE_LETTER_MAP, RUNNING_PROCESSES_MODULES_MAP};
     use crate::pdb::pdb_path_set;
-    use parking_lot::FairMutex;
     use std::path::Path;
     use windows::Win32::System::Threading::GetCurrentProcessId;
 
@@ -858,9 +819,8 @@ mod tests {
         let module_info = super::ModuleInfo {
             file_name: format!("{out_dir}\\target\\debug\\{pkg_name}.exe"),
             time_data_stamp: time_date_stamp,
-            weak_lock: FairMutex::new(None),
         };
         let r = module_info.get_location_info(0x2b6168);
-        println!("{r}");
+        println!("{r:?}");
     }
 }
