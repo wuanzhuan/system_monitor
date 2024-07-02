@@ -362,7 +362,7 @@ fn main() {
                             };
 
                             if !is_delay_remove_map {
-                                warn!("No stack walk for the event: process: {} {}  {message}.", key.0, dt_prev.to_string())
+                                warn!("No stack walk for the event: process: {} {}  {message}.", key.0 as i32, dt_prev.to_string())
                             }
                         }
                     }
