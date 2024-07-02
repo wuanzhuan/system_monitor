@@ -166,7 +166,7 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 }
 
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
-    let process_module_mutex_option = if process_id != 0 && process_id != 4 {
+    let process_module_mutex_option = if process_id != 0 && process_id != 4 && process_id as i32 != -1 {
         let arc = RUNNING_PROCESSES_MODULES_MAP
             .get_or_insert(process_id, String::from("convert_to_module_offset"));
         Some(arc)
@@ -254,7 +254,7 @@ pub fn get_process_path_by_id(process_id: u32) -> String {
     if process_id == 0 {
         return String::from("System Idle");
     }
-    if process_id == 4 {
+    if process_id == 4 || process_id as i32 == -1 {
         return String::from("System");
     }
     let process_info_arc = RUNNING_PROCESSES_MODULES_MAP
@@ -537,7 +537,7 @@ fn module_map_insert(
 
 // only call before starting event trace
 fn process_init(process_id: u32) {
-    if process_id == 0 || process_id == 4 {
+    if process_id == 0 || process_id == 4  || process_id as i32 == -1 {
         return;
     }
 
