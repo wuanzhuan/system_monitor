@@ -134,25 +134,24 @@ pub fn get_location_info(
     /*function_location*/ String,
     /*line_location*/ String,
 )> {
-    let pdb_info = if let Some(pdb_info) = PDBS_LOADED
+    if let Some(pdb_info) = PDBS_LOADED
         .lock()
         .get(&(module_name.to_path_buf(), module_time_date_stamp))
     {
-        pdb_info.clone()
-    } else {
-        let pdb_info = get_pdb_info_from_pdb_file(module_name, module_time_date_stamp)
-            .with_context(|| {
-                format!(
-                    "Faile to get_pdb_info_from_pdb_file for {}-{module_time_date_stamp}",
-                    module_name.display()
-                )
-            })?;
-        let _ = PDBS_LOADED.lock().insert(
-            (module_name.to_path_buf(), module_time_date_stamp),
-            pdb_info.clone(),
-        );
-        pdb_info
-    };
+        return Ok(pdb_info.get_location_info_by_offset(offset));
+    }
+
+    let pdb_info =
+        get_pdb_info_from_pdb_file(module_name, module_time_date_stamp).with_context(|| {
+            format!(
+                "Faile to get_pdb_info_from_pdb_file for {}-{module_time_date_stamp}",
+                module_name.display()
+            )
+        })?;
+    let _ = PDBS_LOADED.lock().insert(
+        (module_name.to_path_buf(), module_time_date_stamp),
+        pdb_info.clone(),
+    );
     Ok(pdb_info.get_location_info_by_offset(offset))
 }
 
@@ -203,7 +202,8 @@ fn get_pdb_info_from_pdb_file(
         let program = module_info.line_program()?;
         let mut symbols = module_info.symbols()?;
         let mut files_map = HashMap::new();
-        while let Some(file_info) = program.files().next()? {
+        let mut files = program.files();
+        while let Some(file_info) = files.next()? {
             let file_name = match file_info.name.to_raw_string(&string_table) {
                 Err(e) => {
                     let s = format!("{e}");
@@ -299,11 +299,12 @@ mod tests {
             format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str(),
         ))
         .unwrap();
-        super::pdb_path_set(format!("{out_dir}\\target\\debug\\pdb").as_str());
+        super::pdb_path_set(format!("{out_dir}\\target\\debug").as_str());
         let r = super::get_pdb_info_from_pdb_file(
             &Path::new(format!("{pkg_name}.exe").as_str()),
             module_info.1,
-        ).unwrap();
+        )
+        .unwrap();
         println!("{:?}", r.get_location_info_by_offset(0x2b6168));
     }
 
@@ -315,7 +316,7 @@ mod tests {
             format!("{out_dir}\\target\\debug\\{pkg_name}.exe").as_str(),
         ))
         .unwrap();
-        super::pdb_path_set(format!("{out_dir}\\target\\debug\\pdb").as_str());
+        super::pdb_path_set(format!("{out_dir}\\target\\debug").as_str());
         let location_info = super::get_location_info(
             &Path::new(format!("{pkg_name}.exe").as_str()),
             module_info.1,
