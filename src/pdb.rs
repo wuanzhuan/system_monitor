@@ -28,6 +28,7 @@ pub struct ProcedureInfo {
 pub struct LineInfo {
     pub rva: u32, // base by iamge start
     pub length: Option<u32>,
+    #[allow(unused)]
     pub module_index: u32,
     pub file_name: StringRef,
     pub line_start: u32,
@@ -41,6 +42,7 @@ pub struct LineInfo {
 
 pub struct PdbInfo {
     file_name_map: HashMap<StringRef, String>,
+    #[allow(unused)]
     modules_files_vec: Vec<ModuleInfo>,
     functions_map: BTreeMap<u32, ProcedureInfo>,
 }
@@ -52,11 +54,10 @@ pub struct FileInfo {
 }
 
 // corresponding a object file
+#[allow(unused)]
 pub struct ModuleInfo {
     module_name: String,
-    #[allow(unused)]
     object_file_name: String,
-    #[allow(unused)]
     files_map: HashMap<StringRef, FileInfo>, // todo: checksum
 }
 
@@ -90,11 +91,7 @@ impl PdbInfo {
                     let file_name = self.file_name_map.get(&line_info.file_name).unwrap();
                     return (
                         format!("{}+{:#x}", procedure_info.name, offset - procedure_info.rva),
-                        format!(
-                            "{} {file_name}: {}",
-                            self.modules_files_vec[line_info.module_index as usize].module_name,
-                            line_info.line_start
-                        ),
+                        format!("{file_name}: {}", line_info.line_start),
                     );
                 } else {
                     return (
