@@ -1,14 +1,13 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
 //#![windows_subsystem = "windows"]
 
+use crate::event_record_model::EventRecordModel;
 use event_record_model::Columns;
 use i_slint_backend_winit::WinitWindowAccessor;
-use linked_hash_map::LinkedHashMap;
 use slint::{
     Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel,
 };
 use std::{
-    cell::SyncUnsafeCell,
     fs::create_dir_all,
     path::Path,
     rc::Rc,
@@ -16,8 +15,6 @@ use std::{
 };
 use strum::VariantArray;
 use tracing::{error, info, warn};
-
-use crate::event_record_model::EventRecordModel;
 
 mod delay_notify;
 mod event_list;
@@ -27,6 +24,7 @@ mod event_trace;
 mod filter;
 mod pdb;
 mod process_modules;
+mod stack_walk;
 mod third_extend;
 mod utils;
 
@@ -253,14 +251,8 @@ fn main() {
     app.on_trace_start(move || {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
-        let mut stack_walk_map = SyncUnsafeCell::new(LinkedHashMap::<
-            (u32, i64),
-            Option<Weak<event_list::Node<EventRecordModel>>>,
-        >::with_capacity(50));
-        let mut stack_walk_delay_remove_map = SyncUnsafeCell::new(LinkedHashMap::<
-            (u32, i64),
-            Option<Weak<event_list::Node<EventRecordModel>>>,
-        >::with_capacity(50));
+        let mut stack_walk_map =
+            stack_walk::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
@@ -271,85 +263,43 @@ fn main() {
                 let timestamp = event_record.timestamp.0;
 
                 if let Some(mut sw) = stack_walk {
-                    let mut is_minus_1_for_thread_id = false;
-                    let (row, is_from_stack_walk_delay_remove_map) = if let Some(some_row) =
-                        stack_walk_map
-                            .get_mut()
-                            .remove(&(sw.stack_thread, sw.event_timestamp))
-                    {
-                        (some_row, false)
-                    } else if let Some(some_row) = stack_walk_map
-                        .get_mut()
-                        .remove(&(-1i32 as u32, sw.event_timestamp))
-                    {
-                        is_minus_1_for_thread_id = true;
-                        (some_row, false)
-                    } else {
-                        if let Some(some_row) = stack_walk_delay_remove_map
-                            .get_mut()
-                            .remove(&(sw.stack_thread, sw.event_timestamp))
-                        {
-                            (some_row, true)
-                        } else if let Some(some_row) = stack_walk_delay_remove_map
-                            .get_mut()
-                            .remove(&(-1i32 as u32, sw.event_timestamp))
-                        {
-                            (some_row, true)
-                        } else {
-                            (None, false)
-                        }
-                    };
-
-                    if let Some(ref weak) = row {
-                        let stack_thread = sw.stack_thread;
-                        let event_timestamp = sw.event_timestamp;
-                        if let Some(arc_node) = weak.upgrade() {
-                            process_modules::convert_to_module_offset(
-                                sw.stack_process,
-                                sw.stacks.as_mut_slice(),
-                            );
-                            let erm = arc_node
-                                .value
-                                .as_any()
-                                .downcast_ref::<event_record_model::EventRecordModel>()
-                                .unwrap();
-                            if is_from_stack_walk_delay_remove_map {
-                                erm.set_stack_walk_2(sw);
-                            } else {
-                                erm.set_stack_walk(sw.clone());
+                    let row = stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp));
+                    if let Some((some_row, is_from_delay_remove_map)) = row {
+                        if let Some(weak) = some_row {
+                            if let Some(arc_node) = weak.upgrade() {
+                                process_modules::convert_to_module_offset(
+                                    sw.stack_process,
+                                    sw.stacks.as_mut_slice(),
+                                );
+                                let erm = arc_node
+                                    .value
+                                    .as_any()
+                                    .downcast_ref::<event_record_model::EventRecordModel>()
+                                    .unwrap();
+                                if is_from_delay_remove_map {
+                                    erm.set_stack_walk_2(sw);
+                                } else {
+                                    erm.set_stack_walk(sw);
+                                }
                             }
-                        }
-                        if !is_from_stack_walk_delay_remove_map {
-                            let thread_id = if is_minus_1_for_thread_id {
-                                -1i32 as u32
-                            } else {
-                                stack_thread
-                            };
-                            stack_walk_delay_remove_map
-                                .get_mut()
-                                .insert((thread_id, event_timestamp), row);
                         }
                     } else {
                         error!(
-                            "Can't find event for the stack walk: {}:{}:{timestamp}  {}:{}:{} {:?}",
-                            process_id as i32,
-                            thread_id as i32,
+                            "Can't find event: {}:{}:{} for the stack walk: {}:{}:{}",
                             sw.stack_process,
                             sw.stack_thread as i32,
                             sw.event_timestamp,
-                            sw.stacks
+                            process_id as i32,
+                            thread_id as i32,
+                            timestamp,
                         );
                     }
-
-                    // clear stack_walk_delay_remove_map. because insert a item when is stack walk event. so keep the map len
-                    let map = stack_walk_delay_remove_map.get_mut();
-                    map_pop_front(map, timestamp, 10, 10, true);
+                    // clear delay_remove_map. because the map insert a item when the event is stack walk. so keep the map len
+                    stack_walk_map.clear(true, timestamp, 10, 30);
                     return;
-                } else {
-                    // clear stack_walk_map. because insert a item when is a non stack walk event. so keep the map len
-                    let map = stack_walk_map.get_mut();
-                    map_pop_front(map, timestamp, 10, 30, false);
                 }
+                // clear stack_walk_map. because the map insert a item when the event is not stack walk. so keep the map len
+                stack_walk_map.clear(false, timestamp, 10, 30);
 
                 process_modules::handle_event_for_module(&mut event_record);
                 if !is_selected {
@@ -392,15 +342,11 @@ fn main() {
                 }
 
                 if is_push_to_list {
-                    stack_walk_map
-                        .get_mut()
-                        .insert((thread_id, timestamp), Some(Arc::downgrade(&row_arc)));
+                    stack_walk_map.insert((thread_id, timestamp), Some(Arc::downgrade(&row_arc)));
                     let index = event_list_arc_1.push(row_arc);
                     notify = Some(delay_notify::Notify::Push(index, 1));
                 } else {
-                    stack_walk_map
-                        .get_mut()
-                        .insert((thread_id, timestamp), None);
+                    stack_walk_map.insert((thread_id, timestamp), None);
                 }
 
                 if let Some(notify) = notify {
@@ -408,60 +354,6 @@ fn main() {
                 }
 
                 return;
-
-                fn map_pop_front(
-                    map: &mut LinkedHashMap<
-                        (u32, i64),
-                        Option<Weak<event_list::Node<EventRecordModel>>>,
-                    >,
-                    current_timestamp: i64,
-                    count: usize,
-                    num_seconds: i64,
-                    is_delay_remove_map: bool,
-                ) {
-                    let count = if count < map.len() { count } else { map.len() };
-                    for _index in 0..count {
-                        let is_pop = if let Some((key, _value)) = map.front() {
-                            let dt_prev = utils::TimeStamp(key.1).to_datetime_local();
-                            let duration =
-                                utils::TimeStamp(current_timestamp).to_datetime_local() - dt_prev;
-                            if duration.num_seconds() > num_seconds {
-                                true
-                            } else {
-                                break;
-                            }
-                        } else {
-                            break;
-                        };
-
-                        if is_pop {
-                            let (key, value) = map.pop_front().unwrap();
-                            let dt_prev = utils::TimeStamp(key.1).to_datetime_local();
-                            let message: String = if let Some(weak) = value {
-                                if let Some(arc_node) = weak.upgrade() {
-                                    let erm = arc_node
-                                        .value
-                                        .as_any()
-                                        .downcast_ref::<event_record_model::EventRecordModel>()
-                                        .unwrap();
-                                    format!("{:?}", *erm.array)
-                                } else {
-                                    format!("had been drop")
-                                }
-                            } else {
-                                format!("Not push to list")
-                            };
-
-                            if !is_delay_remove_map {
-                                warn!(
-                                    "No stack walk for the event: process: {} {}  {message}.",
-                                    key.0 as i32,
-                                    dt_prev.to_string()
-                                )
-                            }
-                        }
-                    }
-                }
             },
             |ret| {
                 info!("{:?}", ret);
