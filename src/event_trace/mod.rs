@@ -45,6 +45,7 @@ static CONTEXT: Lazy<FairMutex<Controller>> = Lazy::new(|| FairMutex::new(Contro
 struct EtwPropertiesBuf(EVENT_TRACE_PROPERTIES, [u8]);
 
 pub struct Controller {
+    is_stopping: bool,
     config: event_config::Config,
     h_trace_session: CONTROLTRACE_HANDLE,
     h_trace_consumer: PROCESSTRACE_HANDLE,
@@ -69,6 +70,7 @@ unsafe impl std::marker::Send for Controller {}
 impl Controller {
     fn new() -> Self {
         let cxt = Self {
+            is_stopping: false,
             config: event_config::Config::new(event_kernel::EVENTS_DESC),
             h_trace_session: CONTROLTRACE_HANDLE::default(),
             h_trace_consumer: PROCESSTRACE_HANDLE {
@@ -92,6 +94,7 @@ impl Controller {
         fn_completion: impl FnOnce(Result<()>) + Send + 'static,
     ) -> Result<()> {
         let mut context_mg = CONTEXT.lock();
+        context_mg.is_stopping = false;
         let mut h_trace = CONTROLTRACE_HANDLE::default();
         let session_name: &U16CStr = if context_mg.is_win8_or_greater {
             SESSION_NAME_SYSMON
@@ -196,13 +199,14 @@ impl Controller {
             }
         };
         if r.is_err() {
-            let _ = Self::stop(Some(context_mg));
+            let _ = Self::stop();
         }
         r
     }
 
-    pub fn stop(mg: Option<FairMutexGuard<Controller>>) -> Result<()> {
-        let mut context_mg = mg.unwrap_or(CONTEXT.lock());
+    pub fn stop() -> Result<()> {
+        let mut context_mg = CONTEXT.lock();
+        context_mg.is_stopping = true;
 
         if 0 != context_mg.h_trace_session.Value {
             let session_name: &U16CStr = if context_mg.is_win8_or_greater {
@@ -210,15 +214,19 @@ impl Controller {
             } else {
                 SESSION_NAME_NT
             };
-            let mut properties_buf = make_properties(context_mg.is_win8_or_greater, session_name);
+            let h_trace_session = context_mg.h_trace_session;
+            let is_win8_or_greater = context_mg.is_win8_or_greater;
+            let mut properties_buf = make_properties(is_win8_or_greater, session_name);
+            drop(context_mg);
             let error = unsafe {
                 ControlTraceW(
-                    context_mg.h_trace_session,
+                    h_trace_session,
                     session_name.as_pcwstr(),
                     &mut properties_buf.0,
                     EVENT_TRACE_CONTROL_STOP,
                 )
             };
+            context_mg = CONTEXT.lock();
             context_mg.h_trace_session.Value = 0;
             if let Err(e) = error {
                 error!("failed to ControlTraceW {}", e);
@@ -226,7 +234,10 @@ impl Controller {
         }
 
         if INVALID_PROCESSTRACE_HANDLE != context_mg.h_trace_consumer.Value {
-            let error = unsafe { CloseTrace(context_mg.h_trace_consumer) };
+            let h_trace_consumer = context_mg.h_trace_consumer;
+            drop(context_mg);
+            let error = unsafe { CloseTrace(h_trace_consumer) };
+            context_mg = CONTEXT.lock();
             context_mg.h_trace_consumer.Value = INVALID_PROCESSTRACE_HANDLE;
             if let Err(e) = error {
                 if ERROR_CTX_CLOSE_PENDING.to_hresult() != e.code() {
@@ -279,6 +290,9 @@ impl Controller {
         let is_auto_generated = er.EventHeader.ProviderId == EventTraceGuid;
 
         let context_mg = CONTEXT.lock();
+        if context_mg.is_stopping {
+            return;
+        }
         let event_indexes = match get_event_indexes(er, Some(&context_mg)) {
             Ok(indexes) => indexes,
             Err(e) => {

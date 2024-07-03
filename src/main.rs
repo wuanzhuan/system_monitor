@@ -475,7 +475,7 @@ fn main() {
         }
     });
     app.on_trace_stop(|| {
-        let r = event_trace::Controller::stop(None);
+        let r = event_trace::Controller::stop();
         info!("end: {:?}", r);
     });
 
