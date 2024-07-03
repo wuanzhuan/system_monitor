@@ -153,7 +153,8 @@ impl Controller {
                 LoggerName: PWSTR::from_raw(session_name.as_ptr() as *mut u16),
                 Anonymous1: EVENT_TRACE_LOGFILEW_0 {
                     ProcessTraceMode: PROCESS_TRACE_MODE_EVENT_RECORD
-                        | PROCESS_TRACE_MODE_REAL_TIME,
+                        | PROCESS_TRACE_MODE_REAL_TIME
+                        | PROCESS_TRACE_MODE_RAW_TIMESTAMP,
                 },
                 Anonymous2: EVENT_TRACE_LOGFILEW_1 {
                     EventRecordCallback: Some(Controller::callback),
