@@ -64,7 +64,7 @@ pub struct Controller {
             >,
         >,
     >,
-    unstored_events_map: RefCell<LinkedHashMap<(u32, i64), ()>>,
+    unstored_events_map: RefCell<StackWalkMap<()>>,
 }
 
 unsafe impl std::marker::Send for Controller {}
@@ -81,7 +81,7 @@ impl Controller {
             h_consumer_thread: None,
             is_win8_or_greater: unsafe { GetVersion() } >= _WIN32_WINNT_WINBLUE,
             event_record_callback: None,
-            unstored_events_map: RefCell::new(LinkedHashMap::new()),
+            unstored_events_map: RefCell::new(StackWalkMap::new(32)),
         };
         cxt
     }

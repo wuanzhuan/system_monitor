@@ -262,8 +262,9 @@ fn main() {
                 let timestamp = event_record.timestamp.0;
 
                 if let Some(mut sw) = stack_walk {
-                    let row = stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp));
-                    if let Some((some_row, is_from_delay_remove_map)) = row {
+                    if let Some((some_row, is_from_delay_remove_map)) =
+                        stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp))
+                    {
                         if let Some(weak) = some_row {
                             if let Some(arc_node) = weak.upgrade() {
                                 process_modules::convert_to_module_offset(
@@ -287,18 +288,18 @@ fn main() {
                             "Can't find event: {}:{}:{} for the stack walk: {}:{}:{}",
                             sw.stack_process,
                             sw.stack_thread as i32,
-                            sw.event_timestamp,
+                            utils::TimeStamp(sw.event_timestamp).to_string_detail(),
                             process_id as i32,
                             thread_id as i32,
-                            timestamp,
+                            utils::TimeStamp(timestamp).to_string_detail(),
                         );
                     }
                     // clear delay_remove_map. because the map insert a item when the event is stack walk. so keep the map len
-                    stack_walk_map.clear(true, timestamp, 10, 30);
+                    stack_walk_map.pop_front(true, timestamp, 10, 15);
                     return;
                 }
                 // clear stack_walk_map. because the map insert a item when the event is not stack walk. so keep the map len
-                stack_walk_map.clear(false, timestamp, 10, 30);
+                stack_walk_map.pop_front(false, timestamp, 10, 15);
 
                 process_modules::handle_event_for_module(&mut event_record);
                 if !is_selected {
