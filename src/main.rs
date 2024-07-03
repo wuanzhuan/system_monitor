@@ -24,7 +24,6 @@ mod event_trace;
 mod filter;
 mod pdb;
 mod process_modules;
-mod stack_walk;
 mod third_extend;
 mod utils;
 
@@ -252,7 +251,7 @@ fn main() {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
         let mut stack_walk_map =
-            stack_walk::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32);
+            event_trace::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);

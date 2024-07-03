@@ -24,9 +24,11 @@ use windows::{
 mod event_config;
 mod event_decoder;
 mod event_kernel;
+mod stack_walk;
 
 pub use event_decoder::{EventRecordDecoded, PropertyDecoded};
 pub use event_kernel::{event_property::*, EVENTS_DESC, LOST_EVENT_GUID};
+pub use stack_walk::StackWalkMap;
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
 const SESSION_NAME_NT: &U16CStr = u16cstr!("NT Kernel Logger");
