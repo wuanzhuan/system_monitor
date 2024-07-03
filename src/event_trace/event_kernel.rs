@@ -155,7 +155,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "DiskIoInit",
+            name: "DiskIo",
+            display_name: Some("DiskIoInit"),
             flag: Major::DiskIoInit as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -178,7 +179,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "DiskIoDriver",
+            name: "DiskIo",
+            display_name: Some("DiskIoDriver"),
             flag: Major::Driver as u32,
             ..MajorDescribe::DEFAULT
         },
