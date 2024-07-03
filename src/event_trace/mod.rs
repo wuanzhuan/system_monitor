@@ -164,6 +164,7 @@ impl Controller {
                 break Err(anyhow!("Failed to OpenTraceW: {:#?}", Error::from_win32()));
             }
             context_mg.h_trace_consumer = h_consumer;
+            drop(context_mg);
 
             let (tx, rx) = mpsc::channel::<ErrorAnyhow>();
             let h_thread = thread::spawn(move || {
@@ -185,15 +186,15 @@ impl Controller {
             match r_recv {
                 Err(e) => {
                     if e == RecvTimeoutError::Timeout {
-                        context_mg.h_consumer_thread = Some(h_thread);
+                        CONTEXT.lock().h_consumer_thread = Some(h_thread);
                         break Ok(());
                     }
                     error!("Failed to recv_timeout {}", e);
-                    context_mg.h_consumer_thread = None;
+                    CONTEXT.lock().h_consumer_thread = None;
                     break Err(e.into());
                 }
                 Ok(e) => {
-                    context_mg.h_consumer_thread = None;
+                    CONTEXT.lock().h_consumer_thread = None;
                     break Err(e);
                 }
             }
