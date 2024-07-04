@@ -251,7 +251,14 @@ fn main() {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
         let mut stack_walk_map =
-            event_trace::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32);
+            event_trace::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32, 10, 15, |key, value, is_delay_remove_map| {
+                if !is_delay_remove_map {
+                    warn!(
+                        "No stack walk for the event: thread_id: {} timestamp: {}.",
+                        key.0 as i32, key.1
+                    )
+                }
+            });
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
@@ -263,7 +270,7 @@ fn main() {
 
                 if let Some(mut sw) = stack_walk {
                     if let Some((some_row, is_from_delay_remove_map)) =
-                        stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp))
+                        stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp), timestamp)
                     {
                         if let Some(weak) = some_row {
                             if let Some(arc_node) = weak.upgrade() {
@@ -294,17 +301,9 @@ fn main() {
                             utils::TimeStamp(timestamp).to_string_detail(),
                         );
                     }
-                    // clear delay_remove_map. because the map insert a item when the event is stack walk. so keep the map len
-                    stack_walk_map.pop_front(true, timestamp, 10, 15, |_key, _value| {});
+
                     return;
                 }
-                // clear stack_walk_map. because the map insert a item when the event is not stack walk. so keep the map len
-                stack_walk_map.pop_front(false, timestamp, 10, 15, |key, _value| {
-                    warn!(
-                        "No stack walk for the event: thread_id: {} timestamp: {}.",
-                        key.0 as i32, key.1
-                    )
-                });
 
                 process_modules::handle_event_for_module(&mut event_record);
                 if !is_selected {

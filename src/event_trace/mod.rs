@@ -81,7 +81,14 @@ impl Controller {
             h_consumer_thread: None,
             is_win8_or_greater: unsafe { GetVersion() } >= _WIN32_WINNT_WINBLUE,
             event_record_callback: None,
-            unstored_events_map: RefCell::new(StackWalkMap::new(32)),
+            unstored_events_map: RefCell::new(StackWalkMap::new(32, 10, 15, |key, value, is_delay_remove_map| {
+                if !is_delay_remove_map {
+                    warn!(
+                        "No stack walk for the event: thread_id: {} timestamp: {}.",
+                        key.0 as i32, key.1
+                    )
+                }
+            })),
         };
         cxt
     }
@@ -373,41 +380,31 @@ impl Controller {
             event_record_decoded.set_event_display_name(display_name);
         }
 
-        let current_timestamp = er.EventHeader.TimeStamp;
         let context_mg = CONTEXT.lock();
         if is_stack_walk {
-            context_mg.unstored_events_map.borrow_mut().pop_front(
-                true,
-                current_timestamp,
-                10,
-                15,
-                |_key, _value| {},
-            );
             let sw = StackWalk::from_event_record_decoded(&event_record_decoded);
             if context_mg
                 .unstored_events_map
                 .borrow_mut()
-                .remove(&(sw.stack_thread, sw.event_timestamp))
+                .remove(&(sw.stack_thread, sw.event_timestamp), er.EventHeader.TimeStamp)
                 .is_none()
             {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
                 let cb = unsafe { &mut *cb.get() };
                 cb(event_record_decoded, Some(sw), false);
+            } else {
+                error!(
+                    "Removed stack walk: {}:{}:{} for the unstored event: {}:{}:{}",
+                    sw.stack_process,
+                    sw.stack_thread as i32,
+                    crate::utils::TimeStamp(sw.event_timestamp).to_string_detail(),
+                    er.EventHeader.ProcessId as i32,
+                    er.EventHeader.ThreadId as i32,
+                    crate::utils::TimeStamp(er.EventHeader.TimeStamp).to_string_detail(),
+                );
             }
         } else {
-            context_mg.unstored_events_map.borrow_mut().pop_front(
-                false,
-                current_timestamp,
-                10,
-                15,
-                |key, _value| {
-                    warn!(
-                        "No stack walk for the event: thread_id: {} timestamp: {}.",
-                        key.0 as i32, key.1
-                    )
-                },
-            );
             if !is_lost_event {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
