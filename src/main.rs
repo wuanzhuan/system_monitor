@@ -295,11 +295,16 @@ fn main() {
                         );
                     }
                     // clear delay_remove_map. because the map insert a item when the event is stack walk. so keep the map len
-                    stack_walk_map.pop_front(true, timestamp, 10, 15);
+                    stack_walk_map.pop_front(true, timestamp, 10, 15, |_key, _value| {});
                     return;
                 }
                 // clear stack_walk_map. because the map insert a item when the event is not stack walk. so keep the map len
-                stack_walk_map.pop_front(false, timestamp, 10, 15);
+                stack_walk_map.pop_front(false, timestamp, 10, 15, |key, _value| {
+                    warn!(
+                        "No stack walk for the event: thread_id: {} timestamp: {}.",
+                        key.0 as i32, key.1
+                    )
+                });
 
                 process_modules::handle_event_for_module(&mut event_record);
                 if !is_selected {

@@ -1,6 +1,5 @@
 use crate::utils::TimeStamp;
 use linked_hash_map::LinkedHashMap;
-use tracing::warn;
 
 pub struct StackWalkMap<T: Clone> {
     events_map: LinkedHashMap<(/*event thread_id*/ u32, /*event timestamp*/ i64), T>,
@@ -48,6 +47,7 @@ impl<T: Clone> StackWalkMap<T> {
         current_timestamp: i64,
         max_count: usize,
         num_seconds: i64,
+        pop_callback: impl Fn(/*key*/(u32, i64), /*value*/T)
     ) {
         let map = if is_delay_remove_map {
             &mut self.delay_remove_events_map
@@ -74,13 +74,8 @@ impl<T: Clone> StackWalkMap<T> {
             };
 
             if is_pop {
-                let (key, _value) = map.pop_front().unwrap();
-                if !is_delay_remove_map {
-                    warn!(
-                        "No stack walk for the event: thread_id: {} timestamp: {}.",
-                        key.0 as i32, key.1
-                    )
-                }
+                let (key, value) = map.pop_front().unwrap();
+                pop_callback(key, value);
             }
         }
     }

@@ -301,10 +301,12 @@ impl Controller {
             Ok(indexes) => indexes,
             Err(e) => {
                 error!("{e}");
-                context_mg
+                if !is_stack_walk {
+                    context_mg
                     .unstored_events_map
                     .borrow_mut()
                     .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
+                }
                 return;
             }
         };
@@ -371,8 +373,16 @@ impl Controller {
             event_record_decoded.set_event_display_name(display_name);
         }
 
+        let current_timestamp = er.EventHeader.TimeStamp;
         let context_mg = CONTEXT.lock();
         if is_stack_walk {
+            context_mg.unstored_events_map.borrow_mut().pop_front(
+                true,
+                current_timestamp,
+                10,
+                15,
+                |_key, _value| {},
+            );
             let sw = StackWalk::from_event_record_decoded(&event_record_decoded);
             if context_mg
                 .unstored_events_map
@@ -386,6 +396,18 @@ impl Controller {
                 cb(event_record_decoded, Some(sw), false);
             }
         } else {
+            context_mg.unstored_events_map.borrow_mut().pop_front(
+                false,
+                current_timestamp,
+                10,
+                15,
+                |key, _value| {
+                    warn!(
+                        "No stack walk for the event: thread_id: {} timestamp: {}.",
+                        key.0 as i32, key.1
+                    )
+                },
+            );
             if !is_lost_event {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
