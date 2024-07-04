@@ -88,7 +88,7 @@ impl<T: Clone> StackWalkMap<T> {
                 let (key, (_value, debug_msg)) = map.pop_front().unwrap();
                 if !is_delay_remove_map {
                     warn!(
-                        "No stack walk for the event: thread_id: {} timestamp: {}. {debug_msg}",
+                        "Miss stack walk for the event: thread_id: {} timestamp: {}. {debug_msg}",
                         key.0 as i32, key.1
                     )
                 }
