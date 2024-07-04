@@ -251,14 +251,7 @@ fn main() {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
         let mut stack_walk_map =
-            event_trace::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32, 10, 15, |key, value, is_delay_remove_map| {
-                if !is_delay_remove_map {
-                    warn!(
-                        "No stack walk for the event: thread_id: {} timestamp: {}.",
-                        key.0 as i32, key.1
-                    )
-                }
-            });
+            event_trace::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32, 10, 15);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
@@ -310,6 +303,8 @@ fn main() {
                     return;
                 }
 
+                let debug_msg = format!("{}-{}", event_record.event_name, event_record.opcode_name);
+
                 let er = event_record_model::EventRecordModel::new(
                     event_record,
                     process_modules::get_process_path_by_id(process_id),
@@ -346,11 +341,11 @@ fn main() {
                 }
 
                 if is_push_to_list {
-                    stack_walk_map.insert((thread_id, timestamp), Some(Arc::downgrade(&row_arc)));
+                    stack_walk_map.insert((thread_id, timestamp), Some(Arc::downgrade(&row_arc)), debug_msg);
                     let index = event_list_arc_1.push(row_arc);
                     notify = Some(delay_notify::Notify::Push(index, 1));
                 } else {
-                    stack_walk_map.insert((thread_id, timestamp), None);
+                    stack_walk_map.insert((thread_id, timestamp), None, debug_msg);
                 }
 
                 if let Some(notify) = notify {

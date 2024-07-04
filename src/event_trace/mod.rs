@@ -81,14 +81,7 @@ impl Controller {
             h_consumer_thread: None,
             is_win8_or_greater: unsafe { GetVersion() } >= _WIN32_WINNT_WINBLUE,
             event_record_callback: None,
-            unstored_events_map: RefCell::new(StackWalkMap::new(32, 10, 15, |key, value, is_delay_remove_map| {
-                if !is_delay_remove_map {
-                    warn!(
-                        "No stack walk for the event: thread_id: {} timestamp: {}.",
-                        key.0 as i32, key.1
-                    )
-                }
-            })),
+            unstored_events_map: RefCell::new(StackWalkMap::new(32, 10, 15)),
         };
         cxt
     }
@@ -312,7 +305,7 @@ impl Controller {
                     context_mg
                     .unstored_events_map
                     .borrow_mut()
-                    .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
+                    .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), (), format!("{:?}-{:?}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode));
                 }
                 return;
             }
@@ -344,7 +337,7 @@ impl Controller {
                     context_mg
                         .unstored_events_map
                         .borrow_mut()
-                        .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), ());
+                        .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), (), format!("{:?}-{:?}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode));
                     return;
                 }
             }

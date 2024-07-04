@@ -1,28 +1,28 @@
 use crate::utils::TimeStamp;
 use linked_hash_map::LinkedHashMap;
+use tracing::warn;
 
 
 pub struct StackWalkMap<T: Clone> {
-    events_map: LinkedHashMap<(/*event thread_id*/ u32, /*event timestamp*/ i64), T>,
-    delay_remove_events_map: LinkedHashMap<(/*event thread_id*/ u32, /*event timestamp*/ i64), T>,
+    events_map: LinkedHashMap<(/*event thread_id*/ u32, /*event timestamp*/ i64), (T, /*debug_msg*/String)>,
+    delay_remove_events_map: LinkedHashMap<(/*event thread_id*/ u32, /*event timestamp*/ i64), (T, /*debug_msg*/String)>,
     max_count: usize,
     num_seconds: i64,
-    fn_pop: Box<dyn Fn(/*key*/(u32, i64), /*value*/T, /*is_delay_remove_map*/bool) + Send>
 }
 
 impl<T: Clone> StackWalkMap<T> {
-    pub fn new(capacity: usize, max_count: usize, num_seconds: i64, fn_pop: impl Fn(/*key*/(u32, i64), /*value*/T, /*is_delay_remove_map*/bool) + Send + 'static) -> Self {
+    pub fn new(capacity: usize, max_count: usize, num_seconds: i64) -> Self {
         Self {
             events_map: LinkedHashMap::with_capacity(capacity),
             delay_remove_events_map: LinkedHashMap::with_capacity(capacity),
             max_count,
             num_seconds,
-            fn_pop: Box::new(fn_pop)
         }
     }
 
-    pub fn insert(&mut self, key: (u32, i64), value: T) -> Option<T> {
-        let old = self.events_map.insert(key, value);
+    // debug_msg: event info i.e. event name opcode name
+    pub fn insert(&mut self, key: (u32, i64), value: T, debug_msg: String) -> Option<(T, String)> {
+        let old = self.events_map.insert(key, (value, debug_msg));
         // clear events_map's item that is hold too long. Avoid map being too large
         self.pop_front(false, key.1);
         old
@@ -33,26 +33,26 @@ impl<T: Clone> StackWalkMap<T> {
         key: &(u32, i64),
         current_timestamp: i64,
     ) -> Option<(T, /*is_from_delay_remove_map*/ bool)> {
-        if let Some(value) = self.events_map.remove(key) {
-            self.delay_remove_events_map.insert(*key, value.clone());
+        if let Some((value, debug_msg)) = self.events_map.remove(key) {
+            self.delay_remove_events_map.insert(*key, (value.clone(), debug_msg));
             // clear delay_remove_events_map's item that is hold too long. Avoid map being too large
             self.pop_front(true, current_timestamp);
             return Some((value, false));
         }
 
-        if let Some(value) = self.events_map.remove(&(-1i32 as u32, key.1)) {
+        if let Some((value, debug_msg)) = self.events_map.remove(&(-1i32 as u32, key.1)) {
             self.delay_remove_events_map
-                .insert((-1i32 as u32, key.1), value.clone());
+                .insert((-1i32 as u32, key.1), (value.clone(), debug_msg));
             // clear delay_remove_events_map's item that is hold too long. Avoid map being too large
             self.pop_front(true, current_timestamp);
             return Some((value, false));
         }
 
-        if let Some(value) = self.delay_remove_events_map.remove(key) {
+        if let Some((value, _)) = self.delay_remove_events_map.remove(key) {
             return Some((value, true));
         }
 
-        if let Some(value) = self.delay_remove_events_map.remove(&(-1i32 as u32, key.1)) {
+        if let Some((value, _)) = self.delay_remove_events_map.remove(&(-1i32 as u32, key.1)) {
             return Some((value, true));
         }
 
@@ -85,8 +85,13 @@ impl<T: Clone> StackWalkMap<T> {
             };
 
             if is_pop {
-                let (key, value) = map.pop_front().unwrap();
-                (self.fn_pop)(key, value, is_delay_remove_map);
+                let (key, (_value, debug_msg)) = map.pop_front().unwrap();
+                if !is_delay_remove_map {
+                    warn!(
+                        "No stack walk for the event: thread_id: {} timestamp: {}. {debug_msg}",
+                        key.0 as i32, key.1
+                    )
+                }
             }
         }
     }
@@ -103,9 +108,9 @@ mod tests {
 
     #[test]
     fn remove() {
-        let mut map = StackWalkMap::<()>::new(10, 10, 15, "test remove");
+        let mut map = StackWalkMap::<()>::new(10, 10, 15);
 
-        map.insert((-1i32 as u32, 133644663686383541), ());
+        map.insert((-1i32 as u32, 133644663686383541), (), format!("test"));
 
         let r = map.remove(&(44876, 133644663686383541), 133644663686383541);
 
