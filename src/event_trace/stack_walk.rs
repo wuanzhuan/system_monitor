@@ -1,6 +1,6 @@
 use crate::utils::TimeStamp;
 use linked_hash_map::LinkedHashMap;
-use tracing::warn;
+use tracing::debug;
 
 
 pub struct StackWalkMap<T: Clone> {
@@ -87,8 +87,8 @@ impl<T: Clone> StackWalkMap<T> {
             if is_pop {
                 let (key, (_value, debug_msg)) = map.pop_front().unwrap();
                 if !is_delay_remove_map {
-                    warn!(
-                        "Miss stack walk for the event: thread_id: {} timestamp: {}. {debug_msg}",
+                    debug!(
+                        name: "miss_stack_walk", "Miss stack walk for the event: thread_id: {} timestamp: {}. {debug_msg}",
                         key.0 as i32, key.1
                     )
                 }
