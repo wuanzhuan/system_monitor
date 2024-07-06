@@ -75,10 +75,6 @@ export component App inherits Window {
                     selected_target_level(target, level)
                 }
             }
-            ComboBox {
-                model: ["trace", "debug", "info", "warn", "error"];
-                current-value: "trace";
-            }
         }
 
         start-stop := HorizontalBox {

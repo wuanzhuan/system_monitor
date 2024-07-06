@@ -14,6 +14,7 @@ export component LogConfig {
     callback selected_target_level(/*target*/string, /*level*/string);
 
     button := Button {
+        enabled: false;
         width: self.preferred-width;
         height: self.preferred-height;
         text: @tr("Log Config");
