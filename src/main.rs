@@ -4,6 +4,7 @@
 use crate::event_record_model::EventRecordModel;
 use event_record_model::Columns;
 use i_slint_backend_winit::WinitWindowAccessor;
+use phf::phf_map;
 use slint::{
     Model, ModelRc, PhysicalPosition, SharedString, StandardListViewItem, TableColumn, VecModel,
 };
@@ -11,10 +12,12 @@ use std::{
     fs::create_dir_all,
     path::Path,
     rc::Rc,
+    str::FromStr,
     sync::{Arc, Weak},
 };
 use strum::VariantArray;
 use tracing::{error, info, warn};
+use tracing_subscriber::{filter::LevelFilter, fmt as tracing_fmt};
 
 mod delay_notify;
 mod event_list;
@@ -29,16 +32,28 @@ mod utils;
 
 slint::include_modules!();
 
+static LOG_TARGET_MAP: phf::Map<&'static str, (&'static str, LevelFilter)> = phf_map! {
+    "miss_stack_walk" => ("sys_monitor::event_trace::stack_walk", LevelFilter::DEBUG),
+};
+const LOG_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
+
+
 fn main() {
     let file_appender = tracing_appender::rolling::never("./logs", "logs.log");
     let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
-    tracing_subscriber::fmt()
-        .with_timer(tracing_subscriber::fmt::time::LocalTime::rfc_3339())
+
+    let miss_stack_walk = LOG_TARGET_MAP.get("miss_stack_walk").unwrap();
+    let subscriber = tracing_fmt::fmt()
+        .with_timer(tracing_fmt::time::LocalTime::rfc_3339())
         .with_file(true)
         .with_line_number(true)
         .with_writer(non_blocking)
         .with_ansi(false)
-        .init();
+        .with_env_filter(format!("info,{}={}", miss_stack_walk.0, miss_stack_walk.1))
+        .with_filter_reloading();
+    let level_filter_handle = subscriber.reload_handle();
+    let targets_filter_handle = subscriber.reload_handle();
+    subscriber.init();
 
     let app = App::new().unwrap();
     let window = app.window();
@@ -242,6 +257,47 @@ fn main() {
         (SharedString::new(), true)
     });
 
+    let log_levels: Vec<SharedString> = LOG_LEVELS
+        .iter()
+        .map(|item| SharedString::from(*item))
+        .collect();
+    let target_filters: Vec<(SharedString, SharedString)> = LOG_TARGET_MAP
+        .entries()
+        .map(|(key, value)| {
+            (
+                SharedString::from(*key),
+                SharedString::from(value.1.to_string().as_str()),
+            )
+        })
+        .collect();
+    app.set_log_filter(LogFilter {
+        levels: ModelRc::from(log_levels.as_slice()),
+        max_level: SharedString::from(LevelFilter::INFO.to_string().as_str()),
+        target_filters: ModelRc::from(target_filters.as_slice()),
+    });
+    app.on_selected_level(move |level| {
+        let _level_filter = match LevelFilter::from_str(level.as_str()) {
+            Err(e) => {
+                error!("{e}");
+                return;
+            }
+            Ok(level_filter) => level_filter,
+        };
+        let _ = level_filter_handle.modify(|_filter| {
+        });
+    });
+
+    app.on_selected_target_level(move |_target, level| {
+        let _level_filter = match LevelFilter::from_str(level.as_str()) {
+            Err(e) => {
+                error!("{e}");
+                return;
+            }
+            Ok(level_filter) => level_filter,
+        };
+        let _ = targets_filter_handle.modify(|_filter| {});
+    });
+
     app.on_clear(move || {
         event_list_model_rc_4.clear();
     });
@@ -250,8 +306,9 @@ fn main() {
     app.on_trace_start(move || {
         let app_weak_1 = app_weak.clone();
         let event_list_arc_1 = event_list_arc_1.clone();
-        let mut stack_walk_map =
-            event_trace::StackWalkMap::<Option<Weak<event_list::Node<EventRecordModel>>>>::new(32, 10, 15);
+        let mut stack_walk_map = event_trace::StackWalkMap::<
+            Option<Weak<event_list::Node<EventRecordModel>>>,
+        >::new(32, 10, 15);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
         process_modules::init(&vec![]);
@@ -341,7 +398,11 @@ fn main() {
                 }
 
                 if is_push_to_list {
-                    stack_walk_map.insert((thread_id, timestamp), Some(Arc::downgrade(&row_arc)), debug_msg);
+                    stack_walk_map.insert(
+                        (thread_id, timestamp),
+                        Some(Arc::downgrade(&row_arc)),
+                        debug_msg,
+                    );
                     let index = event_list_arc_1.push(row_arc);
                     notify = Some(delay_notify::Notify::Push(index, 1));
                 } else {

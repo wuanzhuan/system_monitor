@@ -1,0 +1,90 @@
+import { Button, Palette, Switch, ComboBox, ListView, VerticalBox, HorizontalBox } from "std-widgets.slint";
+
+
+export struct LogFilter {
+    levels: [string],
+    max_level: string, // only great then max_level will be log
+    target_filters: [{target: string, level: string}]
+}
+
+export component LogConfig {
+    in-out property <LogFilter> log_filter;
+
+    callback selected_level(/*level*/string);
+    callback selected_target_level(/*target*/string, /*level*/string);
+
+    button := Button {
+        width: self.preferred-width;
+        height: self.preferred-height;
+        text: @tr("Log Config");
+        clicked => {
+            popup.show()
+        }
+    }
+
+    popup := PopupWindow {
+        y: button.height + 4mm;
+        close-on-click: false;
+
+        Rectangle {
+            background: Palette.background;
+            border-width: 2px;
+            border-color: Palette.border;
+
+            VerticalLayout {
+                HorizontalLayout {
+                    height: self.preferred-height;
+                    alignment: end;
+
+                    Button {
+                        padding: 0px;
+                        width: self.preferred-width;
+                        height: self.preferred-height;
+                        text: "X";
+
+                        clicked => {
+                            popup.close();
+                        }
+                    }
+                }
+                VerticalBox {
+                    HorizontalBox {
+                        height: self.preferred-height;
+                        alignment: start;
+
+                        Text {
+                            vertical-alignment: center;
+                            text: @tr("level: ");
+                        }
+                        ComboBox {
+                            model: log_filter.levels;
+                            current-value: log_filter.max-level;
+                            selected(value) => {
+                                selected_level(value)
+                            }
+                        }
+                    }
+                    ListView {
+                        min-width: 500px;
+                        min-height: 50px;
+
+                        for filter in log_filter.target-filters: HorizontalBox {
+                            width: self.preferred-width;
+                            Text {
+                                vertical-alignment: center;
+                                text: filter.target;
+                            }
+                            ComboBox {
+                                model: log_filter.levels;
+                                current-value: filter.level;
+                                selected(value) => {
+                                    selected_target_level(filter.target, value)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

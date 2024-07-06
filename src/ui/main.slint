@@ -1,15 +1,17 @@
-import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch, StandardButton, Button, Palette } from "std-widgets.slint";
+import { CheckBox, StandardListView, StyleMetrics , VerticalBox, HorizontalBox, LineEdit, Switch, StandardButton, Button, Palette, ComboBox } from "std-widgets.slint";
 import { EventsEnables, EnablesData, EventDesc } from "events_enable.slint";
 import { EventsView, EventsViewData,StackWalkInfo } from "events_view.slint";
 import { FilterInput } from "filter_input.slint";
 import { PdbConfig } from "pdb_config.slint";
+import { LogConfig, LogFilter } from "log_config.slint";
 
 
-export { EventsEnables, EnablesData, EventDesc, EventsViewData, StackWalkInfo }
+export { EventsEnables, EnablesData, EventDesc, EventsViewData, StackWalkInfo, LogFilter }
 
 export component App inherits Window {
     in property <{width: physical_length, height: physical_length}> initial-size;
     in property <string> pdb_directory;
+    in property <LogFilter> log_filter;
     out property <length> rem: self.default-font-size;
 
     preferred-width: initial-size.width;
@@ -24,6 +26,8 @@ export component App inherits Window {
     callback set_filter_expression_for_pair(string) -> {result: bool, message: string};
     callback edit_pdb_directory(string) -> {is_ok: bool, err: string};
     callback clear();
+    callback selected_level(/*level*/string);
+    callback selected_target_level(/*target*/string, /*level*/string);
 
     private property <{ok: bool, message: string}> result_start;
 
@@ -60,7 +64,23 @@ export component App inherits Window {
                     edit_pdb_directory(text)
                 }
             }
+
+            LogConfig {
+                log_filter: log_filter;
+
+                selected_level(level) => {
+                    selected_level(level)
+                }
+                selected_target_level(target, level) => {
+                    selected_target_level(target, level)
+                }
+            }
+            ComboBox {
+                model: ["trace", "debug", "info", "warn", "error"];
+                current-value: "trace";
+            }
         }
+
         start-stop := HorizontalBox {
             padding-right: 0px;
             padding-bottom: 0px;

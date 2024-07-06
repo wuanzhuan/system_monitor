@@ -10,7 +10,7 @@ strum = { version = "0.26", features = ["derive"]}
 chrono = "0.4"
 widestring = "1.0"
 tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["local-time"] }
+tracing-subscriber = { version = "0.3", features = ["local-time", "env-filter"] }
 tracing-appender = "0.2"
 bytemuck = "1.1"
 serde = { version = "1.0", features = ["derive"] }
@@ -30,6 +30,7 @@ ascii = "1.1"
 regex = "1.10"
 const-default = { version = "1.0", features = ["derive"] }
 pdb = "0.8"
+phf = { version = "0.11", features = ["macros"] }
 ahash = "0.8.11" # for version conflict
 time = "0.3.36"  # for version conflict
 
