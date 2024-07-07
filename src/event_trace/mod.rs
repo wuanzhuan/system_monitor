@@ -157,7 +157,7 @@ impl Controller {
                         | PROCESS_TRACE_MODE_RAW_TIMESTAMP,
                 },
                 Anonymous2: EVENT_TRACE_LOGFILEW_1 {
-                    EventRecordCallback: Some(Controller::event_record_callback),
+                    EventRecordCallback: Some(Controller::unsafe_event_record_callback),
                 },
                 ..Default::default()
             };
@@ -285,19 +285,24 @@ impl Controller {
         }
     }
 
-    unsafe extern "system" fn event_record_callback(eventrecord: *mut EVENT_RECORD) {
-        let er: &EVENT_RECORD = mem::transmute(eventrecord);
-        let is_stack_walk = er.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
+    unsafe extern "system" fn unsafe_event_record_callback(event_record: *mut EVENT_RECORD) {
+        let er: &EVENT_RECORD = mem::transmute(event_record);
+        Self::event_record_callback(er)
+    }
+
+    #[inline]
+    fn event_record_callback(event_record: &EVENT_RECORD) {
+        let is_stack_walk = event_record.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
         let is_module_event =
-            er.EventHeader.ProviderId == ImageLoadGuid || er.EventHeader.ProviderId == ProcessGuid;
-        let is_lost_event = er.EventHeader.ProviderId == LOST_EVENT_GUID;
-        let is_auto_generated = er.EventHeader.ProviderId == EventTraceGuid;
+            event_record.EventHeader.ProviderId == ImageLoadGuid || event_record.EventHeader.ProviderId == ProcessGuid;
+        let is_lost_event = event_record.EventHeader.ProviderId == LOST_EVENT_GUID;
+        let is_auto_generated = event_record.EventHeader.ProviderId == EventTraceGuid;
 
         let context_mg = CONTEXT.lock();
         if context_mg.is_stopping {
             return;
         }
-        let event_indexes = match get_event_indexes(er, Some(&context_mg)) {
+        let event_indexes = match get_event_indexes(event_record, Some(&context_mg)) {
             Ok(indexes) => indexes,
             Err(e) => {
                 error!("{e}");
@@ -305,7 +310,7 @@ impl Controller {
                     context_mg
                     .unstored_events_map
                     .borrow_mut()
-                    .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), (), format!("{:?}-{:?}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode));
+                    .insert((event_record.EventHeader.ThreadId, event_record.EventHeader.TimeStamp), (), format!("{:?}-{:?}", event_record.EventHeader.ProviderId, event_record.EventHeader.EventDescriptor.Opcode));
                 }
                 return;
             }
@@ -327,7 +332,7 @@ impl Controller {
                         "No enable major event is coming: {}-{} event_record: {}",
                         EVENTS_DESC[event_indexes.0].major.name,
                         EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
-                        EventRecord(er)
+                        EventRecord(event_record)
                     );
                 }
             }
@@ -337,20 +342,20 @@ impl Controller {
                     context_mg
                         .unstored_events_map
                         .borrow_mut()
-                        .insert((er.EventHeader.ThreadId, er.EventHeader.TimeStamp), (), format!("{:?}-{:?}", er.EventHeader.ProviderId, er.EventHeader.EventDescriptor.Opcode));
+                        .insert((event_record.EventHeader.ThreadId, event_record.EventHeader.TimeStamp), (), format!("{:?}-{:?}", event_record.EventHeader.ProviderId, event_record.EventHeader.EventDescriptor.Opcode));
                     return;
                 }
             }
         };
         drop(context_mg);
 
-        let mut event_record_decoded = match event_decoder::Decoder::new(er) {
+        let mut event_record_decoded = match event_decoder::Decoder::new(event_record) {
             Ok(mut decoder) => match decoder.decode() {
                 Ok(event_record_decoded) => event_record_decoded,
                 Err(e) => {
-                    warn!("Faild to decode: {e} EventRecord: {}", EventRecord(er));
+                    warn!("Faild to decode: {e} EventRecord: {}", EventRecord(event_record));
                     event_decoder::decode_kernel_event(
-                        er,
+                        event_record,
                         event_kernel::EVENTS_DESC[event_indexes.0].major.name,
                         event_kernel::EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
                     )
@@ -359,10 +364,10 @@ impl Controller {
             Err(e) => {
                 warn!(
                     "Faild to Decoder::new: {e} EventRecord: {}",
-                    EventRecord(er)
+                    EventRecord(event_record)
                 );
                 event_decoder::decode_kernel_event(
-                    er,
+                    event_record,
                     event_kernel::EVENTS_DESC[event_indexes.0].major.name,
                     event_kernel::EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
                 )
@@ -379,7 +384,7 @@ impl Controller {
             if context_mg
                 .unstored_events_map
                 .borrow_mut()
-                .remove(&(sw.stack_thread, sw.event_timestamp), er.EventHeader.TimeStamp)
+                .remove(&(sw.stack_thread, sw.event_timestamp), event_record.EventHeader.TimeStamp)
                 .is_none()
             {
                 let cb = context_mg.event_record_callback.clone().unwrap();
@@ -392,9 +397,9 @@ impl Controller {
                     sw.stack_process,
                     sw.stack_thread as i32,
                     crate::utils::TimeStamp(sw.event_timestamp).to_string_detail(),
-                    er.EventHeader.ProcessId as i32,
-                    er.EventHeader.ThreadId as i32,
-                    crate::utils::TimeStamp(er.EventHeader.TimeStamp).to_string_detail(),
+                    event_record.EventHeader.ProcessId as i32,
+                    event_record.EventHeader.ThreadId as i32,
+                    crate::utils::TimeStamp(event_record.EventHeader.TimeStamp).to_string_detail(),
                 );
             }
         } else {
