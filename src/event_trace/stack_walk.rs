@@ -1,6 +1,6 @@
 use crate::utils::TimeStamp;
 use linked_hash_map::LinkedHashMap;
-use tracing::debug;
+use tracing::{debug, error};
 
 
 pub struct StackWalkMap<T: Clone> {
@@ -22,7 +22,10 @@ impl<T: Clone> StackWalkMap<T> {
 
     // debug_msg: event info i.e. event name opcode name
     pub fn insert(&mut self, key: (u32, i64), value: T, debug_msg: String) -> Option<(T, String)> {
-        let old = self.events_map.insert(key, (value, debug_msg));
+        let old = self.events_map.insert(key, (value, debug_msg.clone()));
+        if old.is_some() {
+            error!("Event's key for stack walk is repeated. thread_id: {} timestamp: {} {debug_msg}", key.0, key.1);
+        }
         // clear events_map's item that is hold too long. Avoid map being too large
         self.pop_front(false, key.1);
         old
