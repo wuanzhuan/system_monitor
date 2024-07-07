@@ -35,6 +35,16 @@ impl TimeStamp {
         let duration = 10000000.0 / perf_freq as f64 * count as f64;
         Self(boot_time.0 + duration as i64)
     }
+
+    pub fn to_filetime(&self) -> FILETIME {
+        let dw_low_date_time: u32 = (self.0 & 0x00000000_ffffffff) as u32;
+        let dw_high_date_time = (self.0 >> 32) as u32;
+
+        FILETIME{
+            dwHighDateTime: dw_high_date_time,
+            dwLowDateTime: dw_low_date_time
+        }
+    }
 }
 
 impl std::string::ToString for TimeStamp {
