@@ -31,9 +31,9 @@ impl TimeStamp {
     }
 
     // the qpc is QueryPerformanceCounter
-    pub fn from_qpc(count: u64, start_time: Self, perf_freq: i64) -> Self {
-        let duration = count as f64 * 10000000.0 / perf_freq as f64;
-        Self(start_time.0 + duration as i64)
+    pub fn from_qpc(count: u64, boot_time: Self, perf_freq: i64) -> Self {
+        let duration = 10000000.0 / perf_freq as f64 * count as f64;
+        Self(boot_time.0 + duration as i64)
     }
 }
 
