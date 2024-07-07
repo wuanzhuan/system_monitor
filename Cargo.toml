@@ -57,3 +57,4 @@ features = [
 
 [build-dependencies]
 slint-build = "1.6"
+static_vcruntime = "2.0"
