@@ -490,8 +490,8 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
         SystemTraceControlGuid
     };
     properties.Wnode.Flags = WNODE_FLAG_TRACED_GUID;
-    // if 1 the StackWalk event's timestamp is invalid. because of not set PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA
-    // if 1 and the set the PROCESS_TRACE_MODE_RAW_TIMESTAMP. no event in windows 11
+    // if 1 and clear PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA, the StackWalk's event_timestamp is qpc yet. 
+    // if 1 and set PROCESS_TRACE_MODE_RAW_TIMESTAMP, no event coming in windows 11
     properties.Wnode.ClientContext = 2;
     properties.BufferSize = 512 * 1024;
     properties.FlushTimer = 1;
