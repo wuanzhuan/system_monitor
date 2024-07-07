@@ -607,7 +607,7 @@ fn process_init(process_id: u32) {
             Err(e) => {
                 unsafe { ZwClose(h_process_out) };
                 let err = format!("Failed to EnumProcessModules for {process_id}: {}", e);
-                error!(err);
+                error!("{err}");
                 return;
             }
         }
