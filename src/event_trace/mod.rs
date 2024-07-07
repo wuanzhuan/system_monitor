@@ -1,4 +1,4 @@
-use crate::third_extend::strings::*;
+use crate::{third_extend::strings::*, utils::TimeStamp};
 use anyhow::{anyhow, Error as ErrorAnyhow, Result};
 use linked_hash_map::LinkedHashMap;
 use once_cell::sync::Lazy;
@@ -65,6 +65,8 @@ pub struct Controller {
         >,
     >,
     unstored_events_map: RefCell<StackWalkMap<()>>,
+    boot_time: TimeStamp,
+    perf_freq: i64
 }
 
 unsafe impl std::marker::Send for Controller {}
@@ -82,6 +84,8 @@ impl Controller {
             is_win8_or_greater: unsafe { GetVersion() } >= _WIN32_WINNT_WINBLUE,
             event_record_callback: None,
             unstored_events_map: RefCell::new(StackWalkMap::new(32, 10, 15)),
+            boot_time: TimeStamp(0),
+            perf_freq: 1000_0000
         };
         cxt
     }
@@ -167,12 +171,13 @@ impl Controller {
                 break Err(anyhow!("Failed to OpenTraceW: {:#?}", Error::from_win32()));
             }
             context_mg.h_trace_consumer = h_consumer;
+            context_mg.boot_time = TimeStamp(trace_log.LogfileHeader.BootTime);
+            context_mg.perf_freq = trace_log.LogfileHeader.PerfFreq;
             drop(context_mg);
 
             let (tx, rx) = mpsc::channel::<ErrorAnyhow>();
             let h_thread = thread::spawn(move || {
-                let ft_now = unsafe { GetSystemTimeAsFileTime() };
-                let r = match unsafe { ProcessTrace(&[h_consumer], Some(&ft_now), None) } {
+                let r = match unsafe { ProcessTrace(&[h_consumer], None, None) } {
                     Err(e) => {
                         let r_send = tx.send(anyhow!("Failed to ProcessTrace: {}", e));
                         if r_send.is_ok() {
@@ -286,12 +291,12 @@ impl Controller {
     }
 
     unsafe extern "system" fn unsafe_event_record_callback(event_record: *mut EVENT_RECORD) {
-        let er: &EVENT_RECORD = mem::transmute(event_record);
+        let er: &mut EVENT_RECORD = mem::transmute(event_record);
         Self::event_record_callback(er)
     }
 
     #[inline]
-    fn event_record_callback(event_record: &EVENT_RECORD) {
+    fn event_record_callback(event_record: &mut EVENT_RECORD) {
         let is_stack_walk = event_record.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
         let is_module_event =
             event_record.EventHeader.ProviderId == ImageLoadGuid || event_record.EventHeader.ProviderId == ProcessGuid;
@@ -302,6 +307,8 @@ impl Controller {
         if context_mg.is_stopping {
             return;
         }
+        event_record.EventHeader.TimeStamp = TimeStamp::from_qpc(event_record.EventHeader.TimeStamp as u64, context_mg.boot_time, context_mg.perf_freq).0;
+
         let event_indexes = match get_event_indexes(event_record, Some(&context_mg)) {
             Ok(indexes) => indexes,
             Err(e) => {
@@ -380,7 +387,9 @@ impl Controller {
 
         let context_mg = CONTEXT.lock();
         if is_stack_walk {
-            let sw = StackWalk::from_event_record_decoded(&event_record_decoded);
+            let mut sw = StackWalk::from_event_record_decoded(&event_record_decoded);
+            sw.event_timestamp = TimeStamp::from_qpc(sw.event_timestamp as u64, context_mg.boot_time, context_mg.perf_freq).0;
+
             if context_mg
                 .unstored_events_map
                 .borrow_mut()
@@ -491,8 +500,8 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
     };
     properties.Wnode.Flags = WNODE_FLAG_TRACED_GUID;
     // if 1 and clear PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA, the StackWalk's event_timestamp is qpc yet. 
-    // if 1 and set PROCESS_TRACE_MODE_RAW_TIMESTAMP, no event coming in windows 11
-    properties.Wnode.ClientContext = 2;
+    // if 1 and set PROCESS_TRACE_MODE_RAW_TIMESTAMP, no event coming in windows 11. because of the StartTime of ProcessTrace
+    properties.Wnode.ClientContext = 1;
     properties.BufferSize = 256 * 1024;
     properties.FlushTimer = 1;
     properties.LogFileMode = EVENT_TRACE_SYSTEM_LOGGER_MODE
