@@ -1,7 +1,9 @@
 use anyhow::{anyhow, Result};
 use chrono::*;
 use serde::{Serialize, Serializer};
-use std::{env, ops::Sub};
+use std::{env, ops::Sub, convert::From};
+use windows::Win32::Foundation::FILETIME;
+
 
 /// https://learn.microsoft.com/zh-CN/windows/win32/api/minwinbase/ns-minwinbase-filetime
 #[derive(Debug, Clone, Copy)]
@@ -27,6 +29,12 @@ impl TimeStamp {
         let dt = self.to_datetime_local();
         format!("{}({})", dt.to_string(), self.0)
     }
+
+    // the qpc is QueryPerformanceCounter
+    pub fn from_qpc(count: u64, start_time: Self, perf_freq: i64) -> Self {
+        let duration = count as f64 * 10000000.0 / perf_freq as f64;
+        Self(start_time.0 + duration as i64)
+    }
 }
 
 impl std::string::ToString for TimeStamp {
@@ -48,6 +56,14 @@ impl Serialize for TimeStamp {
         S: Serializer,
     {
         serializer.serialize_str(self.to_string_detail().as_str())
+    }
+}
+
+impl From<FILETIME> for TimeStamp {
+    fn from(value: FILETIME) -> Self {
+        let mut int = value.dwHighDateTime as u64;
+        int = (int << 32) + value.dwLowDateTime as u64;
+        TimeStamp(int as i64)
     }
 }
 
