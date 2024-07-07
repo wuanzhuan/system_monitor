@@ -57,11 +57,12 @@ impl RunningProcessesModules {
         Self(FairMutex::new(HashMap::new()))
     }
 
+    #[allow(unused)]
     fn get(&self, process_id: u32) -> Option<Arc<FairMutex<ProcessInfo>>> {
         self.0.lock().get(&process_id).map(|v| v.clone())
     }
 
-    fn get_or_insert(&self, process_id: u32, context: String) -> Arc<FairMutex<ProcessInfo>> {
+    fn get_or_insert(&self, process_id: u32, context: &str) -> Arc<FairMutex<ProcessInfo>> {
         let mut lock = self.0.lock();
         if let Some(process_module_mutex) = lock.get(&process_id) {
             process_module_mutex.clone()
@@ -168,7 +169,7 @@ pub fn init(selected_process_ids: &Vec<u32>) {
 pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAddress)]) {
     let process_module_mutex_option = if process_id != 0 && process_id != 4 && process_id as i32 != -1 {
         let arc = RUNNING_PROCESSES_MODULES_MAP
-            .get_or_insert(process_id, String::from("convert_to_module_offset"));
+            .get_or_insert(process_id, "convert_to_module_offset");
         Some(arc)
     } else {
         None
@@ -258,7 +259,7 @@ pub fn get_process_path_by_id(process_id: u32) -> String {
         return String::from("System");
     }
     let process_info_arc = RUNNING_PROCESSES_MODULES_MAP
-        .get_or_insert(process_id, String::from("get_process_path_by_id"));
+        .get_or_insert(process_id, "get_process_path_by_id");
     let process_info_mutex = process_info_arc.lock();
     process_info_mutex.path.clone()
 }
@@ -711,7 +712,7 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
             .try_insert(image.image_base, module_info_running);
     } else {
         let process_info_arc = RUNNING_PROCESSES_MODULES_MAP
-            .get_or_insert(image.process_id, String::from("process_modules_load"));
+            .get_or_insert(image.process_id, "process_modules_load");
         let mut process_info = process_info_arc.lock();
         // the main image must be the first image!
         if process_info.path.is_empty() && process_info.status.is_none() {
@@ -746,17 +747,12 @@ fn process_modules_unload(image: &Image) {
         if is_kernel_space(image_base) {
             let _ = RUNNING_KERNEL_MODULES_MAP.lock().remove(&image_base);
         } else {
-            if let Some(process_info_mutex) = RUNNING_PROCESSES_MODULES_MAP.get(process_id) {
-                let mut lock = process_info_mutex.lock();
-                if lock.modules_map.remove(&image_base).is_none() {
-                    if lock.status.is_none() {
-                        error!("No image: {file_name} when unloading in process: {process_id}");
-                    }
+            let process_info_mutex = RUNNING_PROCESSES_MODULES_MAP.get_or_insert(process_id, "process_modules_unload");
+            let mut lock = process_info_mutex.lock();
+            if lock.modules_map.remove(&image_base).is_none() {
+                if lock.status.is_none() {
+                    error!("No image: {file_name} when unloading in process: {process_id}");
                 }
-            } else {
-                warn!(
-                    "The process: {process_id} is not found in RUNNING_PROCESSES_MODULES_MAP when unload image: {file_name}"
-                );
             }
         }
     })
