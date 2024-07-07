@@ -29,7 +29,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 
 # supported os version
 - [x] windows11 x64
-- [ ] windows10 x64
+- [x] windows10 x64
 - [ ] windows10 x32
 
 ## monitor events
