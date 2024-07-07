@@ -157,7 +157,7 @@ impl Controller {
                         | PROCESS_TRACE_MODE_RAW_TIMESTAMP,
                 },
                 Anonymous2: EVENT_TRACE_LOGFILEW_1 {
-                    EventRecordCallback: Some(Controller::callback),
+                    EventRecordCallback: Some(Controller::event_record_callback),
                 },
                 ..Default::default()
             };
@@ -285,7 +285,7 @@ impl Controller {
         }
     }
 
-    unsafe extern "system" fn callback(eventrecord: *mut EVENT_RECORD) {
+    unsafe extern "system" fn event_record_callback(eventrecord: *mut EVENT_RECORD) {
         let er: &EVENT_RECORD = mem::transmute(eventrecord);
         let is_stack_walk = er.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
         let is_module_event =
@@ -485,7 +485,9 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
         SystemTraceControlGuid
     };
     properties.Wnode.Flags = WNODE_FLAG_TRACED_GUID;
-    properties.Wnode.ClientContext = 2; // if 1 the StackWalk event's timestamp is invalid. because of not set PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA
+    // if 1 the StackWalk event's timestamp is invalid. because of not set PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA
+    // if 1 and the set the PROCESS_TRACE_MODE_RAW_TIMESTAMP. no event in windows 11
+    properties.Wnode.ClientContext = 2;
     properties.BufferSize = 512 * 1024;
     properties.FlushTimer = 1;
     properties.LogFileMode = EVENT_TRACE_SYSTEM_LOGGER_MODE
