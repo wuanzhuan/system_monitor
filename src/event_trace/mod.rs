@@ -493,7 +493,7 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
     // if 1 and clear PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA, the StackWalk's event_timestamp is qpc yet. 
     // if 1 and set PROCESS_TRACE_MODE_RAW_TIMESTAMP, no event coming in windows 11
     properties.Wnode.ClientContext = 2;
-    properties.BufferSize = 512 * 1024;
+    properties.BufferSize = 256 * 1024;
     properties.FlushTimer = 1;
     properties.LogFileMode = EVENT_TRACE_SYSTEM_LOGGER_MODE
         | EVENT_TRACE_REAL_TIME_MODE
