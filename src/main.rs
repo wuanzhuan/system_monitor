@@ -33,7 +33,7 @@ mod utils;
 slint::include_modules!();
 
 static LOG_TARGET_MAP: phf::Map<&'static str, (&'static str, LevelFilter)> = phf_map! {
-    "miss_stack_walk" => ("sys_monitor::event_trace::stack_walk", LevelFilter::DEBUG),
+    "miss_stack_walk" => ("sys_monitor::event_trace::stack_walk", LevelFilter::INFO),
 };
 const LOG_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
 
