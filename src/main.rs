@@ -319,7 +319,7 @@ fn main() {
                 let timestamp = event_record.timestamp.0;
 
                 if let Some(mut sw) = stack_walk {
-                    if let Some((some_row, is_from_delay_remove_map)) =
+                    if let Some((some_row, is_from_second_sw_map)) =
                         stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp), timestamp)
                     {
                         if let Some(weak) = some_row {
@@ -333,7 +333,7 @@ fn main() {
                                     .as_any()
                                     .downcast_ref::<event_record_model::EventRecordModel>()
                                     .unwrap();
-                                if is_from_delay_remove_map {
+                                if is_from_second_sw_map {
                                     erm.set_stack_walk_2(sw);
                                 } else {
                                     erm.set_stack_walk(sw);
