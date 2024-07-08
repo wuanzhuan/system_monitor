@@ -213,6 +213,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         major: MajorDescribe {
             flag: Major::DiskFileIo as u32,
             name: "FileIo",
+            display_name: Some("DiskFileIo"),
             ..MajorDescribe::DEFAULT
         },
         minors: &[
@@ -231,18 +232,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             MinorDescribe {
                 name: "FileRundown",
                 op_code: 36,
-            },
-            MinorDescribe {
-                name: "Read",
-                op_code: 10,
-            },
-            MinorDescribe {
-                name: "Write",
-                op_code: 11,
-            },
-            MinorDescribe {
-                name: "FlushBuffers",
-                op_code: 14,
             },
         ],
         guid: FileIoGuid,
@@ -320,13 +309,22 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 name: "Flush",
                 op_code: 73,
             },
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 84,
+            },
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 84,
+            },
         ],
         guid: FileIoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "MemoryPageFaults",
+            name: "PageFaults",
+            display_name: Some("MemoryPageFaults"),
             flag: Major::MemoryPageFaults as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -361,7 +359,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "MemoryHardFaults",
+            name: "HardFaults",
+            display_name: Some("MemoryHardFaults"),
             flag: Major::MemoryHardFaults as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -575,12 +574,12 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "DebugPrint",
+            name: "DbgPrint",
             flag: Major::DbgPrint as u32,
             ..MajorDescribe::DEFAULT
         },
         minors: &[MinorDescribe {
-            name: "Debug Print",
+            name: "DbgPrint",
             op_code: 0x20,
         }],
         guid: DBG_PRINT_GUID,
