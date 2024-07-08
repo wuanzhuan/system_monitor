@@ -322,7 +322,7 @@ fn main() {
                     if let Some((some_row, is_from_second_sw_map)) =
                         stack_walk_map.remove(&(sw.stack_thread, sw.event_timestamp), timestamp)
                     {
-                        if let Some(weak) = some_row {
+                        if let Some(weak) = some_row.0 {
                             if let Some(arc_node) = weak.upgrade() {
                                 process_modules::convert_to_module_offset(
                                     sw.stack_process,

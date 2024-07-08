@@ -35,24 +35,24 @@ impl<T: Clone> StackWalkMap<T> {
         &mut self,
         key: &(u32, i64),
         current_timestamp: i64,
-    ) -> Option<(T, /*is_from_second_sw_map*/ bool)> {
-        if let Some((value, debug_msg)) = self.events_map.remove(key) {
+    ) -> Option<((T, /*debug_msg*/String), /*is_from_second_sw_map*/ bool)> {
+        if let Some(value) = self.events_map.remove(key) {
             self.events_map_for_second_sw
-                .insert(*key, (value.clone(), debug_msg), current_timestamp);
+                .insert(*key, value.clone(), current_timestamp);
             return Some((value, false));
         }
 
-        if let Some((value, debug_msg)) = self.events_map_thread_minus_1.remove(key.1) {
+        if let Some(value) = self.events_map_thread_minus_1.remove(key.1) {
             self.events_map_for_second_sw_thread_minus_1
-                .insert(key.1, (value.clone(), debug_msg), current_timestamp);
+                .insert(key.1, value.clone(), current_timestamp);
             return Some((value, false));
         }
 
-        if let Some((value, _)) = self.events_map_for_second_sw.remove(key) {
+        if let Some(value) = self.events_map_for_second_sw.remove(key) {
             return Some((value, true));
         }
 
-        if let Some((value, _)) = self.events_map_for_second_sw_thread_minus_1.remove( key.1) {
+        if let Some(value) = self.events_map_for_second_sw_thread_minus_1.remove( key.1) {
             return Some((value, true));
         }
 
