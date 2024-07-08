@@ -11,13 +11,13 @@ use std::{
     thread,
     time::Duration,
 };
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 use widestring::*;
 use windows::{
     core::*,
     Win32::{
         Foundation::*,
-        System::{Diagnostics::Etw::*, SystemInformation::*, Performance::QueryPerformanceCounter},
+        System::{Diagnostics::Etw::*, Performance::QueryPerformanceCounter, SystemInformation::*},
     },
 };
 
@@ -66,7 +66,7 @@ pub struct Controller {
     >,
     unstored_events_map: RefCell<StackWalkMap<()>>,
     boot_time: TimeStamp,
-    perf_freq: i64
+    perf_freq: i64,
 }
 
 unsafe impl std::marker::Send for Controller {}
@@ -85,7 +85,7 @@ impl Controller {
             event_record_callback: None,
             unstored_events_map: RefCell::new(StackWalkMap::new(32, 10, 15)),
             boot_time: TimeStamp(0),
-            perf_freq: 1000_0000
+            perf_freq: 1000_0000,
         };
         cxt
     }
@@ -178,7 +178,7 @@ impl Controller {
             let (tx, rx) = mpsc::channel::<ErrorAnyhow>();
             let h_thread = thread::spawn(move || {
                 let mut start_time = 0i64;
-                let _ = unsafe{ QueryPerformanceCounter(&mut start_time) };
+                let _ = unsafe { QueryPerformanceCounter(&mut start_time) };
                 let start_time_ft = TimeStamp(start_time).to_filetime();
                 // not set start_time. there is no stackwalk for starting events(> 200)
                 // the start_time need to match qpc / systemtime
@@ -303,8 +303,8 @@ impl Controller {
     #[inline]
     fn event_record_callback(event_record: &mut EVENT_RECORD) {
         let is_stack_walk = event_record.EventHeader.ProviderId == event_kernel::STACK_WALK_GUID;
-        let is_module_event =
-            event_record.EventHeader.ProviderId == ImageLoadGuid || event_record.EventHeader.ProviderId == ProcessGuid;
+        let is_module_event = event_record.EventHeader.ProviderId == ImageLoadGuid
+            || event_record.EventHeader.ProviderId == ProcessGuid;
         let is_lost_event = event_record.EventHeader.ProviderId == LOST_EVENT_GUID;
         let is_auto_generated = event_record.EventHeader.ProviderId == EventTraceGuid;
 
@@ -312,17 +312,30 @@ impl Controller {
         if context_mg.is_stopping {
             return;
         }
-        event_record.EventHeader.TimeStamp = TimeStamp::from_qpc(event_record.EventHeader.TimeStamp as u64, context_mg.boot_time, context_mg.perf_freq).0;
+        event_record.EventHeader.TimeStamp = TimeStamp::from_qpc(
+            event_record.EventHeader.TimeStamp as u64,
+            context_mg.boot_time,
+            context_mg.perf_freq,
+        )
+        .0;
 
         let event_indexes = match get_event_indexes(event_record, Some(&context_mg)) {
             Ok(indexes) => indexes,
             Err(e) => {
                 error!("{e}");
                 if !is_stack_walk {
-                    context_mg
-                    .unstored_events_map
-                    .borrow_mut()
-                    .insert((event_record.EventHeader.ThreadId, event_record.EventHeader.TimeStamp), (), format!("{:?}-{:?}", event_record.EventHeader.ProviderId, event_record.EventHeader.EventDescriptor.Opcode));
+                    context_mg.unstored_events_map.borrow_mut().insert(
+                        (
+                            event_record.EventHeader.ThreadId,
+                            event_record.EventHeader.TimeStamp,
+                        ),
+                        (),
+                        format!(
+                            "{:?}-{:?}",
+                            event_record.EventHeader.ProviderId,
+                            event_record.EventHeader.EventDescriptor.Opcode
+                        ),
+                    );
                 }
                 return;
             }
@@ -351,10 +364,18 @@ impl Controller {
             if !is_enabled {
                 // escape event
                 if !is_module_event && !is_lost_event {
-                    context_mg
-                        .unstored_events_map
-                        .borrow_mut()
-                        .insert((event_record.EventHeader.ThreadId, event_record.EventHeader.TimeStamp), (), format!("{:?}-{:?}", event_record.EventHeader.ProviderId, event_record.EventHeader.EventDescriptor.Opcode));
+                    context_mg.unstored_events_map.borrow_mut().insert(
+                        (
+                            event_record.EventHeader.ThreadId,
+                            event_record.EventHeader.TimeStamp,
+                        ),
+                        (),
+                        format!(
+                            "{:?}-{:?}",
+                            event_record.EventHeader.ProviderId,
+                            event_record.EventHeader.EventDescriptor.Opcode
+                        ),
+                    );
                     return;
                 }
             }
@@ -365,7 +386,10 @@ impl Controller {
             Ok(mut decoder) => match decoder.decode() {
                 Ok(event_record_decoded) => event_record_decoded,
                 Err(e) => {
-                    warn!("Faild to decode: {e} EventRecord: {}", EventRecord(event_record));
+                    warn!(
+                        "Faild to decode: {e} EventRecord: {}",
+                        EventRecord(event_record)
+                    );
                     event_decoder::decode_kernel_event(
                         event_record,
                         event_kernel::EVENTS_DESC[event_indexes.0].major.name,
@@ -393,28 +417,33 @@ impl Controller {
         let context_mg = CONTEXT.lock();
         if is_stack_walk {
             let mut sw = StackWalk::from_event_record_decoded(&event_record_decoded);
-            sw.event_timestamp = TimeStamp::from_qpc(sw.event_timestamp as u64, context_mg.boot_time, context_mg.perf_freq).0;
+            sw.event_timestamp = TimeStamp::from_qpc(
+                sw.event_timestamp as u64,
+                context_mg.boot_time,
+                context_mg.perf_freq,
+            )
+            .0;
 
-            if context_mg
-                .unstored_events_map
-                .borrow_mut()
-                .remove(&(sw.stack_thread, sw.event_timestamp), event_record.EventHeader.TimeStamp)
-                .is_none()
-            {
+            let removed_option = context_mg.unstored_events_map.borrow_mut().remove(
+                &(sw.stack_thread, sw.event_timestamp),
+                event_record.EventHeader.TimeStamp,
+            );
+            if let Some(removed) = removed_option {
+                debug!(
+                    "The unstored event: {}:{}:{} 's stack walk: {}:{}:{} has removed {}",
+                    sw.stack_process,
+                    sw.stack_thread as i32,
+                    TimeStamp(sw.event_timestamp).to_string_detail(),
+                    event_record.EventHeader.ProcessId as i32,
+                    event_record.EventHeader.ThreadId as i32,
+                    TimeStamp(event_record.EventHeader.TimeStamp).to_string_detail(),
+                    removed.0.1
+                );
+            } else {
                 let cb = context_mg.event_record_callback.clone().unwrap();
                 mem::drop(context_mg);
                 let cb = unsafe { &mut *cb.get() };
                 cb(event_record_decoded, Some(sw), false);
-            } else {
-                error!(
-                    "Removed stack walk: {}:{}:{} for the unstored event: {}:{}:{}",
-                    sw.stack_process,
-                    sw.stack_thread as i32,
-                    crate::utils::TimeStamp(sw.event_timestamp).to_string_detail(),
-                    event_record.EventHeader.ProcessId as i32,
-                    event_record.EventHeader.ThreadId as i32,
-                    crate::utils::TimeStamp(event_record.EventHeader.TimeStamp).to_string_detail(),
-                );
             }
         } else {
             if !is_lost_event {
@@ -504,7 +533,7 @@ fn make_properties(is_win8_or_greater: bool, session_name: &U16CStr) -> Box<EtwP
         SystemTraceControlGuid
     };
     properties.Wnode.Flags = WNODE_FLAG_TRACED_GUID;
-    // if 1 and clear PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA, the StackWalk's event_timestamp is qpc yet. 
+    // if 1 and clear PROCESS_TRACE_MODE_RAW_TIMESTAMP of EVENT_TRACE_LOGFILEA, the StackWalk's event_timestamp is qpc yet.
     // if 1 and set PROCESS_TRACE_MODE_RAW_TIMESTAMP, no event coming in windows 11. because of the StartTime of ProcessTrace
     properties.Wnode.ClientContext = 1;
     properties.BufferSize = 256 * 1024;
