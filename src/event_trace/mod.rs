@@ -17,7 +17,7 @@ use windows::{
     core::*,
     Win32::{
         Foundation::*,
-        System::{Diagnostics::Etw::*, SystemInformation::*},
+        System::{Diagnostics::Etw::*, SystemInformation::*, Performance::QueryPerformanceCounter},
     },
 };
 
@@ -177,7 +177,12 @@ impl Controller {
 
             let (tx, rx) = mpsc::channel::<ErrorAnyhow>();
             let h_thread = thread::spawn(move || {
-                let r = match unsafe { ProcessTrace(&[h_consumer], None, None) } {
+                let mut start_time = 0i64;
+                let _ = unsafe{ QueryPerformanceCounter(&mut start_time) };
+                let start_time_ft = TimeStamp(start_time).to_filetime();
+                // not set start_time. there is no stackwalk for starting events(> 200)
+                // the start_time need to match qpc / systemtime
+                let r = match unsafe { ProcessTrace(&[h_consumer], Some(&start_time_ft), None) } {
                     Err(e) => {
                         let r_send = tx.send(anyhow!("Failed to ProcessTrace: {}", e));
                         if r_send.is_ok() {
