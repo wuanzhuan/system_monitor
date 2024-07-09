@@ -339,12 +339,14 @@ impl Controller {
                 // the major event is filter by flag. so a error happens when a event that is not enable comes
                 // the EventTrace Process Image event is always enable.
                 if !is_module_event && !is_auto_generated {
-                    error!(
-                        "No enable major event is coming: {}-{} event_record: {}",
-                        EVENTS_DESC[event_indexes.0].major.name,
-                        EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
-                        EventRecord(event_record)
-                    );
+                    if !context_mg.config.is_flag_enable(EVENTS_DESC[event_indexes.0].major.flag) {
+                        error!(
+                            "No enable major event is coming: {}-{} event_record: {}",
+                            EVENTS_DESC[event_indexes.0].major.name,
+                            EVENTS_DESC[event_indexes.0].minors[event_indexes.1].name,
+                            EventRecord(event_record)
+                        );
+                    }
                 }
             }
             if !is_enabled {

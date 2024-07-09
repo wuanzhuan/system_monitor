@@ -6,6 +6,7 @@ use windows::Win32::System::Diagnostics::Etw::CLASSIC_EVENT_ID;
 
 pub struct Config {
     events_enables: Vec<EventEnable>,
+    flag_map: HashMap<u32, Vec<usize>>,
     pub events_desc: &'static [event_kernel::EventsDescribe],
     pub events_opcode_map: HashMap<(GUID, u32), (usize, usize)>,
 }
@@ -14,12 +15,19 @@ impl Config {
     pub fn new(events_desc: &'static [event_kernel::EventsDescribe]) -> Self {
         let mut event_enable = Vec::<EventEnable>::new();
         let mut events_opcode_map = HashMap::new();
+        let mut flag_map: HashMap<u32, Vec<usize>> = HashMap::new();
         for (index_major, item) in events_desc.iter().enumerate() {
             let enable_minor = EventEnable {
                 major: false,
                 minors: vec![false; item.minors.len()],
             };
             event_enable.push(enable_minor);
+
+            if let Some(vec) = flag_map.get_mut(&item.major.flag) {
+                vec.push(index_major);
+            }else {
+                flag_map.insert(item.major.flag,  vec![index_major]);
+            }
 
             for (index_minor, item_minor) in item.minors.iter().enumerate() {
                 events_opcode_map
@@ -30,6 +38,7 @@ impl Config {
             events_enables: event_enable,
             events_desc,
             events_opcode_map,
+            flag_map
         }
     }
 
@@ -119,6 +128,23 @@ impl Config {
         let len = event_id_vec.len();
 
         (event_id_vec, std::mem::size_of::<CLASSIC_EVENT_ID>() * len)
+    }
+
+    pub fn get_event_index_for_flag(&self, flag: u32) -> &[usize] {
+        if let Some(vec) = self.flag_map.get(&flag){
+            vec.as_slice()
+        } else {
+            &[]
+        }
+    }
+
+    pub fn is_flag_enable(&self, flag: u32) -> bool {
+        for item in self.get_event_index_for_flag(flag) {
+            if self.events_enables[*item].major {
+                return true;
+            }
+        }
+        false
     }
 }
 pub struct EventEnable {
