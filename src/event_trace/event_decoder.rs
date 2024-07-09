@@ -461,8 +461,8 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
-                            return Err(PropertiesError{msg: format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} userdata len: {}  buffersize: {buffer_size} thread_id: {} timestamp: {}", 
-                                               userdata.len(), self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail()), properties: properties_object});
+                            return Err(PropertiesError{msg: format!("Failed to TdhFormatProperty: {status} pointer_size: {} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} userdata len: {}  buffersize: {buffer_size} thread_id: {} timestamp: {}", 
+                                self.pointer_size, userdata.len(), self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail()), properties: properties_object});
                         }
                     }
 
