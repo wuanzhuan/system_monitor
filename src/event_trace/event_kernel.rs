@@ -359,7 +359,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "HardFaults",
+            name: "PageFaults",
             display_name: Some("MemoryHardFaults"),
             flag: Major::MemoryHardFaults as u32,
             ..MajorDescribe::DEFAULT
