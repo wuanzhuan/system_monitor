@@ -282,7 +282,7 @@ export component TableView {
                     for column[index] in root.columns : TableViewColumn {
                         sort-order: column.sort-order;
                         horizontal-stretch: column.horizontal-stretch;
-                        width: index < root.columns.length - 1 ? root.columns[index].width : 2000px;
+                        width: index < root.columns.length - 1 ? root.columns[index].width : 10000px;
                         text: column.title;
                         index-column: index;
         
