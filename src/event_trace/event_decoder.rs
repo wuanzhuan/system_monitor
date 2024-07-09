@@ -412,7 +412,7 @@ impl<'a> Decoder<'a> {
                                             continue;
                                         }
                                         map_info = None;
-                                        warn!("Failed to TdhGetEventMapInformation: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp);
+                                        warn!("Failed to TdhGetEventMapInformation: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId as i32, self.event_record.EventHeader.TimeStamp);
                                         break;
                                     }
                                 }
