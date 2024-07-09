@@ -377,6 +377,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::VaMap as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 37,
+            },
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 38,
+            },
+        ],
+        guid: FileIoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
