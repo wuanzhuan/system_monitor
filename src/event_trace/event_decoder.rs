@@ -199,13 +199,11 @@ impl<'a> Decoder<'a> {
             match r {
                 Ok(map) => PropertyDecoded::Struct(map),
                 Err(e) => {
-                    let is_stack_walk = self.event_record.EventHeader.ProviderId
-                        == super::event_kernel::STACK_WALK_GUID;
-                    if is_stack_walk {
-                        return Err(e);
+                    if self.event_record.EventHeader.ProviderId == super::event_kernel::STACK_WALK_GUID {
+                        return Err(anyhow!(e.msg));
                     }
-                    warn!("Failed to decode_properties: {e}");
-                    PropertyDecoded::Struct(Default::default())
+                    warn!("Failed to decode_properties: {}", e.msg);
+                    PropertyDecoded::Struct(e.properties)
                 }
             }
         };
@@ -235,9 +233,9 @@ impl<'a> Decoder<'a> {
         properties_array_begin: u16,
         properties_array_end: u16,
         user_data_index: &mut u16,
-    ) -> Result<LinkedHashMap<String, PropertyDecoded>> {
+    ) -> Result<LinkedHashMap<String, PropertyDecoded>, PropertiesError> {
         if properties_array_end > self.property_info_array.len() as u16 {
-            return Err(anyhow!("Too larget properties_array_end: {properties_array_end} property_info_array len: {} at: {}:{}", self.property_info_array.len(), file!(), line!()));
+            return Err(PropertiesError{msg: format!("Too larget properties_array_end: {properties_array_end} property_info_array len: {} at: {}:{}", self.property_info_array.len(), file!(), line!()), properties: LinkedHashMap::<String, PropertyDecoded>::new()});
         }
         let mut properties_object = LinkedHashMap::<String, PropertyDecoded>::new();
         let mut property_index = properties_array_begin;
@@ -310,7 +308,7 @@ impl<'a> Decoder<'a> {
                 16
             } else if (property_info.Flags.0 & PropertyParamLength.0) != 0 {
                 if length_property_index >= self.int_values.len() as u16 {
-                    return Err(anyhow!("index overflow: length_property_index: {length_property_index} array len: {} at: {}:{}", self.int_values.len(), file!(), line!()));
+                    return Err(PropertiesError{msg: format!("index overflow: length_property_index: {length_property_index} array len: {} at: {}:{}", self.int_values.len(), file!(), line!()), properties: properties_object});
                 }
                 self.int_values[length_property_index as usize]
             // Look up the value of a previous property
@@ -321,7 +319,7 @@ impl<'a> Decoder<'a> {
             let (array_count, is_array) = if (property_info.Flags.0 & PropertyParamCount.0) != 0 {
                 let count_property_index = unsafe { property_info.Anonymous2.countPropertyIndex };
                 if count_property_index >= property_index as u16 {
-                    return Err(anyhow!("invalid count_property_index: {count_property_index} property_index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!()));
+                    return Err(PropertiesError{msg: format!("invalid count_property_index: {count_property_index} property_index: {property_index} properties_array_end: {properties_array_end} at: {}:{}", file!(), line!()), properties: properties_object});
                 }
                 (self.int_values[count_property_index as usize], true) // Look up the value of a previous property
             } else {
@@ -463,8 +461,8 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
-                            return Err(anyhow!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} userdata len: {}  buffersize: {buffer_size} thread_id: {} timestamp: {}", 
-                                               userdata.len(), self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail()));
+                            return Err(PropertiesError{msg: format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} userdata len: {}  buffersize: {buffer_size} thread_id: {} timestamp: {}", 
+                                               userdata.len(), self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail()), properties: properties_object});
                         }
                     }
 
@@ -580,6 +578,13 @@ pub enum PropertyDecoded {
     String(String),
     Array(Vec<String>),
     Struct(LinkedHashMap<String, PropertyDecoded>),
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("{msg}")]
+pub struct PropertiesError {
+    pub msg: String,
+    pub properties: LinkedHashMap<String, PropertyDecoded>
 }
 
 #[derive(Debug)]
