@@ -412,7 +412,7 @@ impl<'a> Decoder<'a> {
                                             continue;
                                         }
                                         map_info = None;
-                                        warn!("Failed to TdhGetEventMapInformation: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId as i32, self.event_record.EventHeader.TimeStamp);
+                                        warn!("Failed to TdhGetEventMapInformation: {} thread_id: {} timestamp: {}", status, self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail());
                                         break;
                                     }
                                 }
@@ -467,7 +467,7 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
-                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} thread_id: {} timestamp: {}", self.event_record.EventHeader.ThreadId, self.event_record.EventHeader.TimeStamp)));
+                            return Err(Error::new(WIN32_ERROR(status).to_hresult(), format!("Failed to TdhFormatProperty: {status} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} thread_id: {} timestamp: {}", self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail())));
                         }
                     }
 
