@@ -275,21 +275,7 @@ impl Controller {
 
     pub fn set_config_enables(index_major: usize, index_minor: Option<usize>, checked: bool) {
         let mut context_mg = CONTEXT.lock();
-        let mut is_change = false;
-        if let Some(index) = index_minor {
-            if context_mg.config.events_enables[index_major].minors[index] != checked {
-                if !context_mg.config.events_enables[index_major].major {
-                    context_mg.config.events_enables[index_major].major = true;
-                }
-                is_change = true;
-                context_mg.config.events_enables[index_major].minors[index] = checked;
-            }
-        } else {
-            if context_mg.config.events_enables[index_major].major != checked {
-                is_change = true;
-                context_mg.config.events_enables[index_major].major = checked;
-            }
-        }
+        let is_change = context_mg.config.set_enable(index_major, index_minor, checked);
         if is_change && 0 != context_mg.h_trace_session.Value {
             let _ = context_mg.update_config();
         }
@@ -344,7 +330,7 @@ impl Controller {
         // filter non stack walk events
         let mut is_enabled = false;
         if !is_stack_walk {
-            let event_enable = &context_mg.config.events_enables[event_indexes.0];
+            let event_enable = context_mg.config.get_enable(event_indexes.0);
             if event_enable.major {
                 if event_enable.minors[event_indexes.1] {
                     is_enabled = true;

@@ -5,7 +5,7 @@ use windows::core::GUID;
 use windows::Win32::System::Diagnostics::Etw::CLASSIC_EVENT_ID;
 
 pub struct Config {
-    pub events_enables: Vec<EventEnable>,
+    events_enables: Vec<EventEnable>,
     pub events_desc: &'static [event_kernel::EventsDescribe],
     pub events_opcode_map: HashMap<(GUID, u32), (usize, usize)>,
 }
@@ -58,6 +58,29 @@ impl Config {
                 *minor = events_enables[major_index].minors[index_minor];
             }
         }
+    }
+
+    pub fn get_enable(&self, index_major: usize) -> &EventEnable {
+        &self.events_enables[index_major]
+    }
+
+    pub fn set_enable(&mut self, index_major: usize, index_minor: Option<usize>, checked: bool) -> bool {
+        let mut is_change = false;
+        if let Some(index) = index_minor {
+            if self.events_enables[index_major].minors[index] != checked {
+                if !self.events_enables[index_major].major {
+                    self.events_enables[index_major].major = true;
+                }
+                is_change = true;
+                self.events_enables[index_major].minors[index] = checked;
+            }
+        } else {
+            if self.events_enables[index_major].major != checked {
+                is_change = true;
+                self.events_enables[index_major].major = checked;
+            }
+        }
+        return is_change;
     }
 
     pub fn get_group_mask(&self) -> event_kernel::PERFINFO_GROUPMASK {
