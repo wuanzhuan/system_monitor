@@ -851,27 +851,35 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::Dispatcher as u32,
             ..MajorDescribe::DEFAULT
         },
-        minors: &[MinorDescribe {
-            name: "ReadyThread",
-            op_code: 50,
-        }],
+        minors: &[
+            MinorDescribe {
+                name: "ReadyThread",
+                op_code: 50,
+            },
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 66,
+            },
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 67,
+            },
+            MinorDescribe {
+                name: "Unknown",
+                op_code: 68,
+            },
+        ],
         guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
+        configurable: false, // blocking when set
         major: MajorDescribe {
             name: "PmcProfile",
             flag: Major::PmcProfile as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "ProFiling",
-            flag: Major::ProFiling as u32,
-            ..MajorDescribe::DEFAULT
-        },
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1797,7 +1805,6 @@ pub enum Major {
     CompactCSwitch = 0x20000100u32,
     Dispatcher = 0x20000200u32, // equivalent to EVENT_TRACE_FLAG_DISPATCHER
     PmcProfile = 0x20000400u32,
-    ProFiling = 0x20000402u32,
     ProcessInSwap = 0x20000800u32,
     Affinity = 0x20001000u32,
     Priority = 0x20002000u32,
@@ -1964,7 +1971,6 @@ pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430
 /// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
 pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
 pub const LOST_EVENT_GUID: GUID = GUID::from_u128(0x6a399ae0_4bc6_4de9_870b_3657f8947e7e);
-
 
 pub mod event_property {
     use crate::event_trace::event_decoder;
