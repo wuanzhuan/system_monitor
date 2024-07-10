@@ -712,19 +712,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
 
     // Mask[1]
     EventsDescribe {
-        major: MajorDescribe {
-            name: "Memory",
-            flag: Major::Memory as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[MinorDescribe {
-            name: "118",
-            op_code: 118,
-        }],
-        guid: PageFaultGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
         configurable: false, // blocking when set flag
         major: MajorDescribe {
             name: "Profile",
@@ -1120,10 +1107,22 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "KernelQueue",
+            name: "Thread",
+            display_name: Some("Thread KernelQueue"),
             flag: Major::KernelQueue as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "Kernel Queue Enqueue",
+                op_code: 62,
+            },
+            MinorDescribe {
+                name: "Kernel Queue Dequeue",
+                op_code: 63,
+            },
+        ],
+        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1140,6 +1139,13 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::ShouldYield as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "109",
+                op_code: 109,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1148,6 +1154,21 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::Ws as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "130",
+                op_code: 130,
+            },
+            MinorDescribe {
+                name: "131",
+                op_code: 131,
+            },
+            MinorDescribe {
+                name: "118",
+                op_code: 118,
+            },
+        ],
+        guid: PageFaultGuid,
         ..EventsDescribe::DEFAULT
     },
     // Mask[2]
@@ -1902,7 +1923,7 @@ pub enum Major {
     //ContextSwitch = EVENT_TRACE_FLAG_CSWITCH.0,
 
     // Mask[1]
-    Memory = 0x20000001u32,
+    Memory = 0x20000001u32,   // repeat to Ws by opcode 118
     Profile = 0x20000002u32,       // equivalent to EVENT_TRACE_FLAG_PROFILE
     ContextSwitch = 0x20000004u32, // equivalent to EVENT_TRACE_FLAG_CSWITCH
     FootPrint = 0x20000008u32,
@@ -1929,7 +1950,7 @@ pub enum Major {
     KernelQueue = 0x21000000u32,
     InterruptSteer = 0x22000000u32,
     ShouldYield = 0x24000000u32,
-    Ws = 0x28000000u32,
+    Ws = 0x28000001u32,
 
     // Mask[2]
     AntiStarvation = 0x40000001u32,
