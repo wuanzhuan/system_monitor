@@ -974,56 +974,100 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "SpinLock",
+            name: "Thread",
+            display_name: Some("Thread SpinLock"),
             flag: Major::SpinLock as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "SpinLock",
+                op_code: 41,
+            },
+        ],
+        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "SyncObjects",
+            name: "Thread",
+            display_name: Some("Thread SyncObjects"),
             flag: Major::SyncObjects as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "SyncObjects",
+                op_code: 43,
+            },
+        ],
+        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "DpcQueue",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo DpcQueue"),
             flag: Major::DpcQueue as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "100",
+                op_code: 100,
+            },
+            MinorDescribe {
+                name: "101",
+                op_code: 101,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "MemInfo",
+            name: "PageFault",
+            display_name: Some("PageFault MemInfo"),
             flag: Major::MemInfo as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "112",
+                op_code: 112,
+            },
+            MinorDescribe {
+                name: "124",
+                op_code: 124,
+            },
+        ],
+        guid: PageFaultGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ContMemGen",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo ContMemGen"),
             flag: Major::ContMemGen as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "118",
+                op_code: 118,
+            },
+            MinorDescribe {
+                name: "119",
+                op_code: 119,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
             name: "SpinLockCounts",
             flag: Major::SpinLockCounts as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "SpinInstr",
-            flag: Major::SpinInstr as u32,
             ..MajorDescribe::DEFAULT
         },
         ..EventsDescribe::DEFAULT
@@ -1850,7 +1894,6 @@ pub enum Major {
     MemInfo = 0x20080000u32,
     ContMemGen = 0x20100000u32,
     SpinLockCounts = 0x20200000u32,
-    SpinInstr = 0x20210000u32,
     SessionOrPfSection = 0x20400000u32,
     MemInfoWs = 0x20800000u32,
     KernelQueue = 0x21000000u32,
