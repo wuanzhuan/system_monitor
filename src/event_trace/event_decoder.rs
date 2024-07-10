@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use linked_hash_map::LinkedHashMap;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::{convert::TryFrom, mem, slice};
-use tracing::warn;
+use tracing::{warn, debug};
 use widestring::*;
 use windows::{core::PWSTR, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*};
 
@@ -202,7 +202,7 @@ impl<'a> Decoder<'a> {
                     if self.event_record.EventHeader.ProviderId == super::event_kernel::STACK_WALK_GUID {
                         return Err(anyhow!(e.msg));
                     }
-                    warn!("Failed to decode_properties: {}", e.msg);
+                    debug!("Failed to decode_properties: {}", e.msg);
                     PropertyDecoded::Struct(e.properties)
                 }
             }
@@ -461,6 +461,19 @@ impl<'a> Decoder<'a> {
                                 prop_buffer.resize((buffer_size / 2) as usize, 0);
                                 continue;
                             }
+                            properties_array.push(format!(""));
+                            if is_array {
+                                properties_object
+                                    .insert(property_name, PropertyDecoded::Array(properties_array));
+                            } else {
+                                debug_assert!(properties_array.len() <= 1);
+                                if let Some(item) = properties_array.pop() {
+                                    properties_object.insert(
+                                        property_name,
+                                        PropertyDecoded::String(item),
+                                    );
+                                }
+                            }
                             return Err(PropertiesError{msg: format!("Failed to TdhFormatProperty: {status} pointer_size: {} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} userdata len: {}  buffersize: {buffer_size} thread_id: {} timestamp: {}", 
                                 self.pointer_size, userdata.len(), self.event_record.EventHeader.ThreadId as i32, TimeStamp(self.event_record.EventHeader.TimeStamp).to_string_detail()), properties: properties_object});
                         }
@@ -478,10 +491,13 @@ impl<'a> Decoder<'a> {
                     properties_object
                         .insert(property_name, PropertyDecoded::Array(properties_array));
                 } else {
-                    properties_object.insert(
-                        property_name,
-                        PropertyDecoded::String(properties_array[0].clone()),
-                    );
+                    debug_assert!(properties_array.len() <= 1);
+                    if let Some(item) = properties_array.pop() {
+                        properties_object.insert(
+                            property_name,
+                            PropertyDecoded::String(item),
+                        );
+                    }
                 }
             }
             property_index += 1;
