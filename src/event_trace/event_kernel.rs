@@ -310,11 +310,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: 73,
             },
             MinorDescribe {
-                name: "Unknown",
-                op_code: 84,
-            },
-            MinorDescribe {
-                name: "Unknown",
+                name: "84",
                 op_code: 84,
             },
         ],
@@ -379,11 +375,11 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         },
         minors: &[
             MinorDescribe {
-                name: "Unknown",
+                name: "37",
                 op_code: 37,
             },
             MinorDescribe {
-                name: "Unknown",
+                name: "38",
                 op_code: 38,
             },
         ],
@@ -671,15 +667,15 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: 37,
             },
             MinorDescribe {
-                name: "ALPC-Unknown",
+                name: "ALPC-38",
                 op_code: 38,
             },
             MinorDescribe {
-                name: "ALPC-Unknown",
+                name: "ALPC-39",
                 op_code: 39,
             },
             MinorDescribe {
-                name: "ALPC-Unknown",
+                name: "ALPC-41",
                 op_code: 41,
             },
         ],
@@ -722,7 +718,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             ..MajorDescribe::DEFAULT
         },
         minors: &[MinorDescribe {
-            name: "Unknown",
+            name: "118",
             op_code: 118,
         }],
         guid: PageFaultGuid,
@@ -857,15 +853,15 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: 50,
             },
             MinorDescribe {
-                name: "Unknown",
+                name: "66",
                 op_code: 66,
             },
             MinorDescribe {
-                name: "Unknown",
+                name: "67",
                 op_code: 67,
             },
             MinorDescribe {
-                name: "Unknown",
+                name: "68",
                 op_code: 68,
             },
         ],
@@ -897,10 +893,36 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::Affinity as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[MinorDescribe {
+            name: "ThreadAffinity",
+            op_code: 53,
+        }],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("ThreadPriority"),
+            flag: Major::Priority as u32,
+            ..MajorDescribe::DEFAULT
+        },
         minors: &[
             MinorDescribe {
-                name: "ThreadAffinity",
-                op_code: 53,
+                name: "SetPriority",
+                op_code: 48,
+            },
+            MinorDescribe {
+                name: "SetBasePriority",
+                op_code: 49,
+            },
+            MinorDescribe {
+                name: "SetPagePriority",
+                op_code: 51,
+            },
+            MinorDescribe {
+                name: "SetIoPriority",
+                op_code: 52,
             },
         ],
         guid: ThreadGuid,
@@ -908,28 +930,28 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Priority",
-            flag: Major::Priority as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Interrupt",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo Interrupt"),
             flag: Major::Interrupt as u32,
             ..MajorDescribe::DEFAULT
         },
-        minors: &[MinorDescribe {
-            name: "ISR",
-            op_code: 67,
-        }],
+        minors: &[
+            MinorDescribe {
+                name: "ISR-MSI",
+                op_code: 50,
+            },
+            MinorDescribe {
+                name: "ISR",
+                op_code: 67,
+            },
+        ],
         guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "VirtualAlloc",
+            name: "PageFault",
+            display_name: Some("PageFault VirtualAlloc"),
             flag: Major::VirtualAlloc as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -941,6 +963,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             MinorDescribe {
                 name: "VirtualFree",
                 op_code: 99,
+            },
+            MinorDescribe {
+                name: "MemResetInfo",
+                op_code: 134,
             },
         ],
         guid: PageFaultGuid,
