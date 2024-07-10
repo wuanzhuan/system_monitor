@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use linked_hash_map::LinkedHashMap;
 use serde::{ser::SerializeStruct, Serialize, Serializer};
 use std::{convert::TryFrom, mem, slice};
-use tracing::{warn, debug};
+use tracing::{debug, warn};
 use widestring::*;
 use windows::{core::PWSTR, Win32::Foundation::*, Win32::System::Diagnostics::Etw::*};
 
@@ -199,7 +199,9 @@ impl<'a> Decoder<'a> {
             match r {
                 Ok(map) => PropertyDecoded::Struct(map),
                 Err(e) => {
-                    if self.event_record.EventHeader.ProviderId == super::event_kernel::STACK_WALK_GUID {
+                    if self.event_record.EventHeader.ProviderId
+                        == super::event_kernel::STACK_WALK_GUID
+                    {
                         return Err(anyhow!(e.msg));
                     }
                     debug!("Failed to decode_properties: {}", e.msg);
@@ -468,10 +470,7 @@ impl<'a> Decoder<'a> {
                             } else {
                                 debug_assert!(properties_array.len() <= 1);
                                 if let Some(item) = properties_array.pop() {
-                                    properties_object.insert(
-                                        property_name,
-                                        PropertyDecoded::String(item),
-                                    );
+                                    properties_object.insert(property_name, PropertyDecoded::String(item));
                                 }
                             }
                             return Err(PropertiesError{msg: format!("Failed to TdhFormatProperty: {status} pointer_size: {} in_type: {in_type} out_type: {out_type} prop_length: {prop_length} userdata len: {}  buffersize: {buffer_size} thread_id: {} timestamp: {}", 
@@ -493,10 +492,7 @@ impl<'a> Decoder<'a> {
                 } else {
                     debug_assert!(properties_array.len() <= 1);
                     if let Some(item) = properties_array.pop() {
-                        properties_object.insert(
-                            property_name,
-                            PropertyDecoded::String(item),
-                        );
+                        properties_object.insert(property_name, PropertyDecoded::String(item));
                     }
                 }
             }
@@ -600,7 +596,7 @@ pub enum PropertyDecoded {
 #[error("{msg}")]
 pub struct PropertiesError {
     pub msg: String,
-    pub properties: LinkedHashMap<String, PropertyDecoded>
+    pub properties: LinkedHashMap<String, PropertyDecoded>,
 }
 
 #[derive(Debug)]
