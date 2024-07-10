@@ -1078,6 +1078,25 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::SessionOrPfSection as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "73",
+                op_code: 73,
+            },
+            MinorDescribe {
+                name: "79",
+                op_code: 79,
+            },
+            MinorDescribe {
+                name: "135",
+                op_code: 135,
+            },
+            MinorDescribe {
+                name: "136",
+                op_code: 136,
+            },
+        ],
+        guid: PageFaultGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1086,6 +1105,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::MemInfoWs as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "125",
+                op_code: 125,
+            },
+            MinorDescribe {
+                name: "126",
+                op_code: 126,
+            },
+        ],
+        guid: PageFaultGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
