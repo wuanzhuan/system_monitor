@@ -31,6 +31,8 @@ regex = "1.10"
 const-default = { version = "1.0", features = ["derive"] }
 pdb = "0.8"
 phf = { version = "0.11", features = ["macros"] }
+hex = "0.4"
+
 ahash = "0.8.11" # for version conflict
 time = "0.3.36"  # for version conflict
 

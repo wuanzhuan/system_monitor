@@ -45,23 +45,6 @@ pub fn u16cstr_from_bytes_truncate_offset(bytes: &[u8], offset: u32) -> Option<&
     }
 }
 
-pub fn slice_to_string_uncheck(slice: &[u8]) -> String {
-    let mut vec = Vec::<u8>::with_capacity(slice.len() * 2);
-    unsafe {
-        vec.set_len(slice.len() * 2);
-    }
-    for (index, item) in slice.iter().enumerate() {
-        if item.is_ascii() {
-            vec[2 * index] = b' ';
-            vec[2 * index + 1] = *item;
-        } else {
-            let str_entry = vec.get_mut(2 * index..(2 * index + 2)).unwrap();
-            str_entry.copy_from_slice(format!("{:x}", *item).as_bytes());
-        }
-    }
-    unsafe { String::from_utf8_unchecked(vec) }
-}
-
 pub trait StringEx {
     fn starts_with_case_insensitive(&self, pattern: &str) -> bool;
 }

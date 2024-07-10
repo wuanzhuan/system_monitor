@@ -1,4 +1,3 @@
-use crate::third_extend::strings::slice_to_string_uncheck;
 use crate::third_extend::strings::*;
 use crate::third_extend::Guid;
 use crate::utils::TimeStamp;
@@ -525,7 +524,7 @@ pub fn decode_kernel_event(
             event_record.UserDataLength as usize,
         )
     };
-    let properties = PropertyDecoded::String(slice_to_string_uncheck(user_data));
+    let properties = PropertyDecoded::String(hex::encode(user_data));
     EventRecordDecoded {
         provider_id,
         event_guid,

@@ -3871,6 +3871,7 @@ dependencies = [
  "chrono",
  "chumsky",
  "const-default",
+ "hex",
  "i-slint-backend-winit",
  "indexmap",
  "intrusive-collections",
