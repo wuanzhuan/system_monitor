@@ -524,6 +524,18 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: EVENT_TRACE_TYPE_REGQUERY,
             },
             MinorDescribe {
+                name: "Close Key",
+                op_code: EVENT_TRACE_TYPE_REGCLOSE,
+            },
+            MinorDescribe {
+                name: "Flush Key",
+                op_code: EVENT_TRACE_TYPE_REGFLUSH,
+            },
+            MinorDescribe {
+                name: "Enum Key",
+                op_code: EVENT_TRACE_TYPE_REGENUMERATEKEY,
+            },
+            MinorDescribe {
                 name: "Set Value",
                 op_code: EVENT_TRACE_TYPE_REGSETVALUE,
             },
@@ -536,10 +548,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: EVENT_TRACE_TYPE_REGQUERYVALUE,
             },
             MinorDescribe {
-                name: "Enum Key",
-                op_code: EVENT_TRACE_TYPE_REGENUMERATEKEY,
-            },
-            MinorDescribe {
                 name: "Enum Value",
                 op_code: EVENT_TRACE_TYPE_REGENUMERATEVALUEKEY,
             },
@@ -550,10 +558,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             MinorDescribe {
                 name: "Set Key Information",
                 op_code: EVENT_TRACE_TYPE_REGSETINFORMATION,
-            },
-            MinorDescribe {
-                name: "Flush Key",
-                op_code: EVENT_TRACE_TYPE_REGFLUSH,
             },
             MinorDescribe {
                 name: "KCB Create",
@@ -572,12 +576,16 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: EVENT_TRACE_TYPE_REGKCBRUNDOWNEND,
             },
             MinorDescribe {
-                name: "Virtualize Key",
+                name: "Virtualize",
                 op_code: EVENT_TRACE_TYPE_REGVIRTUALIZE,
             },
             MinorDescribe {
-                name: "Close Key",
-                op_code: EVENT_TRACE_TYPE_REGCLOSE,
+                name: "Query Security",
+                op_code: EVENT_TRACE_TYPE_REGQUERYSECURITY,
+            },
+            MinorDescribe {
+                name: "Set Security",
+                op_code: EVENT_TRACE_TYPE_REGSETSECURITY,
             },
         ],
         guid: RegistryGuid,
