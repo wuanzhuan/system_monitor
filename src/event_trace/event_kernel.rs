@@ -721,9 +721,15 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::Memory as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[MinorDescribe {
+            name: "Unknown",
+            op_code: 118,
+        }],
+        guid: PageFaultGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
+        configurable: false, // blocking when set flag
         major: MajorDescribe {
             name: "Profile",
             flag: Major::Profile as u32,
@@ -806,14 +812,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             },
         ],
         guid: POOL_GUID,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PoolTrace",
-            flag: Major::PoolTrace as u32,
-            ..MajorDescribe::DEFAULT
-        },
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1784,6 +1782,8 @@ pub enum Major {
     SplitIo = EVENT_TRACE_FLAG_SPLIT_IO.0,
     DebugEvents = EVENT_TRACE_FLAG_DEBUG_EVENTS,
     NoSysConfig = EVENT_TRACE_FLAG_NO_SYSCONFIG.0,
+    //Profile = EVENT_TRACE_FLAG_PROFILE.0,
+    //ContextSwitch = EVENT_TRACE_FLAG_CSWITCH.0,
 
     // Mask[1]
     Memory = 0x20000001u32,
@@ -1793,7 +1793,6 @@ pub enum Major {
     Driver = 0x20000010u32, // equivalent to EVENT_TRACE_FLAG_DRIVER
     Refset = 0x20000020u32,
     Pool = 0x20000040u32,
-    PoolTrace = 0x20000041u32,
     Dpc = 0x20000080u32, // equivalent to EVENT_TRACE_FLAG_DPC
     CompactCSwitch = 0x20000100u32,
     Dispatcher = 0x20000200u32, // equivalent to EVENT_TRACE_FLAG_DISPATCHER
@@ -1965,6 +1964,7 @@ pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430
 /// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
 pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
 pub const LOST_EVENT_GUID: GUID = GUID::from_u128(0x6a399ae0_4bc6_4de9_870b_3657f8947e7e);
+
 
 pub mod event_property {
     use crate::event_trace::event_decoder;
