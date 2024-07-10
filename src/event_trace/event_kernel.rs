@@ -670,6 +670,18 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 name: "ALPC-Unwait",
                 op_code: 37,
             },
+            MinorDescribe {
+                name: "ALPC-Unknown",
+                op_code: 38,
+            },
+            MinorDescribe {
+                name: "ALPC-Unknown",
+                op_code: 39,
+            },
+            MinorDescribe {
+                name: "ALPC-Unknown",
+                op_code: 41,
+            },
         ],
         guid: ALPCGuid,
         ..EventsDescribe::DEFAULT
