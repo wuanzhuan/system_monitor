@@ -892,10 +892,18 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Affinity",
+            name: "Thread",
+            display_name: Some("ThreadAffinity"),
             flag: Major::Affinity as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "ThreadAffinity",
+                op_code: 53,
+            },
+        ],
+        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
