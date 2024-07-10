@@ -35,7 +35,7 @@ ahash = "0.8.11" # for version conflict
 time = "0.3.36"  # for version conflict
 
 [dependencies.windows]
-version = "0.53"
+version = "0.58"
 features = [
     "Win32_Foundation",
     "Win32_System_Time",
@@ -53,6 +53,7 @@ features = [
     "Wdk_Foundation",
     "Wdk_System",
     "Wdk_System_SystemServices",
+    "Wdk_System_Threading"
 ]
 
 [build-dependencies]

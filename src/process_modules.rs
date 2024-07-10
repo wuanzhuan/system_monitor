@@ -25,7 +25,7 @@ use widestring::*;
 use windows::{
     Wdk::{
         Foundation::OBJECT_ATTRIBUTES,
-        System::SystemServices::{NtOpenProcess, ZwClose},
+        System::{SystemServices::ZwClose, Threading::NtOpenProcess},
     },
     Win32::{
         Foundation::*,
@@ -341,9 +341,9 @@ fn drive_letter_map_init() {
             )
         } {
             0 => {
-                let err = unsafe { GetLastError().unwrap_err() };
-                if err.code() != ERROR_FILE_NOT_FOUND.to_hresult() {
-                    error!("Failed to QueryDosDeviceW: {err}");
+                let err = unsafe { GetLastError() };
+                if err != ERROR_FILE_NOT_FOUND {
+                    error!("Failed to QueryDosDeviceW: {err:#?}");
                 }
             }
             num => {
@@ -440,8 +440,8 @@ fn enum_drivers() {
         let slice = unsafe { slice::from_raw_parts_mut(vec.as_mut_ptr(), vec.capacity()) };
         let r = unsafe { GetDeviceDriverFileNameW(*image_base, slice) };
         let file_name = if 0 == r {
-            warn!("Failed to GetDeviceDriverFileNameW: {}", unsafe {
-                GetLastError().unwrap_err()
+            warn!("Failed to GetDeviceDriverFileNameW: {:#?}", unsafe {
+                GetLastError()
             });
             continue;
         } else {
@@ -561,7 +561,7 @@ fn process_init(process_id: u32) {
     };
     let status = unsafe {
         let client_id = CLIENT_ID {
-            UniqueProcess: HANDLE(process_id as isize),
+            UniqueProcess: HANDLE(process_id as *mut _),
             UniqueThread: HANDLE::default(),
         };
         NtOpenProcess(&mut h_process_out, GENERIC_ALL.0, &oa, Some(&client_id))
@@ -606,7 +606,7 @@ fn process_init(process_id: u32) {
                 break;
             }
             Err(e) => {
-                unsafe { ZwClose(h_process_out) };
+                let _ = unsafe { ZwClose(h_process_out) };
                 let err =  ProcessError::NoModules(format!("Failed to EnumProcessModules for {process_id}: {}", e));
                 error!("{err}");
                 process_info_arc.lock().status = Some(err);
@@ -623,8 +623,8 @@ fn process_init(process_id: u32) {
                 GetModuleFileNameExW(h_process_out, module_array[i as usize], slice)
             };
             let file_name = if 0 == status {
-                warn!("Failed to GetModuleFileNameExW: {}", unsafe {
-                    GetLastError().unwrap_err()
+                warn!("Failed to GetModuleFileNameExW: {:#?}", unsafe {
+                    GetLastError()
                 });
                 String::new()
             } else {
@@ -670,7 +670,7 @@ fn process_init(process_id: u32) {
                 .try_insert(module_info.lpBaseOfDll as u64, module_info_running);
         }
     }
-    unsafe { ZwClose(h_process_out) };
+    let _ = unsafe { ZwClose(h_process_out) };
 }
 
 fn process_start(process_id: u32) {

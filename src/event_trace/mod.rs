@@ -118,32 +118,30 @@ impl Controller {
                         &mut properties_buf.0,
                     )
                 };
-                match r {
-                    Ok(_) => {
-                        context_mg.h_trace_session = h_trace;
-                        break Ok(());
-                    }
-                    Err(e) => {
-                        if e.code() == ERROR_ALREADY_EXISTS.to_hresult() {
-                            if let Err(e) = unsafe {
-                                ControlTraceW(
-                                    CONTROLTRACE_HANDLE::default(),
-                                    session_name.as_pcwstr(),
-                                    &mut properties_buf.0,
-                                    EVENT_TRACE_CONTROL_STOP,
-                                )
-                            } {
-                                error!("The {session_name:#?} is already exist. And failed to stop: {:#?}", e);
-                                break Err(e);
-                            };
+                if r == ERROR_SUCCESS {
+                    context_mg.h_trace_session = h_trace;
+                    break Ok(());
+                } else {
+                    if r == ERROR_ALREADY_EXISTS {
+                        let r = unsafe {
+                            ControlTraceW(
+                                CONTROLTRACE_HANDLE::default(),
+                                session_name.as_pcwstr(),
+                                &mut properties_buf.0,
+                                EVENT_TRACE_CONTROL_STOP,
+                            )
+                        };
+                        if r == ERROR_SUCCESS {
                             warn!(
                                 "The {session_name:#?} is already exist. and stop before restart"
                             );
                             continue;
                         }
-                        error!("Failed to StartTraceW: {:#?}", e);
-                        break Err(e);
+                        break Err(anyhow!(
+                            "The {session_name:#?} is already exist. And failed to stop: {r:#?}"
+                        ));
                     }
+                    break Err(anyhow!("Failed to StartTraceW: {r:#?}"));
                 }
             }?;
 
@@ -182,15 +180,16 @@ impl Controller {
                 let start_time_ft = TimeStamp(start_time).to_filetime();
                 // not set start_time. there is no stackwalk for starting events(> 200)
                 // the start_time need to match qpc / systemtime
-                let r = match unsafe { ProcessTrace(&[h_consumer], Some(&start_time_ft), None) } {
-                    Err(e) => {
-                        let r_send = tx.send(anyhow!("Failed to ProcessTrace: {}", e));
-                        if r_send.is_ok() {
-                            return;
-                        }
-                        Err(e.into())
+                let r = unsafe { ProcessTrace(&[h_consumer], Some(&start_time_ft), None) };
+                let r = if r == ERROR_SUCCESS {
+                    Ok(())
+                } else {
+                    let msg = format!("Failed to ProcessTrace: {r:#?}");
+                    let r_send = tx.send(anyhow!("{msg}"));
+                    if r_send.is_ok() {
+                        return;
                     }
-                    Ok(_) => Ok(()),
+                    Err(anyhow!("Failed to send {msg}"))
                 };
                 CONTEXT.lock().h_consumer_thread = None;
                 fn_completion(r);
@@ -242,8 +241,8 @@ impl Controller {
             };
             context_mg = CONTEXT.lock();
             context_mg.h_trace_session.Value = 0;
-            if let Err(e) = error {
-                error!("failed to ControlTraceW {}", e);
+            if error != ERROR_SUCCESS {
+                error!("failed to ControlTraceW {error:#?}");
             }
         }
 
@@ -253,9 +252,9 @@ impl Controller {
             let error = unsafe { CloseTrace(h_trace_consumer) };
             context_mg = CONTEXT.lock();
             context_mg.h_trace_consumer.Value = INVALID_PROCESSTRACE_HANDLE;
-            if let Err(e) = error {
-                if ERROR_CTX_CLOSE_PENDING.to_hresult() != e.code() {
-                    error!("failed to CloseTrace {}", e);
+            if error != ERROR_SUCCESS {
+                if error != ERROR_CTX_CLOSE_PENDING {
+                    error!("failed to CloseTrace {error:#?}");
                 }
             }
         }
@@ -275,7 +274,9 @@ impl Controller {
 
     pub fn set_config_enables(index_major: usize, index_minor: Option<usize>, checked: bool) {
         let mut context_mg = CONTEXT.lock();
-        let is_change = context_mg.config.set_enable(index_major, index_minor, checked);
+        let is_change = context_mg
+            .config
+            .set_enable(index_major, index_minor, checked);
         if is_change && 0 != context_mg.h_trace_session.Value {
             let _ = context_mg.update_config();
         }
@@ -339,7 +340,10 @@ impl Controller {
                 // the major event is filter by flag. so a error happens when a event that is not enable comes
                 // the EventTrace Process Image event is always enable.
                 if !is_module_event && !is_auto_generated {
-                    if !context_mg.config.is_flag_enable(EVENTS_DESC[event_indexes.0].major.flag) {
+                    if !context_mg
+                        .config
+                        .is_flag_enable(EVENTS_DESC[event_indexes.0].major.flag)
+                    {
                         error!(
                             "No enable major event is coming: {}-{} event_record: {}",
                             EVENTS_DESC[event_indexes.0].major.name,
@@ -425,7 +429,7 @@ impl Controller {
                     event_record.EventHeader.ProcessId as i32,
                     event_record.EventHeader.ThreadId as i32,
                     TimeStamp(event_record.EventHeader.TimeStamp).to_string_detail(),
-                    removed.0.1
+                    removed.0 .1
                 );
             } else {
                 let cb = context_mg.event_record_callback.clone().unwrap();
@@ -478,31 +482,32 @@ impl Controller {
 
     fn update_config(&self) -> Result<()> {
         let gm = self.config.get_group_mask();
-        if let Err(e) = unsafe {
+        let r = unsafe {
             TraceSetInformation(
                 self.h_trace_session,
                 TraceSystemTraceEnableFlagsInfo,
                 ptr::addr_of!(gm.masks) as *const ffi::c_void,
                 mem::size_of_val(&gm.masks) as u32,
             )
-        } {
-            error!(
-                "Failed to TraceSetInformation TraceSystemTraceEnableFlagsInfo: {}",
-                e
-            );
-            return Err(e.into());
+        };
+        if r != ERROR_SUCCESS {
+            return Err(anyhow!(
+                "Failed to TraceSetInformation TraceSystemTraceEnableFlagsInfo: {r:#?}"
+            ));
         }
         let (vec_event_id, size) = self.config.get_classic_event_id_vec();
-        if let Err(e) = unsafe {
+        let r = unsafe {
             TraceSetInformation(
                 self.h_trace_session,
                 TraceStackTracingInfo,
                 vec_event_id.as_ptr() as *const ffi::c_void,
                 size as u32,
             )
-        } {
-            error!("Failed to TraceSetInformation TraceStackTracingInfo: {}", e);
-            return Err(e.into());
+        };
+        if r != ERROR_SUCCESS {
+            return Err(anyhow!(
+                "Failed to TraceSetInformation TraceStackTracingInfo: {r:#?}"
+            ));
         }
         Ok(())
     }
