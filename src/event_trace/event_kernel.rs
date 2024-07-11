@@ -1923,7 +1923,7 @@ pub enum Major {
     //ContextSwitch = EVENT_TRACE_FLAG_CSWITCH.0,
 
     // Mask[1]
-    Memory = 0x20000001u32,   // repeat to Ws by opcode 118
+    Memory = 0x20000001u32,   // repeat to Ws's 0x2800000u32 by opcode 118. so conbine to 0x28000001u32
     Profile = 0x20000002u32,       // equivalent to EVENT_TRACE_FLAG_PROFILE
     ContextSwitch = 0x20000004u32, // equivalent to EVENT_TRACE_FLAG_CSWITCH
     FootPrint = 0x20000008u32,
