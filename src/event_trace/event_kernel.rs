@@ -1367,7 +1367,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ProcessorIdle",
+            name: "Power ProcessorIdle",
             flag: Major::ProcessorIdle as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -1542,10 +1542,22 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "WorkerThread",
+            name: "Thread",
+            display_name: Some("Thread Worker"), 
             flag: Major::WorkerThread as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "Start",
+                op_code: 64,
+            },
+            MinorDescribe {
+                name: "End",
+                op_code: 65,
+            },
+        ],
+        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     // Mask[4]
@@ -1682,10 +1694,22 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "WakeCounter",
+            name: "Process",
+            display_name: Some("Process Wake"),
             flag: Major::WakeCounter as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "WakeChargeUser",
+                op_code: 48,
+            },
+            MinorDescribe {
+                name: "WakeReleaseUser",
+                op_code: 64,
+            },
+        ],
+        guid: ProcessGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1694,6 +1718,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::Power as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "51",
+                op_code: 51,
+            },
+            MinorDescribe {
+                name: "53",
+                op_code: 53,
+            },
+        ],
+        guid: POWER_GUID,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1710,20 +1745,47 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::Cc as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "0",
+                op_code: 0,
+            },
+            MinorDescribe {
+                name: "1",
+                op_code: 1,
+            },
+            MinorDescribe {
+                name: "2",
+                op_code: 2,
+            },
+            MinorDescribe {
+                name: "5",
+                op_code: 5,
+            },
+            MinorDescribe {
+                name: "9",
+                op_code: 9,
+            },
+            MinorDescribe {
+                name: "10",
+                op_code: 10,
+            },
+            MinorDescribe {
+                name: "12",
+                op_code: 12,
+            },
+            MinorDescribe {
+                name: "13",
+                op_code: 12,
+            },
+        ],
+        guid: CC_GUID,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
             name: "FltIoInit",
             flag: Major::FltIoInit as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "FltIo",
-            flag: Major::FltIo as u32,
             ..MajorDescribe::DEFAULT
         },
         minors: &[
@@ -1735,22 +1797,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 name: "Post Operation Init",
                 op_code: 0x61,
             },
-            MinorDescribe {
-                name: "Pre Operation Completion",
-                op_code: 0x62,
-            },
-            MinorDescribe {
-                name: "Post Operation Completion",
-                op_code: 0x63,
-            },
-            MinorDescribe {
-                name: "Pre Operation Failure",
-                op_code: 0x64,
-            },
-            MinorDescribe {
-                name: "Post Operation Failure",
-                op_code: 0x65,
-            },
         ],
         guid: FileIoGuid,
         ..EventsDescribe::DEFAULT
@@ -1761,6 +1807,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::FltFastIo as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "Pre Operation Completion",
+                op_code: 0x62,
+            },
+            MinorDescribe {
+                name: "Post Operation Completion",
+                op_code: 0x63,
+            },
+        ],
+        guid: FileIoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1769,6 +1826,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::FltIoFailure as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "Pre Operation Failure",
+                op_code: 0x64,
+            },
+            MinorDescribe {
+                name: "Post Operation Failure",
+                op_code: 0x65,
+            },
+        ],
+        guid: FileIoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -2069,7 +2137,7 @@ pub enum Major {
     SoftTrim = 0x80010000u32,
     Cc = 0x80020000u32,
     FltIoInit = 0x80080000u32,
-    FltIo = 0x80100000u32,
+    FltIo = 0x80100000u32, // FltIoInit | FltFastIo | FltIoFailure
     FltFastIo = 0x80200000u32,
     FltIoFailure = 0x80400000u32,
     HvProfile = 0x80800000u32,
@@ -2168,6 +2236,7 @@ pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57f
 pub const LOST_EVENT_GUID: GUID = GUID::from_u128(0x6a399ae0_4bc6_4de9_870b_3657f8947e7e);
 // POWER_GUID: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntwmi/wmi_trace_packet/hookid.htm
 pub const POWER_GUID: GUID = GUID::from_u128(0xE43445E0_0903_48C3_B878_FF0FCCEBDD04);
+pub const CC_GUID: GUID = GUID::from_u128(0x7687A439_F752_45B8_B741_321AEC0F8DF9);
 
 
 pub mod event_property {
