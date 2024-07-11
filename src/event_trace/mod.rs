@@ -11,7 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tracing::{debug, error, warn, trace};
+use tracing::{debug, error, warn, info};
 use widestring::*;
 use windows::{
     core::*,
@@ -132,7 +132,7 @@ impl Controller {
                             )
                         };
                         if r == ERROR_SUCCESS {
-                            warn!(
+                            info!(
                                 "The {session_name:#?} is already exist. and stop before restart"
                             );
                             continue;
@@ -306,7 +306,9 @@ impl Controller {
         )
         .0;
         
-        trace!("{}", EventRecord(event_record));
+        if !is_module_event && !is_lost_event {
+            debug!("{}", EventRecord(event_record));
+        }
 
         let event_indexes = match get_event_indexes(event_record, Some(&context_mg)) {
             Ok(indexes) => indexes,

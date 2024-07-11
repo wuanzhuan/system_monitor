@@ -17,7 +17,7 @@ use std::{
 };
 use strum::VariantArray;
 use tracing::{error, info, warn};
-use tracing_subscriber::{filter::LevelFilter, fmt as tracing_fmt};
+use tracing_subscriber::{filter::{LevelFilter, EnvFilter}, fmt as tracing_fmt};
 
 mod delay_notify;
 mod event_list;
@@ -283,8 +283,19 @@ fn main() {
             }
             Ok(level_filter) => level_filter,
         };
-        let _ = level_filter_handle.modify(|_filter| {
-        });
+        let env_filter = match EnvFilter::from_str(format!("{level},{}={}", miss_stack_walk.0, miss_stack_walk.1).as_str()) {
+            Err(e) => {
+                error!("Failed to parse level: {e}");
+                return;
+            }
+            Ok(env_filter) => env_filter
+        };
+
+        if let Err(e) = level_filter_handle.modify(|filter| {
+            *filter = env_filter;
+        }) {
+            error!("Failed to modify: {e}");
+        }
     });
 
     app.on_selected_target_level(move |_target, level| {

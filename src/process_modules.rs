@@ -20,7 +20,7 @@ use std::{
     sync::{Arc, OnceLock},
     time::Duration,
 };
-use tracing::{error, warn};
+use tracing::{error, warn, info};
 use widestring::*;
 use windows::{
     Wdk::{
@@ -461,7 +461,7 @@ fn enum_drivers() {
         let (image_size, time_date_stamp) =
             match get_image_info_from_file(Path::new(file_name.as_str())) {
                 Err(e) => {
-                    warn!("Failed to get_image_info_from_file: {file_name} {e}");
+                    info!("Failed to get_image_info_from_file: {file_name} {e}");
                     continue;
                 }
                 Ok(info) => info,
@@ -752,7 +752,7 @@ fn process_modules_unload(image: &Image) {
             let mut lock = process_info_mutex.lock();
             if lock.modules_map.remove(&image_base).is_none() {
                 if lock.status.is_none() {
-                    error!("No image: {file_name} when unloading in process: {process_id}");
+                    warn!("No image: {file_name} when unloading in process: {process_id}");
                 }
             }
         }
