@@ -752,7 +752,7 @@ fn process_modules_unload(image: &Image) {
             let mut lock = process_info_mutex.lock();
             if lock.modules_map.remove(&image_base).is_none() {
                 if lock.error.is_none() {
-                    warn!("No image: {file_name} when unloading in process: {process_id}");
+                    warn!("No image: image_base: {image_base:#x} {file_name} when unloading in process: {process_id}");
                 }
             }
         }
