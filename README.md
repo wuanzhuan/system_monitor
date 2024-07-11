@@ -1,6 +1,7 @@
 # system_monitor
 A windows system tool, development in rust. A replacement of [procmon](https://learn.microsoft.com/zh-cn/sysinternals/downloads/procmon), more events and useful filter. Typically can check handle leak for a long time(i.e. a week). because can remove the closed handle.
-![image](https://github.com/wuanzhuan/system_monitor/assets/11628049/a1cbd86e-eeb7-4edb-9898-ce2bf2c74959)
+![image](https://github.com/wuanzhuan/system_monitor/assets/11628049/c3223b53-802b-473d-8247-e1e757a2084a)
+
 
 # features
 - [x] more events
