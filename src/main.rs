@@ -360,7 +360,7 @@ fn main() {
                     return;
                 }
 
-                let debug_msg = format!("{}-{}", event_record.event_name, event_record.opcode_name);
+                let debug_msg = format!("{}-{} in stack_walk_map", event_record.event_name, event_record.opcode_name);
 
                 let er = event_record_model::EventRecordModel::new(
                     event_record,

@@ -318,7 +318,7 @@ impl Controller {
                         ),
                         (),
                         format!(
-                            "{:?}-{:?}",
+                            "{:?}-{:?} in unstored_events_map",
                             event_record.EventHeader.ProviderId,
                             event_record.EventHeader.EventDescriptor.Opcode
                         ),
@@ -363,7 +363,7 @@ impl Controller {
                         ),
                         (),
                         format!(
-                            "{:?}-{:?}",
+                            "{:?}-{:?} unstored_events_map",
                             event_record.EventHeader.ProviderId,
                             event_record.EventHeader.EventDescriptor.Opcode
                         ),
