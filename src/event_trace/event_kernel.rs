@@ -1150,7 +1150,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Ws",
+            name: "PageFault Ws",
             flag: Major::Ws as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -1160,7 +1160,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
                 op_code: 130,
             },
             MinorDescribe {
-                name: "131",
+                name: "ProcessFreeze",
                 op_code: 131,
             },
             MinorDescribe {
@@ -1176,14 +1176,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         major: MajorDescribe {
             name: "AntiStarvation",
             flag: Major::AntiStarvation as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "ProcessFreeze",
-            flag: Major::ProcessFreeze as u32,
             ..MajorDescribe::DEFAULT
         },
         ..EventsDescribe::DEFAULT
@@ -1954,7 +1946,7 @@ pub enum Major {
 
     // Mask[2]
     AntiStarvation = 0x40000001u32,
-    ProcessFreeze = 0x40000002u32,
+    ProcessFreeze = 0x40000002u32, // repeated to Ws by opcode of 131
     PfnList = 0x40000004u32,
     WsDeTail = 0x40000008u32,
     WsEntry = 0x40000010u32,
