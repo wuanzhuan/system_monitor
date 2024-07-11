@@ -69,7 +69,7 @@ impl RunningProcessesModules {
         } else {
             let arc = Arc::new(FairMutex::new(ProcessInfo {
                 path: String::new(),
-                status: Some(ProcessError::NoModules(format!(
+                error: Some(ProcessError::NoModules(format!(
                     "Don't initialize process info"
                 ))),
                 modules_map: BTreeMap::new(),
@@ -147,7 +147,7 @@ pub struct ModuleInfoRunning {
 #[derive(Debug)]
 pub struct ProcessInfo {
     pub path: String,
-    status: Option<ProcessError>,
+    error: Option<ProcessError>,
     modules_map: BTreeMap<u64, ModuleInfoRunning>,
 }
 
@@ -207,7 +207,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
         } else {
             if let Some(ref process_module_mutex) = process_module_mutex_option {
                 let process_info_mutex = process_module_mutex.lock();
-                if let Some(ref e) = process_info_mutex.status {
+                if let Some(ref e) = process_info_mutex.error {
                     if let ProcessError::NoModules(_) = e {
                         continue;
                     }
@@ -220,7 +220,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                         >= module_info_running.base_of_dll
                             + module_info_running.size_of_image as u64
                     {
-                        if process_info_mutex.status.is_none() {
+                        if process_info_mutex.error.is_none() {
                             //warn!("Cross the border address: {address:#x} in the [{process_id}]. the module start: {:#x} size: {:#x} {}",
                             //    module_info_running.base_of_dll, module_info_running.size_of_image, module_info_running.module_info.file_name);
                         }
@@ -231,7 +231,7 @@ pub fn convert_to_module_offset(process_id: u32, stacks: &mut [(String, StackAdd
                         ));
                     }
                 } else {
-                    if process_info_mutex.status.is_none() {
+                    if process_info_mutex.error.is_none() {
                         //warn!("{address:#x} is not find in process_id: {process_id}");
                     }
                 }
@@ -546,7 +546,7 @@ fn process_init(process_id: u32) {
         process_id,
         Arc::new(FairMutex::new(ProcessInfo {
             path: String::new(),
-            status: None,
+            error: None,
             modules_map: BTreeMap::new(),
         })),
     );
@@ -575,7 +575,7 @@ fn process_init(process_id: u32) {
         if STATUS_ACCESS_DENIED != status {
             error!("{err}");
         }
-        process_info_arc.lock().status = Some(err);
+        process_info_arc.lock().error = Some(err);
         return;
     }
 
@@ -609,7 +609,7 @@ fn process_init(process_id: u32) {
                 let _ = unsafe { ZwClose(h_process_out) };
                 let err =  ProcessError::NoModules(format!("Failed to EnumProcessModules for {process_id}: {}", e));
                 error!("{err}");
-                process_info_arc.lock().status = Some(err);
+                process_info_arc.lock().error = Some(err);
                 return;
             }
         }
@@ -678,7 +678,7 @@ fn process_start(process_id: u32) {
         process_id,
         Arc::new(FairMutex::new(ProcessInfo {
             path: String::new(),
-            status: None,
+            error: None,
             modules_map: BTreeMap::new(),
         })),
     );
@@ -716,21 +716,21 @@ fn process_modules_load(image: &Image, timestamp: TimeStamp) {
             .get_or_insert(image.process_id, "process_modules_load");
         let mut process_info = process_info_arc.lock();
         // the main image must be the first image!
-        if process_info.path.is_empty() && process_info.status.is_none() {
+        if process_info.path.is_empty() && process_info.error.is_none() {
             process_info.path = image.file_name.clone();
         }
         if let Ok(_new) = process_info
             .modules_map
             .try_insert(image.image_base, module_info_running)
         {
-            if let Some(ProcessError::NoModules(msg)) = process_info.status.take_if(|e| {
+            if let Some(ProcessError::NoModules(msg)) = process_info.error.take_if(|e| {
                 if let ProcessError::NoModules(_) = e {
                     true
                 } else {
                     false
                 }
             }) {
-                process_info.status = Some(ProcessError::PartialModules(msg))
+                process_info.error = Some(ProcessError::PartialModules(msg))
             }
         }
     }
@@ -751,7 +751,7 @@ fn process_modules_unload(image: &Image) {
             let process_info_mutex = RUNNING_PROCESSES_MODULES_MAP.get_or_insert(process_id, "process_modules_unload");
             let mut lock = process_info_mutex.lock();
             if lock.modules_map.remove(&image_base).is_none() {
-                if lock.status.is_none() {
+                if lock.error.is_none() {
                     warn!("No image: {file_name} when unloading in process: {process_id}");
                 }
             }
