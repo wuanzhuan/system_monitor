@@ -1,5 +1,5 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
-//#![windows_subsystem = "windows"]
+#![windows_subsystem = "windows"]
 
 use crate::event_record_model::EventRecordModel;
 use event_record_model::Columns;
