@@ -156,7 +156,7 @@ fn main() {
     for major in event_trace::EVENTS_DESC.iter() {
         let mut minors: Vec<(bool, SharedString)> = vec![];
         for minor in major.minors {
-            minors.push((false, minor.name.into()));
+            minors.push((false, SharedString::from(format!("{}({})", minor.name, minor.op_code).as_str())));
         }
         event_descs.push(EventDesc {
             is_config: major.configurable,
