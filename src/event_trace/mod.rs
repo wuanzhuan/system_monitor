@@ -293,7 +293,7 @@ impl Controller {
         let is_module_event = event_record.EventHeader.ProviderId == ImageLoadGuid
             || event_record.EventHeader.ProviderId == ProcessGuid;
         let is_lost_event = event_record.EventHeader.ProviderId == LOST_EVENT_GUID;
-        let is_auto_generated = event_record.EventHeader.ProviderId == EventTraceGuid;
+        let is_event_trace = event_record.EventHeader.ProviderId == EventTraceGuid;
 
         let context_mg = CONTEXT.lock();
         if context_mg.is_stopping {
@@ -306,7 +306,7 @@ impl Controller {
         )
         .0;
         
-        if !is_module_event && !is_lost_event {
+        if !is_module_event && !is_lost_event && !is_event_trace{
             debug!("{}", EventRecord(event_record));
         }
 
@@ -343,7 +343,7 @@ impl Controller {
             } else {
                 // the major event is filter by flag. so a error happens when a event that is not enable comes
                 // the EventTrace Process Image event is always enable.
-                if !is_module_event && !is_auto_generated {
+                if !is_module_event && !is_lost_event && !is_event_trace {
                     if !context_mg
                         .config
                         .is_flag_enable(EVENTS_DESC[event_indexes.0].major.flag)
