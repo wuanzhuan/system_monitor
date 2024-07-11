@@ -265,8 +265,8 @@ fn main() {
         .entries()
         .map(|(key, value)| {
             (
-                SharedString::from(*key),
                 SharedString::from(value.1.to_string().as_str()),
+                SharedString::from(*key),
             )
         })
         .collect();

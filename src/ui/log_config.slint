@@ -1,4 +1,4 @@
-import { Button, Palette, Switch, ComboBox, ListView, VerticalBox, HorizontalBox } from "std-widgets.slint";
+import { Button, Palette, Switch, ComboBox, ListView, VerticalBox, HorizontalBox, LineEdit } from "std-widgets.slint";
 
 
 export struct LogFilter {
@@ -14,7 +14,6 @@ export component LogConfig {
     callback selected_target_level(/*target*/string, /*level*/string);
 
     button := Button {
-        enabled: false;
         width: self.preferred-width;
         height: self.preferred-height;
         text: @tr("Log Config");
@@ -57,7 +56,23 @@ export component LogConfig {
                             vertical-alignment: center;
                             text: @tr("level: ");
                         }
+                        LineEdit {
+                            placeholder-text: "trace, debug, info..";
+                            accepted(text) => {
+                                selected_level(text)
+                            }
+                        }
+                    }
+                    HorizontalBox {
+                        height: self.preferred-height;
+                        alignment: start;
+
+                        Text {
+                            vertical-alignment: center;
+                            text: @tr("level: ");
+                        }
                         ComboBox {
+                            enabled: false;
                             model: log_filter.levels;
                             current-value: log_filter.max-level;
                             selected(value) => {
@@ -76,6 +91,7 @@ export component LogConfig {
                                 text: filter.target;
                             }
                             ComboBox {
+                                enabled: false;
                                 model: log_filter.levels;
                                 current-value: filter.level;
                                 selected(value) => {

@@ -11,7 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tracing::{debug, error, warn};
+use tracing::{debug, error, warn, trace};
 use widestring::*;
 use windows::{
     core::*,
@@ -305,6 +305,8 @@ impl Controller {
             context_mg.perf_freq,
         )
         .0;
+        
+        trace!("{}", EventRecord(event_record));
 
         let event_indexes = match get_event_indexes(event_record, Some(&context_mg)) {
             Ok(indexes) => indexes,
