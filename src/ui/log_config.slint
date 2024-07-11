@@ -58,7 +58,9 @@ export component LogConfig {
                         }
                         LineEdit {
                             placeholder-text: "trace, debug, info..";
+                            text: log_filter.max-level;
                             accepted(text) => {
+                                log_filter.max-level = text;
                                 selected_level(text)
                             }
                         }
