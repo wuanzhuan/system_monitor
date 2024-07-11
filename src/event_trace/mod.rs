@@ -394,7 +394,7 @@ impl Controller {
                 }
             },
             Err(e) => {
-                warn!(
+                debug!(
                     "Faild to Decoder::new: {e} EventRecord: {}",
                     EventRecord(event_record)
                 );
