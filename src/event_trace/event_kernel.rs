@@ -1371,6 +1371,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             flag: Major::ProcessorIdle as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "57",
+                op_code: 57,
+            },
+            MinorDescribe {
+                name: "58",
+                op_code: 58,
+            },
+        ],
+        guid: POWER_GUID,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1384,17 +1395,53 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Timer",
+            display_name: Some("PerfInfo Timer"),
             flag: Major::Timer as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "80",
+                op_code: 80,
+            },
+            MinorDescribe {
+                name: "81",
+                op_code: 81,
+            },
+            MinorDescribe {
+                name: "82",
+                op_code: 82,
+            },
+            MinorDescribe {
+                name: "83",
+                op_code: 83,
+            },
+            MinorDescribe {
+                name: "84",
+                op_code: 84,
+            },
+            MinorDescribe {
+                name: "85",
+                op_code: 85,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
             name: "ClockInterrupt",
+            display_name: Some("PerfInfo ClockInterrupt"),
             flag: Major::ClockInterrupt as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "79",
+                op_code: 79,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1408,9 +1455,25 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "ClockTimer",
+            display_name: Some("PerfInfo ClockTimer"),
             flag: Major::ClockTimer as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "87",
+                op_code: 87,
+            },
+            MinorDescribe {
+                name: "88",
+                op_code: 88,
+            },
+            MinorDescribe {
+                name: "89",
+                op_code: 89,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1424,9 +1487,17 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Ipi",
+            display_name: Some("PerfInfo Ipi"),
             flag: Major::Ipi as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "113",
+                op_code: 113,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1447,10 +1518,18 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "RegNotIf",
+            name: "Registry",
+            display_name: Some("Registry ChangeNotify"),
             flag: Major::RegNotIf as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "ChangeNotify",
+                op_code: 48,
+            },
+        ],
+        guid: RegistryGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -2078,19 +2157,18 @@ impl PERFINFO_GROUPMASK {
 pub const OBJECT_GUID: GUID = GUID::from_u128(0x89497f50_effe_4440_8cf2_ce6b1cdcaca7);
 /* 0268a8b6-74fd-4302-9dd0-6e8f1795c0cf */
 pub const POOL_GUID: GUID = GUID::from_u128(0x0268a8b6_74fd_4302_9dd0_6e8f1795c0cf);
-
 /* 222962ab-6180-4b88-a825-346b75f2a24a */
 pub const HEAP_GUID: GUID = GUID::from_u128(0x222962ab_6180_4b88_a825_346b75f2a24a);
-
 /* 13976D09-A327-438c-950B-7F03192815C7  */
 pub const DBG_PRINT_GUID: GUID = GUID::from_u128(0x13976D09_A327_438c_950B_7F03192815C7);
-
 /* 3282fc76-feed-498e-8aa7-e70f459d430e */
 pub const JOB_GUID: GUID = GUID::from_u128(0x3282fc76_feed_498e_8aa7_e70f459d430e);
-
 /// StackWalk: https://learn.microsoft.com/zh-cn/windows/win32/etw/stackwalk
 pub const STACK_WALK_GUID: GUID = GUID::from_u128(0xdef2fe46_7bd6_4b80_bd94_f57fe20d0ce3);
 pub const LOST_EVENT_GUID: GUID = GUID::from_u128(0x6a399ae0_4bc6_4de9_870b_3657f8947e7e);
+// POWER_GUID: https://www.geoffchappell.com/studies/windows/km/ntoskrnl/inc/api/ntwmi/wmi_trace_packet/hookid.htm
+pub const POWER_GUID: GUID = GUID::from_u128(0xE43445E0_0903_48C3_B878_FF0FCCEBDD04);
+
 
 pub mod event_property {
     use crate::event_trace::event_decoder;
