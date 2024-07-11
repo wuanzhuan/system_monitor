@@ -5,7 +5,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 
 # features
 - [x] more events
-  - [x] public and unpublished. refer to [`monitor events`](#monitor-events)
+  - [x] public and unpublished. refer to [`kernel events`](#monitor-events)
 - [x] more useful filter
   - [x] filter one event with some filter condition
     - value: any string and number. i.e. `1234567` or `"system_monitor"`.
@@ -33,7 +33,319 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [x] windows10 x64
 - [ ] windows10 x32
 
-## monitor events
-![image](https://github.com/wuanzhuan/system_monitor/assets/11628049/8956c35a-031e-4045-92db-aa4d906a004d)
+## kernel events
+- Process
+  - Start(1)
+  - End(2)
+  - DCStart(3)
+  - DCEnd(4)
+  - Terminate(11)
+  - Defunct(39)
+- Thread
+  - Start(1)
+  - End(2)
+  - DCStart(3)
+  - DCEnd(4)
+  - SetName(72)
+- Image
+  - Load(10)
+  - UnLoad(2)
+  - KernelBase(33)
+  - HypercallPage(34)
+  - DCStart(3)
+  - DCEnd(4)
+- ProcessCounters
+  - PerfCounter(32)
+  - PerfCounterRundown(33)
+- DiskIo
+  - Read(10)
+  - Write(11)
+  - FlushBuffers(14)
+- DiskIo
+  - ReadInit(12)
+  - WriteInit(13)
+  - FlushInit(15)
+- DiskIo
+  - DrvMjFnCall(34)
+  - DrvMjFnRet(35)
+  - DrvComplRout(37)
+  - DrvComplReq(52)
+  - DrvComplReqRet(53)
+- FileIo
+  - Name(0)
+  - FileCreate(32)
+  - FileDelete(35)
+  - FileRundown(36)
+- FileIo
+  - OperationEnd(76)
+- FileIoInit
+  - Create(64)
+  - DirEnum(72)
+  - DirNotify(77)
+  - SetInfo(69)
+  - Delete(70)
+  - Rename(71)
+  - QueryInfo(74)
+  - FSControl(75)
+  - Read(67)
+  - Write(68)
+  - Cleanup(65)
+  - Close(66)
+  - Flush(73)
+  - 84(84)
+- PageFaults
+  - TransitionFault(10)
+  - DemandZeroFault(11)
+  - CopyOnWrite(12)
+  - GuardPageFault(13)
+  - HardPageFault(14)
+  - AccessViolation(15)
+- PageFaults
+  - HardFault(32)
+- VaMap
+  - 37(37)
+  - 38(38)
+- TcpIp
+  - TCP Send IPv4(10)
+  - TCP Receive IPv4(11)
+  - TCP Connect IPv4(12)
+  - TCP Disconnect IPv4(13)
+  - TCP Retransmit IPv4(14)
+  - TCP Accept IPv4(15)
+  - TCP Reconnect IPv4(16)
+  - TCP Fail(17)
+  - TCP Copy IPv4(18)
+  - TCP Send IPv6(26)
+  - TCP Receive IPv6(27)
+  - TCP Disconnect IPv6(29)
+  - TCP Retransmit IPv6(30)
+  - TCP Reconnect IPv6(32)
+  - TCP Copy IPv6(34)
+  - TCP Connect IPv6(28)
+  - TCP Accept IPv6(31)
+- UdpIp
+  - UDP Fail(17)
+  - UDP Send IPv4(10)
+  - UDP Receive IPv4(11)
+  - UDP Send IPv6(26)
+  - UDP Receive IPv6(27)
+- Registry
+  - CreateKey(10)
+  - OpenKey(11)
+  - DeleteKey(12)
+  - QueryKey(13)
+  - Close Key(27)
+  - Flush Key(21)
+  - Enum Key(17)
+  - Set Value(14)
+  - Delete Value(15)
+  - Query Value(16)
+  - Enum Value(18)
+  - Query Multiple Values(19)
+  - Set Key Information(20)
+  - KCB Create(22)
+  - KCB Delete(23)
+  - KCB Rundown Begin(24)
+  - KCB Rundown End(25)
+  - Virtualize(26)
+  - Query Security(29)
+  - Set Security(28)
+- DbgPrint
+  - DbgPrint(32)
+- Job
+  - Create(32)
+  - Terminate(33)
+  - Open(34)
+  - Assign Process(35)
+  - Remove Process(36)
+  - Set(37)
+  - Query(38)
+- Alpc
+  - ALPC-Send-Message(33)
+  - ALPC-Receive-Message(34)
+  - ALPC-Wait-For-Reply(35)
+  - ALPC-Wait-For-New-Message(36)
+  - ALPC-Unwait(37)
+  - ALPC-38(38)
+  - ALPC-39(39)
+  - ALPC-41(41)
+- SplitIo
+  - VolMgr(32)
+- DebugEvents
+- Profile
+  - SampleProfile(46)
+- ContextSwitch
+  - CSwitch(36)
+- FootPrint
+- Refset
+- Pool
+  - Pool Alloc(32)
+  - Pool Session Alloc(33)
+  - Pool Free(34)
+  - Pool (Session) Free(35)
+  - Add Pool Page(36)
+  - Add Session Pool Page(37)
+  - Big Pool Page(38)
+  - Big Session Pool Page(39)
+- Dpc
+  - ThreadDPC(66)
+  - DPC(68)
+  - TimerDPC(69)
+- CompactContextSwitch
+- Dispatcher
+  - ReadyThread(50)
+  - 66(66)
+  - 67(67)
+  - 68(68)
+- PmcProfile
+- ProcessInSwap
+- Thread
+  - ThreadAffinity(53)
+- Thread
+  - SetPriority(48)
+  - SetBasePriority(49)
+  - SetPagePriority(51)
+  - SetIoPriority(52)
+- PerfInfo
+  - ISR-MSI(50)
+  - ISR(67)
+- PageFault
+  - VirtualAlloc(98)
+  - VirtualFree(99)
+  - MemResetInfo(134)
+- Thread
+  - SpinLock(41)
+- Thread
+  - SyncObjects(43)
+- PerfInfo
+  - 100(100)
+  - 101(101)
+- PageFault
+  - 112(112)
+  - 124(124)
+- PerfInfo
+  - 118(118)
+  - 119(119)
+- SpinLockCounts
+- SessionOrPfSection
+  - 73(73)
+  - 79(79)
+  - 135(135)
+  - 136(136)
+- MemInfoWs
+  - 125(125)
+  - 126(126)
+- Thread
+  - Kernel Queue Enqueue(62)
+  - Kernel Queue Dequeue(63)
+- InterruptSteer
+- ShouldYield
+  - 109(109)
+- PageFault Ws
+  - 130(130)
+  - ProcessFreeze(131)
+  - 118(118)
+- AntiStarvation
+- PfnList
+- WsDeTail
+- WsEntry
+- Heap
+  - Heap Create(32)
+  - Heap Alloc(33)
+  - Heap ReAlloc(34)
+  - Heap Destroy(34)
+  - Heap Free(36)
+  - Heap Extend(37)
+  - Heap Snapshot(38)
+  - Heap Create Snapshot(39)
+  - Heap Destroy Snapshot(40)
+  - Heap Extend Snapshot(41)
+  - Heap Contract(42)
+  - Heap Lock(43)
+  - Heap Unlock(44)
+  - Heap Validate(45)
+  - Heap Walk(46)
+- SystemCall
+  - SysClEnter(51)
+  - SysClExit(52)
+- Ums
+- BackTrace
+- Vulcan
+- EventTrace
+  - Extension(5)
+  - RDComplete(8)
+  - EndExtension(32)
+- FullTrace
+- Dfss
+- PreFetch
+- ProcessorIdle
+- CpuConfig
+- Timer
+- ClockInterrupt
+- LoadBalancer
+- ClockTimer
+- IdleSelection
+- Ipi
+- IoTimer
+- RegHive
+- RegNotIf
+- PpmExitLatency
+- WorkerThread
+- OpticalIo
+- OpticalIoInit
+- DllInfo
+- DllFlushWs
+- Object
+  - CreateHandle(32)
+  - CloseHandle(33)
+  - DuplicateHandle(34)
+  - TypeDCStart(36)
+  - TypeDCEnd(37)
+  - HandleDCStart(38)
+  - HandleDCEnd(39)
+- Object
+  - CreateObject(48)
+  - DeleteObject(49)
+  - ReferenceObject(50)
+  - DereferenceObject(51)
+- WakeDrop
+- WakeEvent
+- Debugger
+- ProcAttach
+- WakeCounter
+- Power
+- SoftTrim
+- Cc
+- FltIoInit
+- FltIo
+  - Pre Operation Init(96)
+  - Post Operation Init(97)
+  - Pre Operation Completion(98)
+  - Post Operation Completion(99)
+  - Pre Operation Failure(100)
+  - Post Operation Failure(101)
+- FltFastIo
+- FltIoFailure
+- HvProfile
+- WdfDpc
+- WdfInterrupt
+- CacheFlush
+- HiberRundown
+- SysConfigSystem
+- SysConfigGraphics
+- SysConfigStorge
+- SysConfigNetwork
+- SysConfigServices
+- SysConfigPnp
+- SysConfigOptical
+- SysConfigAll
+- ClusterOff
+- MemoryControl
+- LostEvent
+  - RTLostEvent(32)
+  - RTLostBuffer(33)
+  - RTLostFile(34)
+- StackWalk
+  - Stack(32)
 
 

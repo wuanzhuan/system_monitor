@@ -2568,3 +2568,20 @@ pub mod event_property {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+
+    // used to generate events's markdown
+    fn generate_markdown_for_kernel_events() {
+        let mut markdown = String::from("## kernel events\n");
+
+        for desc in super::EVENTS_DESC {
+            markdown.push_str(format!("- {}\n", desc.major.name).as_str());
+            for minor in desc.minors {
+                markdown.push_str(format!("  - {}({})\n", minor.name, minor.op_code).as_str());
+            }
+        }
+        println!("{markdown}");
+    }
+}
