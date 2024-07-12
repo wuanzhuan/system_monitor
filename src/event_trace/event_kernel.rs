@@ -9,7 +9,6 @@ use windows::{core::*, Win32::System::Diagnostics::Etw::*};
    system-providers: https://learn.microsoft.com/zh-cn/windows/win32/etw/system-providers
 */
 pub const EVENTS_DESC: &'static [EventsDescribe] = &[
-    // Masks[0]
     EventsDescribe {
         major: MajorDescribe {
             name: "Process",
@@ -40,6 +39,46 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             MinorDescribe {
                 name: "Defunct",
                 op_code: 39,
+            },
+        ],
+        guid: ProcessGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Process",
+            display_name: Some("Process Counters"),
+            flag: Major::ProcessCounters as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "PerfCounter",
+                op_code: 32,
+            },
+            MinorDescribe {
+                name: "PerfCounterRundown",
+                op_code: 33,
+            },
+        ],
+        guid: ProcessGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Process",
+            display_name: Some("Process Wake"),
+            flag: Major::WakeCounter as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "WakeChargeUser",
+                op_code: 48,
+            },
+            MinorDescribe {
+                name: "WakeReleaseUser",
+                op_code: 64,
             },
         ],
         guid: ProcessGuid,
@@ -78,6 +117,160 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
+            name: "ContextSwitch",
+            flag: Major::ContextSwitch as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[MinorDescribe {
+            name: "CSwitch",
+            op_code: 36,
+        }],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Dispatcher",
+            flag: Major::Dispatcher as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "ReadyThread",
+                op_code: 50,
+            },
+            MinorDescribe {
+                name: "66",
+                op_code: 66,
+            },
+            MinorDescribe {
+                name: "67",
+                op_code: 67,
+            },
+            MinorDescribe {
+                name: "68",
+                op_code: 68,
+            },
+        ],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("ThreadAffinity"),
+            flag: Major::Affinity as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[MinorDescribe {
+            name: "ThreadAffinity",
+            op_code: 53,
+        }],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("ThreadPriority"),
+            flag: Major::Priority as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "SetPriority",
+                op_code: 48,
+            },
+            MinorDescribe {
+                name: "SetBasePriority",
+                op_code: 49,
+            },
+            MinorDescribe {
+                name: "SetPagePriority",
+                op_code: 51,
+            },
+            MinorDescribe {
+                name: "SetIoPriority",
+                op_code: 52,
+            },
+        ],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("Thread SpinLock"),
+            flag: Major::SpinLock as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "SpinLock",
+                op_code: 41,
+            },
+        ],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("Thread SyncObjects"),
+            flag: Major::SyncObjects as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "SyncObjects",
+                op_code: 43,
+            },
+        ],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("Thread KernelQueue"),
+            flag: Major::KernelQueue as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Kernel Queue Enqueue",
+                op_code: 62,
+            },
+            MinorDescribe {
+                name: "Kernel Queue Dequeue",
+                op_code: 63,
+            },
+        ],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Thread",
+            display_name: Some("Thread Worker"), 
+            flag: Major::WorkerThread as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Start",
+                op_code: 64,
+            },
+            MinorDescribe {
+                name: "End",
+                op_code: 65,
+            },
+        ],
+        guid: ThreadGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
             name: "Image",
             flag: Major::ImageLoad as u32,
             ..MajorDescribe::DEFAULT
@@ -109,25 +302,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             },
         ],
         guid: ImageLoadGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "ProcessCounters",
-            flag: Major::ProcessCounters as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "PerfCounter",
-                op_code: 32,
-            },
-            MinorDescribe {
-                name: "PerfCounterRundown",
-                op_code: 33,
-            },
-        ],
-        guid: ProcessGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -319,8 +493,83 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
+            name: "VaMap",
+            flag: Major::VaMap as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "37",
+                op_code: 37,
+            },
+            MinorDescribe {
+                name: "38",
+                op_code: 38,
+            },
+        ],
+        guid: FileIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "FltIoInit",
+            flag: Major::FltIoInit as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Pre Operation Init",
+                op_code: 0x60,
+            },
+            MinorDescribe {
+                name: "Post Operation Init",
+                op_code: 0x61,
+            },
+        ],
+        guid: FileIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "FltFastIo",
+            flag: Major::FltFastIo as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Pre Operation Completion",
+                op_code: 0x62,
+            },
+            MinorDescribe {
+                name: "Post Operation Completion",
+                op_code: 0x63,
+            },
+        ],
+        guid: FileIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "FltIoFailure",
+            flag: Major::FltIoFailure as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Pre Operation Failure",
+                op_code: 0x64,
+            },
+            MinorDescribe {
+                name: "Post Operation Failure",
+                op_code: 0x65,
+            },
+        ],
+        guid: FileIoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
             name: "PageFaults",
-            display_name: Some("MemoryPageFaults"),
             flag: Major::MemoryPageFaults as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -356,7 +605,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PageFaults",
-            display_name: Some("MemoryHardFaults"),
             flag: Major::MemoryHardFaults as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -369,21 +617,117 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "VaMap",
-            flag: Major::VaMap as u32,
+            name: "PageFault",
+            flag: Major::VirtualAlloc as u32,
             ..MajorDescribe::DEFAULT
         },
         minors: &[
             MinorDescribe {
-                name: "37",
-                op_code: 37,
+                name: "VirtualAlloc",
+                op_code: 98,
             },
             MinorDescribe {
-                name: "38",
-                op_code: 38,
+                name: "VirtualFree",
+                op_code: 99,
+            },
+            MinorDescribe {
+                name: "MemResetInfo",
+                op_code: 134,
             },
         ],
-        guid: FileIoGuid,
+        guid: PageFaultGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PageFault",
+            display_name: Some("PageFault MemInfo"),
+            flag: Major::MemInfo as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "112",
+                op_code: 112,
+            },
+            MinorDescribe {
+                name: "124",
+                op_code: 124,
+            },
+        ],
+        guid: PageFaultGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PageFault",
+            display_name: Some("PageFault SessionOrPfSection"),
+            flag: Major::SessionOrPfSection as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "73",
+                op_code: 73,
+            },
+            MinorDescribe {
+                name: "79",
+                op_code: 79,
+            },
+            MinorDescribe {
+                name: "135",
+                op_code: 135,
+            },
+            MinorDescribe {
+                name: "136",
+                op_code: 136,
+            },
+        ],
+        guid: PageFaultGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PageFault",
+            display_name: Some("PageFault MemInfoWs"),
+            flag: Major::MemInfoWs as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "125",
+                op_code: 125,
+            },
+            MinorDescribe {
+                name: "126",
+                op_code: 126,
+            },
+        ],
+        guid: PageFaultGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PageFault",
+            display_name: Some("PageFault Ws"),
+            flag: Major::Ws as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "130",
+                op_code: 130,
+            },
+            MinorDescribe {
+                name: "ProcessFreeze",
+                op_code: 131,
+            },
+            MinorDescribe {
+                name: "118",
+                op_code: 118,
+            },
+        ],
+        guid: PageFaultGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -589,6 +933,22 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
+            name: "Registry",
+            display_name: Some("Registry ChangeNotify"),
+            flag: Major::RegNotIf as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "ChangeNotify",
+                op_code: 48,
+            },
+        ],
+        guid: RegistryGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
             name: "DbgPrint",
             flag: Major::DbgPrint as u32,
             ..MajorDescribe::DEFAULT
@@ -727,15 +1087,251 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ContextSwitch",
-            flag: Major::ContextSwitch as u32,
+            name: "PerfInfo",
+            flag: Major::Dpc as u32,
             ..MajorDescribe::DEFAULT
         },
-        minors: &[MinorDescribe {
-            name: "CSwitch",
-            op_code: 36,
-        }],
-        guid: ThreadGuid,
+        minors: &[
+            MinorDescribe {
+                name: "ThreadDPC",
+                op_code: 66,
+            },
+            MinorDescribe {
+                name: "DPC",
+                op_code: 68,
+            },
+            MinorDescribe {
+                name: "TimerDPC",
+                op_code: 69,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        configurable: false, // blocking when set
+        major: MajorDescribe {
+            name: "PmcProfile",
+            flag: Major::PmcProfile as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            display_name: Some("PerfInfo Interrupt"),
+            flag: Major::Interrupt as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "ISR-MSI",
+                op_code: 50,
+            },
+            MinorDescribe {
+                name: "ISR",
+                op_code: 67,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            display_name: Some("PerfInfo DpcQueue"),
+            flag: Major::DpcQueue as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "100",
+                op_code: 100,
+            },
+            MinorDescribe {
+                name: "101",
+                op_code: 101,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            display_name: Some("PerfInfo ContMemGen"),
+            flag: Major::ContMemGen as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "118",
+                op_code: 118,
+            },
+            MinorDescribe {
+                name: "119",
+                op_code: 119,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "ShouldYield",
+            flag: Major::ShouldYield as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "109",
+                op_code: 109,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            display_name: Some("PerfInfo SystemCall"),
+            flag: Major::SystemCall as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "SysClEnter",
+                op_code: 51,
+            },
+            MinorDescribe {
+                name: "SysClExit",
+                op_code: 52,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Timer",
+            display_name: Some("PerfInfo Timer"),
+            flag: Major::Timer as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "80",
+                op_code: 80,
+            },
+            MinorDescribe {
+                name: "81",
+                op_code: 81,
+            },
+            MinorDescribe {
+                name: "82",
+                op_code: 82,
+            },
+            MinorDescribe {
+                name: "83",
+                op_code: 83,
+            },
+            MinorDescribe {
+                name: "84",
+                op_code: 84,
+            },
+            MinorDescribe {
+                name: "85",
+                op_code: 85,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "ClockInterrupt",
+            display_name: Some("PerfInfo ClockInterrupt"),
+            flag: Major::ClockInterrupt as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "79",
+                op_code: 79,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "ClockTimer",
+            display_name: Some("PerfInfo ClockTimer"),
+            flag: Major::ClockTimer as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "87",
+                op_code: 87,
+            },
+            MinorDescribe {
+                name: "88",
+                op_code: 88,
+            },
+            MinorDescribe {
+                name: "89",
+                op_code: 89,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            flag: Major::Ipi as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "Ipi",
+                op_code: 113,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            flag: Major::WdfDpc as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "WdfDPC",
+                op_code: 98,
+            },
+        ],
+        guid: PerfInfoGuid,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "PerfInfo",
+            flag: Major::WdfInterrupt as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "WdfISR",
+                op_code: 96,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -799,70 +1395,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Dpc",
-            flag: Major::Dpc as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "ThreadDPC",
-                op_code: 66,
-            },
-            MinorDescribe {
-                name: "DPC",
-                op_code: 68,
-            },
-            MinorDescribe {
-                name: "TimerDPC",
-                op_code: 69,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "CompactContextSwitch",
             flag: Major::CompactCSwitch as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Dispatcher",
-            flag: Major::Dispatcher as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "ReadyThread",
-                op_code: 50,
-            },
-            MinorDescribe {
-                name: "66",
-                op_code: 66,
-            },
-            MinorDescribe {
-                name: "67",
-                op_code: 67,
-            },
-            MinorDescribe {
-                name: "68",
-                op_code: 68,
-            },
-        ],
-        guid: ThreadGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        configurable: false, // blocking when set
-        major: MajorDescribe {
-            name: "PmcProfile",
-            flag: Major::PmcProfile as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -875,254 +1411,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Thread",
-            display_name: Some("ThreadAffinity"),
-            flag: Major::Affinity as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[MinorDescribe {
-            name: "ThreadAffinity",
-            op_code: 53,
-        }],
-        guid: ThreadGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Thread",
-            display_name: Some("ThreadPriority"),
-            flag: Major::Priority as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "SetPriority",
-                op_code: 48,
-            },
-            MinorDescribe {
-                name: "SetBasePriority",
-                op_code: 49,
-            },
-            MinorDescribe {
-                name: "SetPagePriority",
-                op_code: 51,
-            },
-            MinorDescribe {
-                name: "SetIoPriority",
-                op_code: 52,
-            },
-        ],
-        guid: ThreadGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PerfInfo",
-            display_name: Some("PerfInfo Interrupt"),
-            flag: Major::Interrupt as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "ISR-MSI",
-                op_code: 50,
-            },
-            MinorDescribe {
-                name: "ISR",
-                op_code: 67,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PageFault",
-            display_name: Some("PageFault VirtualAlloc"),
-            flag: Major::VirtualAlloc as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "VirtualAlloc",
-                op_code: 98,
-            },
-            MinorDescribe {
-                name: "VirtualFree",
-                op_code: 99,
-            },
-            MinorDescribe {
-                name: "MemResetInfo",
-                op_code: 134,
-            },
-        ],
-        guid: PageFaultGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Thread",
-            display_name: Some("Thread SpinLock"),
-            flag: Major::SpinLock as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "SpinLock",
-                op_code: 41,
-            },
-        ],
-        guid: ThreadGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Thread",
-            display_name: Some("Thread SyncObjects"),
-            flag: Major::SyncObjects as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "SyncObjects",
-                op_code: 43,
-            },
-        ],
-        guid: ThreadGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PerfInfo",
-            display_name: Some("PerfInfo DpcQueue"),
-            flag: Major::DpcQueue as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "100",
-                op_code: 100,
-            },
-            MinorDescribe {
-                name: "101",
-                op_code: 101,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PageFault",
-            display_name: Some("PageFault MemInfo"),
-            flag: Major::MemInfo as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "112",
-                op_code: 112,
-            },
-            MinorDescribe {
-                name: "124",
-                op_code: 124,
-            },
-        ],
-        guid: PageFaultGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PerfInfo",
-            display_name: Some("PerfInfo ContMemGen"),
-            flag: Major::ContMemGen as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "118",
-                op_code: 118,
-            },
-            MinorDescribe {
-                name: "119",
-                op_code: 119,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "SpinLockCounts",
             flag: Major::SpinLockCounts as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "SessionOrPfSection",
-            flag: Major::SessionOrPfSection as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "73",
-                op_code: 73,
-            },
-            MinorDescribe {
-                name: "79",
-                op_code: 79,
-            },
-            MinorDescribe {
-                name: "135",
-                op_code: 135,
-            },
-            MinorDescribe {
-                name: "136",
-                op_code: 136,
-            },
-        ],
-        guid: PageFaultGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "MemInfoWs",
-            flag: Major::MemInfoWs as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "125",
-                op_code: 125,
-            },
-            MinorDescribe {
-                name: "126",
-                op_code: 126,
-            },
-        ],
-        guid: PageFaultGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Thread",
-            display_name: Some("Thread KernelQueue"),
-            flag: Major::KernelQueue as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "Kernel Queue Enqueue",
-                op_code: 62,
-            },
-            MinorDescribe {
-                name: "Kernel Queue Dequeue",
-                op_code: 63,
-            },
-        ],
-        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1133,45 +1425,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         },
         ..EventsDescribe::DEFAULT
     },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "ShouldYield",
-            flag: Major::ShouldYield as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "109",
-                op_code: 109,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PageFault Ws",
-            flag: Major::Ws as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "130",
-                op_code: 130,
-            },
-            MinorDescribe {
-                name: "ProcessFreeze",
-                op_code: 131,
-            },
-            MinorDescribe {
-                name: "118",
-                op_code: 118,
-            },
-        ],
-        guid: PageFaultGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    // Mask[2]
     EventsDescribe {
         major: MajorDescribe {
             name: "AntiStarvation",
@@ -1277,25 +1530,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "SystemCall",
-            flag: Major::SystemCall as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "SysClEnter",
-                op_code: 51,
-            },
-            MinorDescribe {
-                name: "SysClExit",
-                op_code: 52,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "Ums",
             flag: Major::Ums as u32,
             ..MajorDescribe::DEFAULT
@@ -1367,81 +1601,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Power ProcessorIdle",
-            flag: Major::ProcessorIdle as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "57",
-                op_code: 57,
-            },
-            MinorDescribe {
-                name: "58",
-                op_code: 58,
-            },
-        ],
-        guid: POWER_GUID,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "CpuConfig",
             flag: Major::CpuConfig as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Timer",
-            display_name: Some("PerfInfo Timer"),
-            flag: Major::Timer as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "80",
-                op_code: 80,
-            },
-            MinorDescribe {
-                name: "81",
-                op_code: 81,
-            },
-            MinorDescribe {
-                name: "82",
-                op_code: 82,
-            },
-            MinorDescribe {
-                name: "83",
-                op_code: 83,
-            },
-            MinorDescribe {
-                name: "84",
-                op_code: 84,
-            },
-            MinorDescribe {
-                name: "85",
-                op_code: 85,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "ClockInterrupt",
-            display_name: Some("PerfInfo ClockInterrupt"),
-            flag: Major::ClockInterrupt as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "79",
-                op_code: 79,
-            },
-        ],
-        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1454,50 +1617,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ClockTimer",
-            display_name: Some("PerfInfo ClockTimer"),
-            flag: Major::ClockTimer as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "87",
-                op_code: 87,
-            },
-            MinorDescribe {
-                name: "88",
-                op_code: 88,
-            },
-            MinorDescribe {
-                name: "89",
-                op_code: 89,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "IdleSelection",
             flag: Major::IdleSelection as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Ipi",
-            display_name: Some("PerfInfo Ipi"),
-            flag: Major::Ipi as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "113",
-                op_code: 113,
-            },
-        ],
-        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1518,46 +1641,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Registry",
-            display_name: Some("Registry ChangeNotify"),
-            flag: Major::RegNotIf as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "ChangeNotify",
-                op_code: 48,
-            },
-        ],
-        guid: RegistryGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "PpmExitLatency",
             flag: Major::PpmExitLatency as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "Thread",
-            display_name: Some("Thread Worker"), 
-            flag: Major::WorkerThread as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "Start",
-                op_code: 64,
-            },
-            MinorDescribe {
-                name: "End",
-                op_code: 65,
-            },
-        ],
-        guid: ThreadGuid,
         ..EventsDescribe::DEFAULT
     },
     // Mask[4]
@@ -1694,26 +1781,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Process",
-            display_name: Some("Process Wake"),
-            flag: Major::WakeCounter as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "WakeChargeUser",
-                op_code: 48,
-            },
-            MinorDescribe {
-                name: "WakeReleaseUser",
-                op_code: 64,
-            },
-        ],
-        guid: ProcessGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "Power",
             flag: Major::Power as u32,
             ..MajorDescribe::DEFAULT
@@ -1726,6 +1793,25 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
             MinorDescribe {
                 name: "53",
                 op_code: 53,
+            },
+        ],
+        guid: POWER_GUID,
+        ..EventsDescribe::DEFAULT
+    },
+    EventsDescribe {
+        major: MajorDescribe {
+            name: "Power ProcessorIdle",
+            flag: Major::ProcessorIdle as u32,
+            ..MajorDescribe::DEFAULT
+        },
+        minors: &[
+            MinorDescribe {
+                name: "57",
+                op_code: 57,
+            },
+            MinorDescribe {
+                name: "58",
+                op_code: 58,
             },
         ],
         guid: POWER_GUID,
@@ -1784,99 +1870,10 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "FltIoInit",
-            flag: Major::FltIoInit as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "Pre Operation Init",
-                op_code: 0x60,
-            },
-            MinorDescribe {
-                name: "Post Operation Init",
-                op_code: 0x61,
-            },
-        ],
-        guid: FileIoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "FltFastIo",
-            flag: Major::FltFastIo as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "Pre Operation Completion",
-                op_code: 0x62,
-            },
-            MinorDescribe {
-                name: "Post Operation Completion",
-                op_code: 0x63,
-            },
-        ],
-        guid: FileIoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "FltIoFailure",
-            flag: Major::FltIoFailure as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "Pre Operation Failure",
-                op_code: 0x64,
-            },
-            MinorDescribe {
-                name: "Post Operation Failure",
-                op_code: 0x65,
-            },
-        ],
-        guid: FileIoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
             name: "HvProfile",
             flag: Major::HvProfile as u32,
             ..MajorDescribe::DEFAULT
         },
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PerfInfo",
-            display_name: Some("PerfInfo WdfDPC"),
-            flag: Major::WdfDpc as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "WdfDPC",
-                op_code: 98,
-            },
-        ],
-        guid: PerfInfoGuid,
-        ..EventsDescribe::DEFAULT
-    },
-    EventsDescribe {
-        major: MajorDescribe {
-            name: "PerfInfo",
-            display_name: Some("PerfInfo WdfISR"),
-            flag: Major::WdfInterrupt as u32,
-            ..MajorDescribe::DEFAULT
-        },
-        minors: &[
-            MinorDescribe {
-                name: "WdfISR",
-                op_code: 96,
-            },
-        ],
-        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
@@ -1887,7 +1884,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         },
         ..EventsDescribe::DEFAULT
     },
-    // Masks[5]
     EventsDescribe {
         major: MajorDescribe {
             name: "HiberRundown",
@@ -1896,7 +1892,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         },
         ..EventsDescribe::DEFAULT
     },
-    // Masks[6]
     EventsDescribe {
         major: MajorDescribe {
             name: "SysConfigSystem",
@@ -1961,7 +1956,6 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         },
         ..EventsDescribe::DEFAULT
     },
-    // Masks[7]
     EventsDescribe {
         major: MajorDescribe {
             name: "ClusterOff",
