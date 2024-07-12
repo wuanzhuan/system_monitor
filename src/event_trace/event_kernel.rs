@@ -117,7 +117,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ContextSwitch",
+            name: "Thread",
+            display_name: Some("Thread ContextSwitch"),
             flag: Major::ContextSwitch as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -130,7 +131,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Dispatcher",
+            name: "Thread",
+            display_name: Some("Thread Dispatcher"),
             flag: Major::Dispatcher as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -158,7 +160,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Thread",
-            display_name: Some("ThreadAffinity"),
+            display_name: Some("Thread Affinity"),
             flag: Major::Affinity as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -172,7 +174,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "Thread",
-            display_name: Some("ThreadPriority"),
+            display_name: Some("Thread Priority"),
             flag: Major::Priority as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -330,7 +332,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DiskIo",
-            display_name: Some("DiskIoInit"),
+            display_name: Some("DiskIo Init"),
             flag: Major::DiskIoInit as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -354,7 +356,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "DiskIo",
-            display_name: Some("DiskIoDriver"),
+            display_name: Some("DiskIo Driver"),
             flag: Major::Driver as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -387,7 +389,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
         major: MajorDescribe {
             flag: Major::DiskFileIo as u32,
             name: "FileIo",
-            display_name: Some("DiskFileIo"),
+            display_name: Some("FileIo Disk"),
             ..MajorDescribe::DEFAULT
         },
         minors: &[
@@ -426,7 +428,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "FileIoInit",
+            name: "FileIo Init",
             flag: Major::FileIoInit as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -493,7 +495,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "VaMap",
+            name: "FileIo",
+            display_name: Some("FileIo VaMap"),
             flag: Major::VaMap as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -512,7 +515,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "FltIoInit",
+            name: "FileIo",
+            display_name: Some("FileIo Flt IoInit"),
             flag: Major::FltIoInit as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -531,7 +535,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "FltFastIo",
+            name: "FileIo",
+            display_name: Some("FileIo Flt FastIo"),
             flag: Major::FltFastIo as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -550,7 +555,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "FltIoFailure",
+            name: "FileIo",
+            display_name: Some("FileIo Flt IoFailure"),
             flag: Major::FltIoFailure as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -618,6 +624,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         major: MajorDescribe {
             name: "PageFault",
+            display_name: Some("PageFault VirtualAlloc"),
             flag: Major::VirtualAlloc as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -1074,7 +1081,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         configurable: false, // blocking when set flag
         major: MajorDescribe {
-            name: "Profile",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo Profile"), 
             flag: Major::Profile as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -1111,7 +1119,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     EventsDescribe {
         configurable: false, // blocking when set
         major: MajorDescribe {
-            name: "PmcProfile",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo PmcProfile"), 
             flag: Major::PmcProfile as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -1180,7 +1189,8 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ShouldYield",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo ShouldYield"),
             flag: Major::ShouldYield as u32,
             ..MajorDescribe::DEFAULT
         },
@@ -1215,7 +1225,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "Timer",
+            name: "PerfInfo",
             display_name: Some("PerfInfo Timer"),
             flag: Major::Timer as u32,
             ..MajorDescribe::DEFAULT
@@ -1251,7 +1261,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ClockInterrupt",
+            name: "PerfInfo",
             display_name: Some("PerfInfo ClockInterrupt"),
             flag: Major::ClockInterrupt as u32,
             ..MajorDescribe::DEFAULT
@@ -1267,7 +1277,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "ClockTimer",
+            name: "PerfInfo",
             display_name: Some("PerfInfo ClockTimer"),
             flag: Major::ClockTimer as u32,
             ..MajorDescribe::DEFAULT
