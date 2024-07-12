@@ -44,6 +44,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
    - filter pair: filter two matched events by a simple matched expression. i.e. `handle`, `custom(...)`
 3. ckick On/Off switch on the top left of window
 4. view the events on the center of window
+5. double click the event row in tableview to view detail information and stack walk.
 
 # kernel events
 - Process
