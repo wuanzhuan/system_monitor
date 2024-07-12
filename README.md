@@ -33,11 +33,11 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [x] windows10 x64
 - [ ] windows10 x32
 
-# build
+# how to build
 - cargo build
 - cargo build --release
 
-# use
+# how to use
 1. select events at event list on the left of windows
 2. input filter expression in the LineEdit on the top of window.
    - filter one: filter every event by event's properties. i.e `process_id = 4 && thread_id = 6`
