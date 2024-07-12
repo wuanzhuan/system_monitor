@@ -1849,18 +1849,34 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "WdfDpc",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo WdfDPC"),
             flag: Major::WdfDpc as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "WdfDPC",
+                op_code: 98,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "WdfInterrupt",
+            name: "PerfInfo",
+            display_name: Some("PerfInfo WdfISR"),
             flag: Major::WdfInterrupt as u32,
             ..MajorDescribe::DEFAULT
         },
+        minors: &[
+            MinorDescribe {
+                name: "WdfISR",
+                op_code: 96,
+            },
+        ],
+        guid: PerfInfoGuid,
         ..EventsDescribe::DEFAULT
     },
     EventsDescribe {
