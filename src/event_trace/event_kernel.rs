@@ -956,7 +956,7 @@ pub const EVENTS_DESC: &'static [EventsDescribe] = &[
     },
     EventsDescribe {
         major: MajorDescribe {
-            name: "DbgPrint",
+            name: "Debugger",
             flag: Major::DbgPrint as u32,
             ..MajorDescribe::DEFAULT
         },
