@@ -5,7 +5,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 
 # features
 - [x] more events
-  - [x] public and unpublished. refer to [`kernel events`](#monitor-events)
+  - [x] public and unpublished. refer to [`kernel events`](#kernel-events)
 - [x] more useful filter
   - [x] filter one event with some filter condition
     - value: any string and number. i.e. `1234567` or `"system_monitor"`.
@@ -33,7 +33,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [x] windows10 x64
 - [ ] windows10 x32
 
-## kernel events
+# kernel events
 - Process
   - Start(1)
   - End(2)
@@ -41,12 +41,42 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - DCEnd(4)
   - Terminate(11)
   - Defunct(39)
+- Process
+  - PerfCounter(32)
+  - PerfCounterRundown(33)
+- Process
+  - WakeChargeUser(48)
+  - WakeReleaseUser(64)
 - Thread
   - Start(1)
   - End(2)
   - DCStart(3)
   - DCEnd(4)
   - SetName(72)
+- Thread
+  - CSwitch(36)
+- Thread
+  - ReadyThread(50)
+  - 66(66)
+  - 67(67)
+  - 68(68)
+- Thread
+  - ThreadAffinity(53)
+- Thread
+  - SetPriority(48)
+  - SetBasePriority(49)
+  - SetPagePriority(51)
+  - SetIoPriority(52)
+- Thread
+  - SpinLock(41)
+- Thread
+  - SyncObjects(43)
+- Thread
+  - Kernel Queue Enqueue(62)
+  - Kernel Queue Dequeue(63)
+- Thread
+  - Start(64)
+  - End(65)
 - Image
   - Load(10)
   - UnLoad(2)
@@ -54,9 +84,6 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - HypercallPage(34)
   - DCStart(3)
   - DCEnd(4)
-- ProcessCounters
-  - PerfCounter(32)
-  - PerfCounterRundown(33)
 - DiskIo
   - Read(10)
   - Write(11)
@@ -78,7 +105,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - FileRundown(36)
 - FileIo
   - OperationEnd(76)
-- FileIoInit
+- FileIo Init
   - Create(64)
   - DirEnum(72)
   - DirNotify(77)
@@ -93,6 +120,18 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Close(66)
   - Flush(73)
   - 84(84)
+- FileIo
+  - 37(37)
+  - 38(38)
+- FileIo
+  - Pre Operation Init(96)
+  - Post Operation Init(97)
+- FileIo
+  - Pre Operation Completion(98)
+  - Post Operation Completion(99)
+- FileIo
+  - Pre Operation Failure(100)
+  - Post Operation Failure(101)
 - PageFaults
   - TransitionFault(10)
   - DemandZeroFault(11)
@@ -102,9 +141,25 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - AccessViolation(15)
 - PageFaults
   - HardFault(32)
-- VaMap
-  - 37(37)
-  - 38(38)
+- PageFault
+  - VirtualAlloc(98)
+  - VirtualFree(99)
+  - MemResetInfo(134)
+- PageFault
+  - 112(112)
+  - 124(124)
+- PageFault
+  - 73(73)
+  - 79(79)
+  - 135(135)
+  - 136(136)
+- PageFault
+  - 125(125)
+  - 126(126)
+- PageFault
+  - 130(130)
+  - ProcessFreeze(131)
+  - 118(118)
 - TcpIp
   - TCP Send IPv4(10)
   - TCP Receive IPv4(11)
@@ -150,6 +205,8 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Virtualize(26)
   - Query Security(29)
   - Set Security(28)
+- Registry
+  - ChangeNotify(48)
 - DbgPrint
   - DbgPrint(32)
 - Job
@@ -172,10 +229,46 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - SplitIo
   - VolMgr(32)
 - DebugEvents
-- Profile
+- PerfInfo
   - SampleProfile(46)
-- ContextSwitch
-  - CSwitch(36)
+- PerfInfo
+  - ThreadDPC(66)
+  - DPC(68)
+  - TimerDPC(69)
+- PerfInfo
+- PerfInfo
+  - ISR-MSI(50)
+  - ISR(67)
+- PerfInfo
+  - 100(100)
+  - 101(101)
+- PerfInfo
+  - 118(118)
+  - 119(119)
+- PerfInfo
+  - 109(109)
+- PerfInfo
+  - SysClEnter(51)
+  - SysClExit(52)
+- PerfInfo
+  - 80(80)
+  - 81(81)
+  - 82(82)
+  - 83(83)
+  - 84(84)
+  - 85(85)
+- PerfInfo
+  - 79(79)
+- PerfInfo
+  - 87(87)
+  - 88(88)
+  - 89(89)
+- PerfInfo
+  - Ipi(113)
+- PerfInfo
+  - WdfDPC(98)
+- PerfInfo
+  - WdfISR(96)
 - FootPrint
 - Refset
 - Pool
@@ -187,64 +280,10 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Add Session Pool Page(37)
   - Big Pool Page(38)
   - Big Session Pool Page(39)
-- Dpc
-  - ThreadDPC(66)
-  - DPC(68)
-  - TimerDPC(69)
 - CompactContextSwitch
-- Dispatcher
-  - ReadyThread(50)
-  - 66(66)
-  - 67(67)
-  - 68(68)
-- PmcProfile
 - ProcessInSwap
-- Thread
-  - ThreadAffinity(53)
-- Thread
-  - SetPriority(48)
-  - SetBasePriority(49)
-  - SetPagePriority(51)
-  - SetIoPriority(52)
-- PerfInfo
-  - ISR-MSI(50)
-  - ISR(67)
-- PageFault
-  - VirtualAlloc(98)
-  - VirtualFree(99)
-  - MemResetInfo(134)
-- Thread
-  - SpinLock(41)
-- Thread
-  - SyncObjects(43)
-- PerfInfo
-  - 100(100)
-  - 101(101)
-- PageFault
-  - 112(112)
-  - 124(124)
-- PerfInfo
-  - 118(118)
-  - 119(119)
 - SpinLockCounts
-- SessionOrPfSection
-  - 73(73)
-  - 79(79)
-  - 135(135)
-  - 136(136)
-- MemInfoWs
-  - 125(125)
-  - 126(126)
-- Thread
-  - Kernel Queue Enqueue(62)
-  - Kernel Queue Dequeue(63)
 - InterruptSteer
-- ShouldYield
-  - 109(109)
-- PageFault Ws
-  - 130(130)
-  - ProcessFreeze(131)
-  - 118(118)
 - AntiStarvation
 - PfnList
 - WsDeTail
@@ -265,9 +304,6 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Heap Unlock(44)
   - Heap Validate(45)
   - Heap Walk(46)
-- SystemCall
-  - SysClEnter(51)
-  - SysClExit(52)
 - Ums
 - BackTrace
 - Vulcan
@@ -278,19 +314,12 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - FullTrace
 - Dfss
 - PreFetch
-- ProcessorIdle
 - CpuConfig
-- Timer
-- ClockInterrupt
 - LoadBalancer
-- ClockTimer
 - IdleSelection
-- Ipi
 - IoTimer
 - RegHive
-- RegNotIf
 - PpmExitLatency
-- WorkerThread
 - OpticalIo
 - OpticalIoInit
 - DllInfo
@@ -312,23 +341,23 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - WakeEvent
 - Debugger
 - ProcAttach
-- WakeCounter
 - Power
+  - 51(51)
+  - 53(53)
+- Power ProcessorIdle
+  - 57(57)
+  - 58(58)
 - SoftTrim
 - Cc
-- FltIoInit
-- FltIo
-  - Pre Operation Init(96)
-  - Post Operation Init(97)
-  - Pre Operation Completion(98)
-  - Post Operation Completion(99)
-  - Pre Operation Failure(100)
-  - Post Operation Failure(101)
-- FltFastIo
-- FltIoFailure
+  - 0(0)
+  - 1(1)
+  - 2(2)
+  - 5(5)
+  - 9(9)
+  - 10(10)
+  - 12(12)
+  - 13(12)
 - HvProfile
-- WdfDpc
-- WdfInterrupt
 - CacheFlush
 - HiberRundown
 - SysConfigSystem
@@ -347,5 +376,3 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - RTLostFile(34)
 - StackWalk
   - Stack(32)
-
-

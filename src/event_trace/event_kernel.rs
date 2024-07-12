@@ -2740,6 +2740,7 @@ pub mod event_property {
 mod tests {
 
     // used to generate events's markdown
+    //#[test]
     fn generate_markdown_for_kernel_events() {
         let mut markdown = String::from("## kernel events\n");
 
