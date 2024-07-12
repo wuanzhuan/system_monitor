@@ -33,6 +33,18 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - [x] windows10 x64
 - [ ] windows10 x32
 
+# build
+- cargo build
+- cargo build --release
+
+# use
+1. select events at event list on the left of windows
+2. input filter expression in the LineEdit on the top of window.
+   - filter one: filter every event by event's properties. i.e `process_id = 4 && thread_id = 6`
+   - filter pair: filter two matched events by a simple matched expression. i.e. `handle`, `custom(...)`
+3. ckick On/Off switch on the top left of window
+4. view the events on the center of window
+
 # kernel events
 - Process
   - Start(1)
