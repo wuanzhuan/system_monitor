@@ -369,16 +369,17 @@ fn main() {
                     return;
                 }
 
+                // get_process_path_by_id need to be before get_process_path_by_id. because handle_event_for_module may be remove the process by the process end event.
+                let process_path = running_modules_map.get_process_path_by_id(process_id);
                 running_modules_map.handle_event_for_module(&mut event_record);
                 if !is_selected {
                     return;
                 }
 
                 let debug_msg = format!("{}-{} in stack_walk_map", event_record.event_name, event_record.opcode_name);
-
                 let er = event_record_model::EventRecordModel::new(
                     event_record,
-                    running_modules_map.get_process_path_by_id(process_id),
+                    process_path,
                 );
                 let is_matched = match filter::filter_for_one(
                     |path, value| er.find_by_path_value(path, value),
