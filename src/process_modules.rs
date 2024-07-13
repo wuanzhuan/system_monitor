@@ -389,7 +389,7 @@ impl RunningProcessesModules {
             }));
             lock.insert(process_id, arc.clone());
             warn!(
-                "Don't find process: {} in RUNNING_PROCESSES_MODULES_MAP when {context}",
+                "Don't find process: {} in RunningProcessesModules when {context}",
                 process_id as i32
             );
             arc
