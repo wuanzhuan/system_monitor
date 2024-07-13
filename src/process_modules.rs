@@ -618,7 +618,7 @@ impl ModuleInfo {
             offset,
         ) {
             Err(e) => {
-                error!("{e}");
+                info!("{e:#}");
                 (String::new(), String::new())
             }
             Ok(info) => info,
