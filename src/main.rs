@@ -1,5 +1,6 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(test), windows_subsystem = "windows")]
+
 
 use crate::event_record_model::EventRecordModel;
 use event_record_model::Columns;
@@ -54,6 +55,8 @@ fn main() {
     let level_filter_handle = subscriber.reload_handle();
     let targets_filter_handle = subscriber.reload_handle();
     subscriber.init();
+
+    process_modules::init();
 
     let app = App::new().unwrap();
     let window = app.window();
@@ -322,7 +325,7 @@ fn main() {
         >::new(32, 10, 15);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
-        process_modules::init(&vec![]);
+        let running_modules_map = process_modules::RunningModules::new();
         let result = event_trace::Controller::start(
             move |mut event_record, stack_walk, is_selected| {
                 let process_id = event_record.process_id;
@@ -335,7 +338,7 @@ fn main() {
                     {
                         if let Some(weak) = some_row.0 {
                             if let Some(arc_node) = weak.upgrade() {
-                                process_modules::convert_to_module_offset(
+                                running_modules_map.convert_to_module_offset(
                                     sw.stack_process,
                                     sw.stacks.as_mut_slice(),
                                 );
@@ -366,7 +369,7 @@ fn main() {
                     return;
                 }
 
-                process_modules::handle_event_for_module(&mut event_record);
+                running_modules_map.handle_event_for_module(&mut event_record);
                 if !is_selected {
                     return;
                 }
@@ -375,7 +378,7 @@ fn main() {
 
                 let er = event_record_model::EventRecordModel::new(
                     event_record,
-                    process_modules::get_process_path_by_id(process_id),
+                    running_modules_map.get_process_path_by_id(process_id),
                 );
                 let is_matched = match filter::filter_for_one(
                     |path, value| er.find_by_path_value(path, value),
