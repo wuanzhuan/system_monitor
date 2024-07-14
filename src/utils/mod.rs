@@ -3,6 +3,7 @@ use chrono::*;
 use serde::{Serialize, Serializer};
 use std::{env, ops::Sub, convert::From};
 use windows::Win32::Foundation::FILETIME;
+use windows::Win32::System::SystemInformation::GetSystemTimeAsFileTime;
 
 
 /// https://learn.microsoft.com/zh-CN/windows/win32/api/minwinbase/ns-minwinbase-filetime
@@ -10,6 +11,10 @@ use windows::Win32::Foundation::FILETIME;
 pub struct TimeStamp(pub i64);
 
 impl TimeStamp {
+    pub fn now() -> Self {
+        let now = unsafe { GetSystemTimeAsFileTime() };
+        now.into()
+    }
     pub fn to_datetime_local(&self) -> DateTime<Local> {
         let duration = Utc.with_ymd_and_hms(1970, 1, 1, 0, 0, 0).unwrap()
             - Utc.with_ymd_and_hms(1601, 1, 1, 0, 0, 0).unwrap();
