@@ -218,7 +218,7 @@ impl RunningModules {
             })),
         );
         if old_key.is_some() {
-            warn!("The new {process_id} of process id is coming but old is not remove");
+            warn!("The new {process_id} of process id is coming but old has not removed");
         }
     }
 
