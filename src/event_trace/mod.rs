@@ -11,7 +11,7 @@ use std::{
     thread,
     time::Duration,
 };
-use tracing::{debug, error, warn, info};
+use tracing::{debug, error, info, warn};
 use widestring::*;
 use windows::{
     core::*,
@@ -305,8 +305,8 @@ impl Controller {
             context_mg.perf_freq,
         )
         .0;
-        
-        if !is_module_event && !is_lost_event && !is_event_trace{
+
+        if !is_module_event && !is_lost_event && !is_event_trace {
             debug!("{}", EventRecord(event_record));
         }
 
@@ -358,20 +358,20 @@ impl Controller {
                 }
             }
             if !is_enabled {
-                // escape event
-                if !is_module_event && !is_lost_event {
-                    context_mg.unstored_events_map.borrow_mut().insert(
-                        (
-                            event_record.EventHeader.ThreadId,
-                            event_record.EventHeader.TimeStamp,
-                        ),
-                        (),
-                        format!(
-                            "{:?}-{:?} unstored_events_map",
-                            event_record.EventHeader.ProviderId,
-                            event_record.EventHeader.EventDescriptor.Opcode
-                        ),
-                    );
+                context_mg.unstored_events_map.borrow_mut().insert(
+                    (
+                        event_record.EventHeader.ThreadId,
+                        event_record.EventHeader.TimeStamp,
+                    ),
+                    (),
+                    format!(
+                        "{:?}-{:?} unstored_events_map",
+                        event_record.EventHeader.ProviderId,
+                        event_record.EventHeader.EventDescriptor.Opcode
+                    ),
+                );
+
+                if !is_module_event {
                     return;
                 }
             }
@@ -420,11 +420,11 @@ impl Controller {
             )
             .0;
 
-            let removed_option = context_mg.unstored_events_map.borrow_mut().remove(
+            let removed = context_mg.unstored_events_map.borrow_mut().remove(
                 &(sw.stack_thread, sw.event_timestamp),
                 event_record.EventHeader.TimeStamp,
             );
-            if let Some(removed) = removed_option {
+            if let Some(removed) = removed {
                 debug!(
                     "The unstored event: {}:{}:{} 's stack walk: {}:{}:{} has removed {}",
                     sw.stack_process,
@@ -442,14 +442,10 @@ impl Controller {
                 cb(event_record_decoded, Some(sw), false);
             }
         } else {
-            if !is_lost_event {
-                let cb = context_mg.event_record_callback.clone().unwrap();
-                mem::drop(context_mg);
-                let cb = unsafe { &mut *cb.get() };
-                cb(event_record_decoded, None, is_enabled);
-            } else {
-                warn!("Lost_Event: {:#?}", event_record_decoded);
-            }
+            let cb = context_mg.event_record_callback.clone().unwrap();
+            mem::drop(context_mg);
+            let cb = unsafe { &mut *cb.get() };
+            cb(event_record_decoded, None, is_enabled);
         }
 
         fn get_event_indexes(
