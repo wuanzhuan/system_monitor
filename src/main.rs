@@ -1,7 +1,6 @@
 #![feature(sync_unsafe_cell, btree_cursors, map_try_insert)]
 #![cfg_attr(not(test), windows_subsystem = "windows")]
 
-
 use crate::event_record_model::EventRecordModel;
 use event_record_model::Columns;
 use i_slint_backend_winit::WinitWindowAccessor;
@@ -18,7 +17,10 @@ use std::{
 };
 use strum::VariantArray;
 use tracing::{error, info, warn};
-use tracing_subscriber::{filter::{LevelFilter, EnvFilter}, fmt as tracing_fmt};
+use tracing_subscriber::{
+    filter::{EnvFilter, LevelFilter},
+    fmt as tracing_fmt,
+};
 
 mod delay_notify;
 mod event_list;
@@ -37,7 +39,6 @@ static LOG_TARGET_MAP: phf::Map<&'static str, (&'static str, LevelFilter)> = phf
     "miss_stack_walk" => ("sys_monitor::event_trace::stack_walk", LevelFilter::INFO),
 };
 const LOG_LEVELS: &[&str] = &["trace", "debug", "info", "warn", "error"];
-
 
 fn main() {
     let file_appender = tracing_appender::rolling::never("./logs", "logs.log");
@@ -159,7 +160,10 @@ fn main() {
     for major in event_trace::EVENTS_DESC.iter() {
         let mut minors: Vec<(bool, SharedString)> = vec![];
         for minor in major.minors {
-            minors.push((false, SharedString::from(format!("{}({})", minor.name, minor.op_code).as_str())));
+            minors.push((
+                false,
+                SharedString::from(format!("{}({})", minor.name, minor.op_code).as_str()),
+            ));
         }
         event_descs.push(EventDesc {
             is_config: major.configurable,
@@ -286,12 +290,14 @@ fn main() {
             }
             Ok(level_filter) => level_filter,
         };
-        let env_filter = match EnvFilter::from_str(format!("{level},{}={}", miss_stack_walk.0, miss_stack_walk.1).as_str()) {
+        let env_filter = match EnvFilter::from_str(
+            format!("{level},{}={}", miss_stack_walk.0, miss_stack_walk.1).as_str(),
+        ) {
             Err(e) => {
                 error!("Failed to parse level: {e}");
                 return;
             }
-            Ok(env_filter) => env_filter
+            Ok(env_filter) => env_filter,
         };
 
         if let Err(e) = level_filter_handle.modify(|filter| {
@@ -325,7 +331,7 @@ fn main() {
         >::new(32, 10, 15);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
-        let running_modules_map = process_modules::RunningModules::new();
+        let running_modules_map = process_modules::RunningModules::new(5, 10);
         let result = event_trace::Controller::start(
             move |mut event_record, stack_walk, is_selected| {
                 let process_id = event_record.process_id;
@@ -340,6 +346,7 @@ fn main() {
                             if let Some(arc_node) = weak.upgrade() {
                                 running_modules_map.convert_to_module_offset(
                                     sw.stack_process,
+                                    event_record.timestamp,
                                     sw.stacks.as_mut_slice(),
                                 );
                                 let erm = arc_node
@@ -369,18 +376,19 @@ fn main() {
                     return;
                 }
 
-                // get_process_path_by_id need to be before get_process_path_by_id. because handle_event_for_module may be remove the process by the process end event.
-                let process_path = running_modules_map.get_process_path_by_id(process_id);
+                // get_process_path_by_id need to be before handle_event_for_module. because handle_event_for_module may be remove the process by the "process end" event.
+                let process_path =
+                    running_modules_map.get_process_path_by_id(process_id, event_record.timestamp);
                 running_modules_map.handle_event_for_module(&mut event_record);
                 if !is_selected {
                     return;
                 }
 
-                let debug_msg = format!("{}-{} in stack_walk_map", event_record.event_name, event_record.opcode_name);
-                let er = event_record_model::EventRecordModel::new(
-                    event_record,
-                    process_path,
+                let debug_msg = format!(
+                    "{}-{} in stack_walk_map",
+                    event_record.event_name, event_record.opcode_name
                 );
+                let er = event_record_model::EventRecordModel::new(event_record, process_path);
                 let is_matched = match filter::filter_for_one(
                     |path, value| er.find_by_path_value(path, value),
                     |value| er.find_by_value(value),

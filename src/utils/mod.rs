@@ -59,9 +59,9 @@ impl std::string::ToString for TimeStamp {
 }
 
 impl Sub for TimeStamp {
-    type Output = i64;
+    type Output = TimeDelta;
     fn sub(self, rhs: Self) -> Self::Output {
-        self.0 - rhs.0
+        self.to_datetime_local() - rhs.to_datetime_local()
     }
 }
 
