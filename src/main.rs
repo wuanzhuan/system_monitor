@@ -29,7 +29,6 @@ mod event_record_model;
 mod event_trace;
 mod filter;
 mod pdb;
-mod process_modules;
 mod third_extend;
 mod utils;
 
@@ -57,7 +56,7 @@ fn main() {
     let targets_filter_handle = subscriber.reload_handle();
     subscriber.init();
 
-    process_modules::init();
+    event_trace::process_modules::init();
 
     let app = App::new().unwrap();
     let window = app.window();
@@ -331,9 +330,8 @@ fn main() {
         >::new(32, 10, 15);
         let mut delay_notify = Box::new(delay_notify::DelayNotify::new(100, 200));
         delay_notify.init(app_weak_1.clone());
-        let running_modules_map = process_modules::RunningModules::new(5, 10);
         let result = event_trace::Controller::start(
-            move |mut event_record, stack_walk, is_enabled| {
+            move |event_record, stack_walk, running_modules_map| {
                 let process_id = event_record.process_id;
                 let thread_id = event_record.thread_id;
                 let timestamp = event_record.timestamp.0;
@@ -379,10 +377,6 @@ fn main() {
                 // get_process_path_by_id need to be before handle_event_for_module. because handle_event_for_module may be remove the process by the "process end" event.
                 let process_path =
                     running_modules_map.get_process_path_by_id(process_id, event_record.timestamp);
-                running_modules_map.handle_event_for_module(&mut event_record);
-                if !is_enabled {
-                    return;
-                }
 
                 let debug_msg = format!(
                     "{}-{} in stack_walk_map",

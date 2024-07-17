@@ -55,14 +55,22 @@ pub struct RunningModules {
 
 impl RunningModules {
     pub fn new(max_count: usize, num_seconds: i64) -> Self {
-        let mut running_processes_modules = RunningProcessesModules::new(max_count, num_seconds);
-        running_processes_modules.processes_enum(&vec![]);
-        let mut running_kernel_modules = RunningKernelModules::new();
-        Self::enum_drivers(&mut running_kernel_modules);
+        let running_processes_modules = RunningProcessesModules::new(max_count, num_seconds);
+        let running_kernel_modules = RunningKernelModules::new();
         Self {
             running_processes_modules,
             running_kernel_modules,
         }
+    }
+
+    pub fn init(&self) {
+        self.running_processes_modules.processes_enum(&vec![]);
+        Self::enum_drivers(&self.running_kernel_modules);
+    }
+
+    pub fn clear(&self) {
+        self.running_processes_modules.clear();
+        self.running_kernel_modules.0.lock().clear();
     }
 
     pub fn convert_to_module_offset(
@@ -309,7 +317,7 @@ impl RunningModules {
         }
     }
 
-    fn enum_drivers(running_kernel_modules: &mut RunningKernelModules) {
+    fn enum_drivers(running_kernel_modules: &RunningKernelModules) {
         let mut driver_image_bases = vec![ptr::null_mut(); 100];
         let mut cb_needed = 0u32;
         loop {
@@ -557,13 +565,20 @@ impl RunningProcessesModules {
         }
     }
 
+    fn clear(&self) {
+        let map = unsafe{ &mut *self.map.get() };
+        map.clear();
+        let ended_map = unsafe{ &mut *self.ended_map.get() };
+        ended_map.clear();
+    }
+
     #[inline]
     fn is_special_process(process_id: u32) -> bool {
         process_id == 0 || process_id == 4 || process_id as i32 == -1
     }
 
     // all process when filter_processes is empty
-    fn processes_enum(&mut self, selected_process_ids: &Vec<u32>) {
+    fn processes_enum(&self, selected_process_ids: &Vec<u32>) {
         if !selected_process_ids.is_empty() {
             for id in selected_process_ids.iter() {
                 self.process_init(*id);
@@ -596,7 +611,7 @@ impl RunningProcessesModules {
         }
     }
     // only call before starting event trace
-    fn process_init(&mut self, process_id: u32) {
+    fn process_init(&self, process_id: u32) {
         let process_info_arc = if let Some((is_new, process_info_arc)) = self.try_insert(
             process_id,
             Arc::new(SyncUnsafeCell::new(ProcessInfo {

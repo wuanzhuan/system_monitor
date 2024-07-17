@@ -1,6 +1,6 @@
 use super::event_trace::{EventRecordDecoded, PropertyDecoded, StackWalk};
 use crate::filter::{Path, Value};
-use crate::process_modules;
+use crate::event_trace::process_modules;
 use crate::StackWalkInfo;
 use anyhow::{anyhow, Error, Result};
 use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};

@@ -25,10 +25,13 @@ mod event_config;
 mod event_decoder;
 mod event_kernel;
 mod stack_walk;
+pub mod process_modules;
 
 pub use event_decoder::{EventRecordDecoded, PropertyDecoded};
 pub use event_kernel::{event_property::*, EVENTS_DESC, LOST_EVENT_GUID};
 pub use stack_walk::StackWalkMap;
+
+use process_modules::RunningModules;
 
 const SESSION_NAME_SYSMON: &U16CStr = u16cstr!("sysmonx");
 const SESSION_NAME_NT: &U16CStr = u16cstr!("NT Kernel Logger");
@@ -59,7 +62,7 @@ pub struct Controller {
                 dyn FnMut(
                     EventRecordDecoded,
                     /*stack_walk*/ Option<StackWalk>,
-                    /*is_selected*/ bool,
+                    /*running_modules_map*/ &process_modules::RunningModules,
                 ),
             >,
         >,
@@ -67,13 +70,15 @@ pub struct Controller {
     unstored_events_map: RefCell<StackWalkMap<()>>,
     boot_time: TimeStamp,
     perf_freq: i64,
+    running_modules_map: Rc<RunningModules>,
+    inited_time: Option<i64>
 }
 
 unsafe impl std::marker::Send for Controller {}
 
 impl Controller {
     fn new() -> Self {
-        let cxt = Self {
+        Self {
             is_stopping: false,
             config: event_config::Config::new(event_kernel::EVENTS_DESC),
             h_trace_session: CONTROLTRACE_HANDLE::default(),
@@ -86,15 +91,16 @@ impl Controller {
             unstored_events_map: RefCell::new(StackWalkMap::new(32, 10, 15)),
             boot_time: TimeStamp(0),
             perf_freq: 1000_0000,
-        };
-        cxt
+            running_modules_map: Rc::new(RunningModules::new(5, 10)),
+            inited_time: None,
+        }
     }
 
     pub fn start(
         fn_event_callback: impl FnMut(
                 EventRecordDecoded,
                 /*stack_walk*/ Option<StackWalk>,
-                /*is_enabled*/ bool,
+                /*running_modules_map*/ &process_modules::RunningModules,
             ) + Send
             + 'static,
         fn_completion: impl FnOnce(Result<()>) + Send + 'static,
@@ -171,12 +177,13 @@ impl Controller {
             context_mg.h_trace_consumer = h_consumer;
             context_mg.boot_time = TimeStamp(trace_log.LogfileHeader.BootTime);
             context_mg.perf_freq = trace_log.LogfileHeader.PerfFreq;
+            let running_modules_rc = context_mg.running_modules_map.clone();
             drop(context_mg);
 
+            let mut start_time = 0i64;
+            let _ = unsafe { QueryPerformanceCounter(&mut start_time) };
             let (tx, rx) = mpsc::channel::<ErrorAnyhow>();
             let h_thread = thread::spawn(move || {
-                let mut start_time = 0i64;
-                let _ = unsafe { QueryPerformanceCounter(&mut start_time) };
                 let start_time_ft = TimeStamp(start_time).to_filetime();
                 // not set start_time. there is no stackwalk for starting events(> 200)
                 // the start_time need to match qpc / systemtime
@@ -194,11 +201,16 @@ impl Controller {
                 CONTEXT.lock().h_consumer_thread = None;
                 fn_completion(r);
             });
-            let r_recv = rx.recv_timeout(Duration::from_millis(200));
+            running_modules_rc.init();
+            let r_recv = rx.recv_timeout(Duration::from_millis(1));
             match r_recv {
                 Err(e) => {
                     if e == RecvTimeoutError::Timeout {
-                        CONTEXT.lock().h_consumer_thread = Some(h_thread);
+                        let mut inited_time = 0i64;
+                        let _ = unsafe { QueryPerformanceCounter(&mut inited_time) };
+                        let mut lock = CONTEXT.lock();
+                        lock.h_consumer_thread = Some(h_thread);
+                        lock.inited_time = Some(inited_time); 
                         break Ok(());
                     }
                     error!("Failed to recv_timeout {}", e);
@@ -268,7 +280,8 @@ impl Controller {
         // clear other
         let _ = context_mg.event_record_callback.take();
         context_mg.unstored_events_map.borrow_mut().clear();
-
+        context_mg.running_modules_map.clear();
+        context_mg.inited_time = None;
         Ok(())
     }
 
@@ -299,6 +312,20 @@ impl Controller {
         if context_mg.is_stopping {
             return;
         }
+
+        // discard the event before inited_time, except module event.
+        if let Some(inited_time) = context_mg.inited_time {
+            if event_record.EventHeader.TimeStamp < inited_time {
+                if !is_module_event {
+                    return;
+                }
+            }
+        } else {
+            if !is_module_event {
+                return;
+            }
+        }
+
         event_record.EventHeader.TimeStamp = TimeStamp::from_qpc(
             event_record.EventHeader.TimeStamp as u64,
             context_mg.boot_time,
@@ -437,15 +464,22 @@ impl Controller {
                 );
             } else {
                 let cb = context_mg.event_record_callback.clone().unwrap();
+                let running_modules_rc = context_mg.running_modules_map.clone();
                 mem::drop(context_mg);
                 let cb = unsafe { &mut *cb.get() };
-                cb(event_record_decoded, Some(sw), false);
+                cb(event_record_decoded, Some(sw), running_modules_rc.as_ref());
             }
         } else {
-            let cb = context_mg.event_record_callback.clone().unwrap();
-            mem::drop(context_mg);
-            let cb = unsafe { &mut *cb.get() };
-            cb(event_record_decoded, None, is_enabled);
+            if is_module_event {
+                context_mg.running_modules_map.handle_event_for_module(&mut event_record_decoded);
+            }
+            if is_enabled {
+                let cb = context_mg.event_record_callback.clone().unwrap();
+                let running_modules_rc = context_mg.running_modules_map.clone();
+                mem::drop(context_mg);
+                let cb = unsafe { &mut *cb.get() };
+                cb(event_record_decoded, None, running_modules_rc.as_ref());
+            }
         }
 
         fn get_event_indexes(
