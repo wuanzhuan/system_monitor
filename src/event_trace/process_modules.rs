@@ -1,6 +1,5 @@
 use crate::{
     event_trace::{EventRecordDecoded, Image, Process, StackAddress},
-    pdb::get_location_info as get_location_info_from_pdb,
     third_extend::strings::{AsPcwstr, StringEx},
     utils::TimeStamp,
 };
@@ -775,24 +774,6 @@ pub struct ModuleInfo {
 impl ModuleInfo {
     pub fn get_module_name(&self) -> &str {
         get_file_name_from_path(self.file_name.as_str())
-    }
-
-    // offset: from module's image base
-    pub fn get_location_info(
-        &self,
-        offset: u32,
-    ) -> (/*function_offset*/ String, /*line_offset*/ String) {
-        match get_location_info_from_pdb(
-            Path::new(self.file_name.as_str()),
-            self.time_data_stamp,
-            offset,
-        ) {
-            Err(e) => {
-                info!("{e:#}");
-                (String::new(), String::new())
-            }
-            Ok(info) => info,
-        }
     }
 }
 

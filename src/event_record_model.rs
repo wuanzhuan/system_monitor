@@ -1,15 +1,18 @@
-use super::event_trace::{EventRecordDecoded, PropertyDecoded, StackWalk};
-use crate::filter::{Path, Value};
-use crate::event_trace::process_modules;
-use crate::StackWalkInfo;
+use crate::{
+    event_trace::{process_modules, EventRecordDecoded, PropertyDecoded, StackWalk},
+    filter::{Path, Value},
+    pdb::get_location_info,
+    StackWalkInfo,
+};
 use anyhow::{anyhow, Error, Result};
 use slint::{Model, ModelRc, ModelTracker, SharedString, StandardListViewItem, VecModel};
 use std::{
+    path,
     str::FromStr,
     sync::{Arc, OnceLock},
 };
 use strum::{AsRefStr, VariantArray};
-use tracing::error;
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct EventRecordModel {
@@ -68,19 +71,36 @@ impl EventRecordModel {
         }
     }
 
-    pub fn stack_walk(&self) -> (/*stacks*/StackWalkInfo, /*stacks_2*/StackWalkInfo) {
-        return (get_stack_walk_info(self.stack_walk.get()), get_stack_walk_info(self.stack_walk_2.get()));
+    pub fn stack_walk(
+        &self,
+    ) -> (
+        /*stacks*/ StackWalkInfo,
+        /*stacks_2*/ StackWalkInfo,
+    ) {
+        return (
+            get_stack_walk_info(self.stack_walk.get()),
+            get_stack_walk_info(self.stack_walk_2.get()),
+        );
 
         fn get_stack_walk_info(stack_op: Option<&Arc<StackWalk>>) -> StackWalkInfo {
             if let Some(stack_arc) = stack_op {
                 let vec = VecModel::default();
                 for item in stack_arc.stacks.iter() {
                     let model_rc = if let Some(relative) = item.1.relative {
-                        if let Some(module_info) = process_modules::get_module_info_by_id(relative.0) {
+                        if let Some(module_info) =
+                            process_modules::get_module_info_by_id(relative.0)
+                        {
                             let file_name = module_info.get_module_name();
-                            let (function_offset, line_offset) =
-                                module_info.get_location_info(relative.1);
-    
+                            let (function_offset, line_offset) = get_location_info(
+                                path::Path::new(module_info.file_name.as_str()),
+                                module_info.time_data_stamp,
+                                relative.1,
+                            )
+                            .unwrap_or_else(|e| {
+                                info!("{e:#}");
+                                (String::new(), String::new())
+                            });
+
                             ModelRc::from([
                                 StandardListViewItem::from(SharedString::from(&item.0)),
                                 StandardListViewItem::from(SharedString::from(format!(
