@@ -10,14 +10,16 @@ use linked_hash_map::LinkedHashMap;
 use once_cell::sync::Lazy;
 use parking_lot::FairMutex;
 use std::{
-    cell::SyncUnsafeCell,
+    cell::UnsafeCell,
     collections::{BTreeMap, HashMap, VecDeque},
     fs::File,
     io::{Read, Seek, SeekFrom},
     mem,
     ops::{Bound, Deref},
     path::Path,
-    ptr, slice,
+    ptr,
+    rc::Rc,
+    slice,
     sync::{Arc, OnceLock},
 };
 use tracing::{error, info, warn};
@@ -215,7 +217,7 @@ impl RunningModules {
     fn process_start(&self, process_id: u32, start_time: TimeStamp) {
         let old_key = self.running_processes_modules.insert(
             process_id,
-            Arc::new(SyncUnsafeCell::new(ProcessInfo {
+            Rc::new(UnsafeCell::new(ProcessInfo {
                 path: String::new(),
                 create_time: start_time,
                 start_time: Some(start_time),
@@ -406,8 +408,8 @@ impl Deref for RunningKernelModules {
 }
 
 struct RunningProcessesModules {
-    map: SyncUnsafeCell<HashMap<u32, Arc<SyncUnsafeCell<ProcessInfo>>>>,
-    ended_map: SyncUnsafeCell<LinkedHashMap<u32, VecDeque<Arc<SyncUnsafeCell<ProcessInfo>>>>>, // the process_id may be repeated. because of delay removing
+    map: UnsafeCell<HashMap<u32, Rc<UnsafeCell<ProcessInfo>>>>,
+    ended_map: UnsafeCell<LinkedHashMap<u32, VecDeque<Rc<UnsafeCell<ProcessInfo>>>>>, // the process_id may be repeated. because of delay removing
     max_count: usize,
     num_seconds: i64,
 }
@@ -415,8 +417,8 @@ struct RunningProcessesModules {
 impl RunningProcessesModules {
     fn new(max_count: usize, num_seconds: i64) -> Self {
         Self {
-            map: SyncUnsafeCell::new(HashMap::new()),
-            ended_map: SyncUnsafeCell::new(LinkedHashMap::new()),
+            map: UnsafeCell::new(HashMap::new()),
+            ended_map: UnsafeCell::new(LinkedHashMap::new()),
             max_count,
             num_seconds,
         }
@@ -426,7 +428,7 @@ impl RunningProcessesModules {
         &self,
         process_id: u32,
         current_timestamp: TimeStamp,
-    ) -> Result<Arc<SyncUnsafeCell<ProcessInfo>>, RunningProcessError> {
+    ) -> Result<Rc<UnsafeCell<ProcessInfo>>, RunningProcessError> {
         if Self::is_special_process(process_id) {
             return Err(RunningProcessError::SpecialProcess(process_id));
         }
@@ -455,7 +457,7 @@ impl RunningProcessesModules {
         process_id: u32,
         current_timestamp: TimeStamp,
         context: &str,
-    ) -> Option<Arc<SyncUnsafeCell<ProcessInfo>>> {
+    ) -> Option<Rc<UnsafeCell<ProcessInfo>>> {
         match self.get(process_id, current_timestamp) {
             Ok(process_info_arc) => {
                 return Some(process_info_arc);
@@ -467,7 +469,7 @@ impl RunningProcessesModules {
                 warn!("{e} when {context}");
             }
         }
-        let arc = Arc::new(SyncUnsafeCell::new(ProcessInfo {
+        let rc = Rc::new(UnsafeCell::new(ProcessInfo {
             path: String::new(),
             create_time: current_timestamp,
             start_time: None,
@@ -478,15 +480,15 @@ impl RunningProcessesModules {
             modules_map: BTreeMap::new(),
         }));
         let map = unsafe { &mut *self.map.get() };
-        map.insert(process_id, arc.clone());
-        Some(arc)
+        map.insert(process_id, rc.clone());
+        Some(rc)
     }
 
     fn try_insert(
         &self,
         process_id: u32,
-        process_info_arc: Arc<SyncUnsafeCell<ProcessInfo>>,
-    ) -> Option<(/*is_new*/ bool, Arc<SyncUnsafeCell<ProcessInfo>>)> {
+        process_info_arc: Rc<UnsafeCell<ProcessInfo>>,
+    ) -> Option<(/*is_new*/ bool, Rc<UnsafeCell<ProcessInfo>>)> {
         if Self::is_special_process(process_id) {
             return None;
         }
@@ -500,8 +502,8 @@ impl RunningProcessesModules {
     fn insert(
         &self,
         process_id: u32,
-        process_info_arc: Arc<SyncUnsafeCell<ProcessInfo>>,
-    ) -> Option<Arc<SyncUnsafeCell<ProcessInfo>>> {
+        process_info_arc: Rc<UnsafeCell<ProcessInfo>>,
+    ) -> Option<Rc<UnsafeCell<ProcessInfo>>> {
         if Self::is_special_process(process_id) {
             return None;
         }
@@ -513,7 +515,7 @@ impl RunningProcessesModules {
         &self,
         process_id: u32,
         current_timestamp: TimeStamp,
-    ) -> Option<Arc<SyncUnsafeCell<ProcessInfo>>> {
+    ) -> Option<Rc<UnsafeCell<ProcessInfo>>> {
         if Self::is_special_process(process_id) {
             return None;
         }
@@ -565,9 +567,9 @@ impl RunningProcessesModules {
     }
 
     fn clear(&self) {
-        let map = unsafe{ &mut *self.map.get() };
+        let map = unsafe { &mut *self.map.get() };
         map.clear();
-        let ended_map = unsafe{ &mut *self.ended_map.get() };
+        let ended_map = unsafe { &mut *self.ended_map.get() };
         ended_map.clear();
     }
 
@@ -613,7 +615,7 @@ impl RunningProcessesModules {
     fn process_init(&self, process_id: u32) {
         let process_info_arc = if let Some((is_new, process_info_arc)) = self.try_insert(
             process_id,
-            Arc::new(SyncUnsafeCell::new(ProcessInfo {
+            Rc::new(UnsafeCell::new(ProcessInfo {
                 path: String::new(),
                 create_time: TimeStamp::now(),
                 start_time: None,
