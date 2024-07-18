@@ -38,13 +38,14 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - cargo build --release
 
 # how to use
-1. select events at event list on the left of windows
+1. select events at event list on the left of windows. shrink by `-`, expend by `+`.
 2. input filter expression in the LineEdit on the top of window.
    - filter one: filter every event by event's properties. i.e `process_id = 4 && thread_id = 6`
    - filter pair: filter two matched events by a simple matched expression. i.e. `handle`, `custom(...)`
 3. ckick On/Off switch on the top left of window
 4. view the events on the center of window
 5. double click the event row in tableview to view detail information and stack walk.
+6. optional place pdb file to ./pdb directory. the filename must match to module name. and check the module's TimeDateStamp( the time created by the linker)
 
 # kernel events
 - Process
