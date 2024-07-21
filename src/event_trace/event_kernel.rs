@@ -2745,7 +2745,8 @@ mod tests {
         let mut markdown = String::from("## kernel events\n");
 
         for desc in super::EVENTS_DESC {
-            markdown.push_str(format!("- {}\n", desc.major.name).as_str());
+            let major_name = if let Some(name ) = desc.major.display_name { name } else { desc.major.name };
+            markdown.push_str(format!("- {}\n", major_name).as_str());
             for minor in desc.minors {
                 markdown.push_str(format!("  - {}({})\n", minor.name, minor.op_code).as_str());
             }

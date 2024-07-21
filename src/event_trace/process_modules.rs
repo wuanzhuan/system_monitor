@@ -957,17 +957,18 @@ fn is_kernel_session_space(_address: u64) -> bool {
 #[cfg(test)]
 mod tests {
     use super::{RunningKernelModules, RunningModules, RunningProcessesModules, DRIVE_LETTER_MAP};
-    use crate::pdb::pdb_path_set;
+    use crate::pdb::{pdb_path_set, get_location_info as pdb_get_location_info};
     use std::path::Path;
     use windows::Win32::System::Threading::GetCurrentProcessId;
 
     #[test]
     fn store_process_modules() {
         let current_id = unsafe { GetCurrentProcessId() };
-        let mut running_processes_modules = RunningProcessesModules::new(5, 10);
+        let running_processes_modules = RunningProcessesModules::new(5, 10);
         running_processes_modules.process_init(current_id);
 
-        println!("{:#?}", running_processes_modules.0);
+        let map = unsafe{ &*running_processes_modules.map.get() };
+        println!("{:#?}", map);
     }
 
     #[test]
@@ -978,9 +979,10 @@ mod tests {
 
     #[test]
     fn enum_processes() {
-        let mut running_processes_modules = RunningProcessesModules::new(5, 10);
+        let running_processes_modules = RunningProcessesModules::new(5, 10);
         running_processes_modules.processes_enum(&vec![]);
-        println!("{:#?}", running_processes_modules.0)
+        let map = unsafe{ &*running_processes_modules.map.get() };
+        println!("{:#?}", map)
     }
 
     #[test]
@@ -1003,7 +1005,7 @@ mod tests {
             file_name: format!("{out_dir}\\target\\debug\\{pkg_name}.exe"),
             time_data_stamp: time_date_stamp,
         };
-        let r = module_info.get_location_info(0x2b6168);
+        let r = pdb_get_location_info(Path::new(module_info.file_name.as_str()), module_info.time_data_stamp, 0x2b6168).unwrap();
         println!("{r:?}");
     }
 }

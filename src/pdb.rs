@@ -285,7 +285,7 @@ fn get_pdb_info_from_pdb_file(
 
 #[cfg(test)]
 mod tests {
-    use crate::process_modules::get_image_info_from_file;
+    use crate::event_trace::process_modules::get_image_info_from_file;
     use std::path::Path;
 
     #[test]
