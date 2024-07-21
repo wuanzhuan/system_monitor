@@ -52,7 +52,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 5. double click the event row in tableview to view detail information and stack walk.
 6. optional place pdb file to ./pdb directory. the filename must match to module name. and check the module's TimeDateStamp( the time created by the linker)
 
-# kernel events
+## kernel events
 - Process
   - Start(1)
   - End(2)
@@ -60,10 +60,10 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - DCEnd(4)
   - Terminate(11)
   - Defunct(39)
-- Process
+- Process Counters
   - PerfCounter(32)
   - PerfCounterRundown(33)
-- Process
+- Process Wake
   - WakeChargeUser(48)
   - WakeReleaseUser(64)
 - Thread
@@ -72,28 +72,28 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - DCStart(3)
   - DCEnd(4)
   - SetName(72)
-- Thread
+- Thread ContextSwitch
   - CSwitch(36)
-- Thread
+- Thread Dispatcher
   - ReadyThread(50)
   - 66(66)
   - 67(67)
   - 68(68)
-- Thread
+- Thread Affinity
   - ThreadAffinity(53)
-- Thread
+- Thread Priority
   - SetPriority(48)
   - SetBasePriority(49)
   - SetPagePriority(51)
   - SetIoPriority(52)
-- Thread
+- Thread SpinLock
   - SpinLock(41)
-- Thread
+- Thread SyncObjects
   - SyncObjects(43)
-- Thread
+- Thread KernelQueue
   - Kernel Queue Enqueue(62)
   - Kernel Queue Dequeue(63)
-- Thread
+- Thread Worker
   - Start(64)
   - End(65)
 - Image
@@ -107,17 +107,17 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Read(10)
   - Write(11)
   - FlushBuffers(14)
-- DiskIo
+- DiskIo Init
   - ReadInit(12)
   - WriteInit(13)
   - FlushInit(15)
-- DiskIo
+- DiskIo Driver
   - DrvMjFnCall(34)
   - DrvMjFnRet(35)
   - DrvComplRout(37)
   - DrvComplReq(52)
   - DrvComplReqRet(53)
-- FileIo
+- FileIo Disk
   - Name(0)
   - FileCreate(32)
   - FileDelete(35)
@@ -139,16 +139,16 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Close(66)
   - Flush(73)
   - 84(84)
-- FileIo
+- FileIo VaMap
   - 37(37)
   - 38(38)
-- FileIo
+- FileIo Flt IoInit
   - Pre Operation Init(96)
   - Post Operation Init(97)
-- FileIo
+- FileIo Flt FastIo
   - Pre Operation Completion(98)
   - Post Operation Completion(99)
-- FileIo
+- FileIo Flt IoFailure
   - Pre Operation Failure(100)
   - Post Operation Failure(101)
 - PageFaults
@@ -160,22 +160,22 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - AccessViolation(15)
 - PageFaults
   - HardFault(32)
-- PageFault
+- PageFault VirtualAlloc
   - VirtualAlloc(98)
   - VirtualFree(99)
   - MemResetInfo(134)
-- PageFault
+- PageFault MemInfo
   - 112(112)
   - 124(124)
-- PageFault
+- PageFault SessionOrPfSection
   - 73(73)
   - 79(79)
   - 135(135)
   - 136(136)
-- PageFault
+- PageFault MemInfoWs
   - 125(125)
   - 126(126)
-- PageFault
+- PageFault Ws
   - 130(130)
   - ProcessFreeze(131)
   - 118(118)
@@ -224,9 +224,9 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
   - Virtualize(26)
   - Query Security(29)
   - Set Security(28)
-- Registry
+- Registry ChangeNotify
   - ChangeNotify(48)
-- DbgPrint
+- Debugger
   - DbgPrint(32)
 - Job
   - Create(32)
@@ -248,37 +248,37 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - SplitIo
   - VolMgr(32)
 - DebugEvents
-- PerfInfo
+- PerfInfo Profile
   - SampleProfile(46)
 - PerfInfo
   - ThreadDPC(66)
   - DPC(68)
   - TimerDPC(69)
-- PerfInfo
-- PerfInfo
+- PerfInfo PmcProfile
+- PerfInfo Interrupt
   - ISR-MSI(50)
   - ISR(67)
-- PerfInfo
+- PerfInfo DpcQueue
   - 100(100)
   - 101(101)
-- PerfInfo
+- PerfInfo ContMemGen
   - 118(118)
   - 119(119)
-- PerfInfo
+- PerfInfo ShouldYield
   - 109(109)
-- PerfInfo
+- PerfInfo SystemCall
   - SysClEnter(51)
   - SysClExit(52)
-- PerfInfo
+- PerfInfo Timer
   - 80(80)
   - 81(81)
   - 82(82)
   - 83(83)
   - 84(84)
   - 85(85)
-- PerfInfo
+- PerfInfo ClockInterrupt
   - 79(79)
-- PerfInfo
+- PerfInfo ClockTimer
   - 87(87)
   - 88(88)
   - 89(89)
@@ -343,7 +343,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - OpticalIoInit
 - DllInfo
 - DllFlushWs
-- Object
+- Handle
   - CreateHandle(32)
   - CloseHandle(33)
   - DuplicateHandle(34)
