@@ -6,7 +6,7 @@ A windows system tool, development in rust. A replacement of [procmon](https://l
 - `The sys_monitor.zip may be considered a threat by the browser when downloading.`
 - No hook technology was used.
 - Obtained all process and module information for convert address to module offset.
-- Administrator privileges are required.
+- Administrator privileges are required for starting kernel event trace.
 
 # features
 - [x] more events
