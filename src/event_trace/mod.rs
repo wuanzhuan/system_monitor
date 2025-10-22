@@ -296,7 +296,7 @@ impl Controller {
     }
 
     unsafe extern "system" fn unsafe_event_record_callback(event_record: *mut EVENT_RECORD) {
-        let er: &mut EVENT_RECORD = mem::transmute(event_record);
+        let er: &mut EVENT_RECORD = unsafe{ mem::transmute(event_record) };
         Self::event_record_callback(er)
     }
 

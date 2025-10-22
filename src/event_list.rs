@@ -242,7 +242,7 @@ impl<T: Clone + Send + Sync> EventList<T> {
         unsafe { &mut *self.list.get() }
     }
 
-    fn get_cursor_mut_from_node(&self, node: &Node<T>) -> CursorMut<NodeAdapter<T>> {
+    fn get_cursor_mut_from_node(&'_ self, node: &Node<T>) -> CursorMut<'_, NodeAdapter<T>> {
         unsafe { self.get_list_mut().cursor_mut_from_ptr(node) }
     }
 }

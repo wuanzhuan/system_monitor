@@ -218,7 +218,7 @@ impl EventRecordModel {
             }
             Columns::Properties => {
                 if let Some(ref field) = path.field {
-                    if let Value::Str(ref value_str) = value {
+                    if let Value::Str(value_str) = value {
                         if let PropertyDecoded::Struct(ref properties) = self.array.properties {
                             if let PropertyDecoded::String(ref property_field_str) =
                                 properties[field]
@@ -274,7 +274,7 @@ impl EventRecordModel {
                         {
                             return Ok(true);
                         }
-                        if let PropertyDecoded::String(ref value_str) = value {
+                        if let PropertyDecoded::String(value_str) = value {
                             if value_str
                                 .to_ascii_lowercase()
                                 .contains(v.to_ascii_lowercase().as_str())
@@ -298,7 +298,7 @@ impl EventRecordModel {
                         if key.to_ascii_lowercase().contains(v.to_string().as_str()) {
                             return Ok(true);
                         }
-                        if let PropertyDecoded::String(ref value_str) = value {
+                        if let PropertyDecoded::String(value_str) = value {
                             if value_str
                                 .to_ascii_lowercase()
                                 .contains(v.to_string().as_str())
@@ -319,7 +319,7 @@ impl EventRecordModel {
                         if key.to_ascii_lowercase().contains(v.to_string().as_str()) {
                             return Ok(true);
                         }
-                        if let PropertyDecoded::String(ref value_str) = value {
+                        if let PropertyDecoded::String(value_str) = value {
                             if value_str
                                 .to_ascii_lowercase()
                                 .contains(v.to_string().as_str())
